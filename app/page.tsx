@@ -2178,16 +2178,16 @@ const GROUPS_2026 = [
 ];
 
 const PRIZE_SCALE = [
-  { hits: 24, prize: 50 },
-  { hits: 23, prize: 45 },
-  { hits: 22, prize: 41 },
-  { hits: 21, prize: 37 },
-  { hits: 20, prize: 34 },
-  { hits: 18, prize: 28 },
-  { hits: 16, prize: 22 },
-  { hits: 14, prize: 18 },
-  { hits: 12, prize: 14 },
-  { hits: 10, prize: 10 },
+  { hits: 24, prize: 50, color: '#ea580c' }, // Naranja fuerte
+  { hits: 23, prize: 45, color: '#f59e0b' }, // Naranja claro/Ámbar
+  { hits: 22, prize: 41, color: '#eab308' }, // Amarillo
+  { hits: 21, prize: 37, color: '#10b981' }, // Verde esmeralda
+  { hits: 20, prize: 34, color: '#059669' }, // Verde oscuro
+  { hits: 18, prize: 28, color: '#06b6d4' }, // Cian
+  { hits: 16, prize: 22, color: '#3b82f6' }, // Azul
+  { hits: 14, prize: 18, color: '#84cc16' }, // Verde lima
+  { hits: 12, prize: 14, color: '#6b7280' }, // Gris medio
+  { hits: 10, prize: 10, color: '#4b5563' }, // Gris oscuro
 ];
 
 const QuinielaView = ({ user }: { user: any }) => {
@@ -2289,27 +2289,34 @@ const QuinielaView = ({ user }: { user: any }) => {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8 items-start">
-        {/* TABLA DE PREMIOS */}
-        <div className="w-full lg:w-56 bg-[#0a101f] border border-white/10 rounded-2xl overflow-hidden shadow-2xl shrink-0">
+        {/* TABLA DE PREMIOS EN 2 COLUMNAS */}
+        <div className="w-full lg:w-80 bg-[#0a101f] border border-white/10 rounded-2xl overflow-hidden shadow-2xl shrink-0">
           <div className="bg-white/5 p-3 border-b border-white/10 text-center">
             <h3 className="font-black text-[9px] uppercase tracking-widest text-white/40">
               Escala de Premios
             </h3>
           </div>
-          <div className="p-2 space-y-1">
+          <div className="p-3 grid grid-cols-2 gap-2">
             {PRIZE_SCALE.map((item) => {
+              // Lógica de iluminación:
+              const isHighestAchieved = currentPrize === item.prize && hitsCount > 0;
               const isAchieved = hitsCount >= item.hits && hitsCount > 0;
+
               return (
                 <div
                   key={item.hits}
-                  className={`flex justify-between items-center px-3 py-1.5 rounded-lg transition-all ${
-                    isAchieved
-                      ? 'bg-green-500 text-black shadow-lg scale-105'
-                      : 'bg-white/5 text-white/20'
+                  style={{
+                    backgroundColor: isHighestAchieved ? item.color : isAchieved ? `${item.color}15` : 'transparent',
+                    borderColor: isAchieved ? item.color : 'rgba(255,255,255,0.05)',
+                    boxShadow: isHighestAchieved ? `0 0 20px ${item.color}80` : 'none',
+                    color: isHighestAchieved ? '#000' : isAchieved ? item.color : 'rgba(255,255,255,0.2)'
+                  }}
+                  className={`flex flex-col items-center justify-center py-2 rounded-lg border transition-all duration-500 ${
+                    isHighestAchieved ? 'scale-105 font-black z-10' : 'font-bold'
                   }`}
                 >
-                  <span className="text-[9px] font-black">{item.hits} AC.</span>
-                  <span className="font-black text-xs">{item.prize}M</span>
+                  <span className="text-[10px] uppercase tracking-wider">{item.hits} Aciertos</span>
+                  <span className="text-sm">{item.prize}M</span>
                 </div>
               );
             })}
@@ -2365,12 +2372,12 @@ const QuinielaView = ({ user }: { user: any }) => {
         </div>
       </div>
 
-      {/* BOTÓN DE ACCIÓN FLOTANTE */}
-      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex gap-4">
+      {/* BOTÓN DE ACCIÓN FLOTANTE (Alineado a la derecha) */}
+      <div className="fixed bottom-24 right-6 z-50 flex gap-4">
         {isSaved ? (
           <button
             onClick={() => setIsSaved(false)}
-            className="px-8 py-3.5 bg-yellow-500 text-black rounded-full font-black uppercase text-xs tracking-widest shadow-2xl hover:scale-105 transition-transform border-4 border-black"
+            className="px-6 py-3.5 bg-yellow-500 text-black rounded-full font-black uppercase text-xs tracking-widest shadow-[0_0_20px_rgba(234,179,8,0.4)] hover:scale-105 transition-transform border-2 border-black"
           >
             Editar Pronóstico
           </button>
@@ -2378,9 +2385,9 @@ const QuinielaView = ({ user }: { user: any }) => {
           <button
             onClick={handleSave}
             disabled={!isComplete}
-            className={`px-8 py-3.5 rounded-full font-black uppercase text-xs tracking-widest shadow-2xl transition-all border-4 border-black ${
+            className={`px-6 py-3.5 rounded-full font-black uppercase text-xs tracking-widest shadow-2xl transition-all border-2 border-black ${
               isComplete
-                ? 'bg-[#22c55e] text-white hover:scale-105'
+                ? 'bg-[#22c55e] text-black shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:scale-105'
                 : 'bg-gray-800 text-white/20'
             }`}
           >
