@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 import { supabase } from '../lib/supabase';
 
+import { availableCountries } from '../lib/countries';
+
 // ==========================================
 // 1. CONSTANTES GLOBALES Y CONFIGURACIÓN: MUNDIAL 2026
 // ==========================================
