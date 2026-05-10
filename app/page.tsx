@@ -3026,9 +3026,9 @@ const fetchAllProfiles = async () => {
   if (data) setAllProfiles(data);
 };
 
-// Cargar perfiles cuando entres en Tesorería
+// Cargar perfiles cuando entres en Tesorería O en el Ranking de Puntos
 useEffect(() => {
-  if (view === 'admin' && adminTab === 'tesoreria') {
+  if ((view === 'admin' && adminTab === 'tesoreria') || view === 'scores') {
     fetchAllProfiles();
   }
 }, [view, adminTab]);
@@ -3890,10 +3890,90 @@ useEffect(() => {
           </div>
         )}
         {view === 'scores' && (
-          <div className="p-8 border border-white/10 rounded-2xl text-center text-white/40 bg-white/5">
-            ⭐ Puntuaciones en construcción...
-          </div>
-        )}
+  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-3">
+    {/* CABECERA DEL RANKING */}
+    <div className="flex justify-between items-center px-4 mb-2">
+      <h2 className="text-xl font-black italic uppercase tracking-tighter text-[#22c55e]">
+        Ranking Mundial 2026
+      </h2>
+      <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">
+        Total {allProfiles.length} Equipos
+      </span>
+    </div>
+
+    {/* LISTADO DE EQUIPOS ESTILO CARTA */}
+    <div className="flex flex-col gap-3">
+      {allProfiles.length > 0 ? (
+        [...allProfiles]
+          .sort((a, b) => (b.total_points || 0) - (a.total_points || 0))
+          .map((p, index) => {
+            // Lógica de colores para las posiciones
+            const isFirst = index === 0;
+            const isSecond = index === 1;
+            const isThird = index === 2;
+            
+            const posColor = isFirst ? 'text-yellow-500' : 
+                             isSecond ? 'text-gray-300' : 
+                             isThird ? 'text-[#cd7f32]' : // Bronce
+                             'text-gray-500';
+
+            return (
+              <div 
+                key={p.id} 
+                className={`flex items-center justify-between p-5 rounded-[2rem] transition-all bg-[#0a101f] border border-white/5 hover:border-white/10 ${
+                  p.id === user.id ? 'ring-2 ring-[#22c55e]/30 bg-[#0d1629]' : ''
+                }`}
+              >
+                {/* POSICIÓN Y NOMBRE */}
+                <div className="flex items-center gap-5">
+                  <span className={`text-3xl font-black italic min-w-[3rem] ${posColor}`}>
+                    #{index + 1}
+                  </span>
+                  
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-3">
+                      <span className="font-black uppercase text-base italic text-white tracking-tight">
+                        {p.team_name || 'Sin Equipo'}
+                      </span>
+                      {/* MONEDA DE 5€ MÁS GRANDE */}
+                      {p.has_paid && (
+                        <div 
+                          className="flex items-center justify-center w-7 h-7 bg-yellow-500 rounded-full border-2 border-black/20 shadow-[0_0_15px_rgba(234,179,8,0.4)] shrink-0"
+                          title="Apuesta de 5€ Realizada"
+                        >
+                          <span className="text-[10px] font-black text-black">5€</span>
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[11px] font-bold text-white/30 uppercase tracking-tighter">
+                      👤 {p.username}
+                    </span>
+                  </div>
+                </div>
+
+                {/* PUNTOS Y DETALLES */}
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <span className="text-2xl font-black text-[#22c55e] italic leading-none">
+                      {p.total_points || 0} <span className="text-xs ml-0.5">PTS</span>
+                    </span>
+                  </div>
+                  {/* Icono de flecha como en tu imagen */}
+                  <svg className="w-5 h-5 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            );
+          })
+      ) : (
+        <div className="text-center py-20 bg-white/5 rounded-3xl border border-dashed border-white/10 text-white/20 font-black uppercase text-sm">
+          Calculando clasificaciones...
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
         {view === 'admin' && (
   <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
