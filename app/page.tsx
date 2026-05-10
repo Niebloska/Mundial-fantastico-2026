@@ -10,7 +10,7 @@ import { availableCountries } from '../lib/countries';
 // 1. CONSTANTES GLOBALES Y CONFIGURACIÓN: MUNDIAL 2026
 // ==========================================
 
-const MASTER_EMAIL = 'admin@mundialfantastico.com'; // Cambia esto por tu email de admin real
+const ADMIN_EMAIL = 'admin@mundial2026.com';
 const GAME_START_DATE = '2026-06-11T20:00:00'; // Fecha del partido inaugural
 const SIMULATED_GAME_START = '2026-06-11T20:00:00';
 const MAX_BUDGET = 450;
@@ -2900,30 +2900,27 @@ export default function MundialApp() {
   const [session, setSession] = useState<any>(null);
 
   // 1. Sincronización de Sesión y Perfil Real (Con carga de plantilla)
+  // 1. Sincronización de Sesión y Perfil Real (Con carga de plantilla)
   useEffect(() => {
-    const fetchUserProfile = async (userId: string) => {
+    // Le pasamos el objeto de usuario completo de la sesión (que incluye el email real)
+    const fetchUserProfile = async (sessionUser: any) => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('team_name, username, squad_data') // <-- Añadimos squad_data
-        .eq('id', userId)
+        .select('team_name, username, squad_data')
+        .eq('id', sessionUser.id)
         .single();
 
       if (data) {
-        setUser((prev: any) => ({
-          ...prev,
+        setUser({
+          email: sessionUser.email, // <-- ¡LA CLAVE! Aquí sobreescribimos con el email real
           teamName: data.team_name,
           username: data.username,
-          id: userId,
-        }));
+          id: sessionUser.id
+        });
 
-        // LA MAGIA: Si hay una plantilla guardada, la cargamos en el campo
+        // Si hay datos de equipo guardados, los cargamos
         if (data.squad_data) {
-          const {
-            selected: s,
-            bench: b,
-            extras: e,
-            captain: c,
-          } = data.squad_data;
+          const { selected: s, bench: b, extras: e, captain: c } = data.squad_data;
           if (s) setSelected(s);
           if (b) setBench(b);
           if (e) setExtras(e);
@@ -2934,41 +2931,39 @@ export default function MundialApp() {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchUserProfile(session.user.id);
+      if (session) fetchUserProfile(session.user);
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        if (session) {
-          fetchUserProfile(session.user.id);
-        } else {
-          setUser({
-            email: 'admin@mundial.com',
-            username: 'Admin',
-            teamName: 'MI EQUIPO',
-            id: '000-111',
-          });
-          // Limpiamos el campo si cierra sesión
-          setSelected({});
-          setBench({});
-          setExtras({});
-          setCaptain(null);
-        }
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) {
+        fetchUserProfile(session.user);
+      } else {
+        // Al salir, lo dejamos como un simple invitado sin privilegios
+        setUser({
+          email: '', // <-- Ya no es admin por defecto
+          username: 'Invitado',
+          teamName: 'MI EQUIPO',
+          id: '',
+        });
+        setSelected({});
+        setBench({});
+        setExtras({});
+        setCaptain(null);
       }
-    );
+    });
 
     return () => authListener.subscription.unsubscribe();
   }, []);
 
-  // 2. Estado de Usuario (Mantenemos la estructura)
+  // 2. Estado de Usuario por defecto (Invitado, no Admin)
   const [user, setUser] = useState<any>({
-    email: 'admin@mundial.com',
-    username: 'Admin',
+    email: '',
+    username: 'Invitado',
     teamName: 'MI EQUIPO',
-    id: '000-111',
+    id: '',
   });
-  const [isAdmin, setIsAdmin] = useState(true);
+  const isAdmin = user?.email === 'admin@mundial2026.com';
   const [view, setView] = useState<
     'rules' | 'squad' | 'quiniela' | 'calendar' | 'lineups' | 'scores' | 'admin'
   >('rules');
@@ -3113,6 +3108,25 @@ export default function MundialApp() {
     localStorage.setItem('ef24_captain', JSON.stringify(captain));
     localStorage.setItem('ef24_isLocked', JSON.stringify(isSquadLocked));
   }, [selected, bench, extras, captain, isSquadLocked]);
+
+  // --- PROTECCIÓN CONTRA SALIDAS ACCIDENTALES EN MÓVILES ---
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    window.history.pushState(null, '', window.location.pathname);
+
+    const handlePopState = () => {
+      const confirmExit = window.confirm('¿Quieres salir de la aplicación Mundial Fantástico 2026?');
+      if (confirmExit) {
+        window.history.back();
+      } else {
+        window.history.pushState(null, '', window.location.pathname);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // --- 8. FUNCIONES DE GESTIÓN ---
   const toggleMarket = async () => {
@@ -3363,7 +3377,8 @@ export default function MundialApp() {
   ];
 
   const visibleNavItems = navItems.filter((item) => {
-    if (item.id === 'admin') return user?.email === 'admin@mundial.com';
+    // Aquí bloqueamos el Modo Dios para todos excepto para el jefe
+    if (item.id === 'admin') return user?.email === 'admin@mundial2026.com';
     return true;
   });
 
@@ -3384,13 +3399,30 @@ export default function MundialApp() {
               Fantástico 2026
             </h2>
           </div>
-          {/* BOTÓN SALIR GLOBAL */}
+          
+          {/* BOTÓN LOG OUT */}
           <button
             onClick={() => supabase.auth.signOut()}
-            className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase rounded-xl hover:bg-red-500 hover:text-white transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600/80 hover:bg-red-600 border border-red-500/30 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg text-white active:scale-95"
           >
-            Salir
+            LOG OUT
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="14" 
+              height="14" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="3" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
           </button>
+
           <div className="text-right">
             <div className="text-xs font-bold text-white/50 flex items-center gap-1 justify-end">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
@@ -3405,7 +3437,8 @@ export default function MundialApp() {
         </div>
 
         <nav className="max-w-4xl mx-auto mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {navItems.map((item) => (
+          {/* USAMOS visibleNavItems PARA OCULTAR EL MODO DIOS AL RESTO */}
+          {visibleNavItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setView(item.id as any)}
