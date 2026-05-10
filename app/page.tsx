@@ -2972,6 +2972,13 @@ export default function MundialApp() {
   const [isTutorialActive, setIsTutorialActive] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
 
+  useEffect(() => {
+    // Si entra el administrador, fulminamos el tutorial para que no estorbe
+    if (isAdmin) {
+      setTutorialStep(0); // Usa 0, false, o el valor que tengas programado para que el tutorial desaparezca
+    }
+  }, [isAdmin]);
+
   // --- ESTADOS DE LA PLANTILLA (Carga desde Supabase) ---
   const [selected, setSelected] = useState<any>({});
   const [bench, setBench] = useState<any>({});
@@ -3127,6 +3134,13 @@ export default function MundialApp() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  useEffect(() => {
+    // Si entra el administrador, fulminamos el tutorial para que no estorbe
+    if (isAdmin) {
+      setTutorialStep(0); 
+    }
+  }, [isAdmin]);
 
   // --- 8. FUNCIONES DE GESTIÓN ---
   const toggleMarket = async () => {
