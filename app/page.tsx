@@ -2632,16 +2632,7 @@ const CalendarView = () => {
 export default function MundialApp() {
   const [showSectionHelp, setShowSectionHelp] = useState<string | null>(null);
 
-  // --- ESTADOS DE USUARIO (Con autoguardado del nombre) ---
-  const [user, setUser] = useState<any>(() => {
-    const savedName = localStorage.getItem('ef24_teamName');
-    return {
-      email: 'admin@mundial.com',
-      username: 'Admin',
-      teamName: savedName || 'Mi Equipo',
-      id: '000-111',
-    };
-  });
+  
   const [isAdmin, setIsAdmin] = useState(true);
   const [view, setView] = useState<
     'rules' | 'squad' | 'quiniela' | 'calendar' | 'lineups' | 'scores' | 'admin'
@@ -2651,31 +2642,41 @@ export default function MundialApp() {
   const [isTutorialActive, setIsTutorialActive] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
 
-  // --- ESTADOS DE LA PLANTILLA CON AUTOGUARDADO ---
-  const [selected, setSelected] = useState<any>(() => {
-    const saved = localStorage.getItem('ef24_selected');
-    return saved ? JSON.parse(saved) : {};
+  // --- ESTADOS DE LA PLANTILLA CON COMPROBACIÓN DE SERVIDOR ---
+  // --- ESTADOS INICIALES (Limpios para evitar errores de hidratación) ---
+  const [selected, setSelected] = useState<any>({});
+  const [bench, setBench] = useState<any>({});
+  const [extras, setExtras] = useState<any>({});
+  const [captain, setCaptain] = useState<number | null>(null);
+  const [isSquadLocked, setIsSquadLocked] = useState(false);
+  const [user, setUser] = useState<any>({
+    email: 'admin@mundial.com',
+    username: 'Admin',
+    teamName: 'Mi Equipo',
+    id: '000-111',
   });
 
-  const [bench, setBench] = useState<any>(() => {
-    const saved = localStorage.getItem('ef24_bench');
-    return saved ? JSON.parse(saved) : {};
-  });
+  // Estado auxiliar para saber si ya estamos en el navegador
+  const [isMounted, setIsMounted] = useState(false);
 
-  const [extras, setExtras] = useState<any>(() => {
-    const saved = localStorage.getItem('ef24_extras');
-    return saved ? JSON.parse(saved) : {};
-  });
+  // --- CARGA DE DATOS (Solo al iniciar la App en el navegador) ---
+  useEffect(() => {
+    const savedSelected = localStorage.getItem('ef24_selected');
+    const savedBench = localStorage.getItem('ef24_bench');
+    const savedExtras = localStorage.getItem('ef24_extras');
+    const savedCaptain = localStorage.getItem('ef24_captain');
+    const savedLocked = localStorage.getItem('ef24_isLocked');
+    const savedName = localStorage.getItem('ef24_teamName');
 
-  const [captain, setCaptain] = useState<number | null>(() => {
-    const saved = localStorage.getItem('ef24_captain');
-    return saved ? JSON.parse(saved) : null;
-  });
+    if (savedSelected) setSelected(JSON.parse(savedSelected));
+    if (savedBench) setBench(JSON.parse(savedBench));
+    if (savedExtras) setExtras(JSON.parse(savedExtras));
+    if (savedCaptain) setCaptain(JSON.parse(savedCaptain));
+    if (savedLocked) setIsSquadLocked(JSON.parse(savedLocked));
+    if (savedName) setUser((prev: any) => ({ ...prev, teamName: savedName }));
 
-  const [isSquadLocked, setIsSquadLocked] = useState(() => {
-    const saved = localStorage.getItem('ef24_isLocked');
-    return saved ? JSON.parse(saved) : false;
-  });
+    setIsMounted(true);
+  }, []);
 
   // --- 4. OTROS ESTADOS DE LA APP ---
   const [results, setResults] = useState<Record<string, any>>({});
@@ -3029,6 +3030,10 @@ export default function MundialApp() {
     if (item.id === 'admin') return user?.email === 'admin@mundial.com';
     return true;
   });
+
+  // Si aún no hemos cargado los datos del navegador, mostramos un fondo negro 
+  // para evitar el error de "texto que no coincide"
+  if (!isMounted) return <div className="min-h-screen bg-[#05080f]" />;
 
   return (
     <div className="min-h-screen bg-[#05080f] text-white font-sans selection:bg-[#22c55e] selection:text-black pb-24">
