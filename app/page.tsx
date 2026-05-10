@@ -40,6 +40,7 @@ const TutorialCaddy = ({
   onClose,
   userName,
   extrasCount = 0,
+  captain, // Importante: pasamos captain para validar el paso 2
 }: any) => {
   const [dontShowAgain, setDontShowAgain] = useState(false);
   if (!active) return null;
@@ -64,7 +65,7 @@ const TutorialCaddy = ({
     {
       id: 2,
       title: '🎖️ 3. El Capitán',
-      desc: '¡Buen 11! Ahora haz click en tu estrella favorita para que sea el CAPITÁN.',
+      desc: '¡Buen 11! Ahora haz click en tu estrella favorita para que sea el CAPITÁN. Busca el círculo con la "C" que parpadea.',
       view: 'squad',
       icon: '⭐',
       auto: true,
@@ -123,7 +124,7 @@ const TutorialCaddy = ({
     {
       id: 9,
       title: '🚀 ¡Hecho!',
-      desc: "Busca el botón '?' si me necesitas. ¡A por el Mundial!",
+      desc: "Busca el botón '?' si me necesitas. ¡A por el Mundial Fantástico 2026!",
       view: 'scores',
       icon: '✅',
       auto: false,
@@ -132,11 +133,12 @@ const TutorialCaddy = ({
 
   const current = tutorialSteps[step] || tutorialSteps[0];
 
+  // Nueva posición: top-24 (justo debajo del header)
   return (
-    <div className="fixed bottom-24 right-4 left-4 md:left-auto md:w-80 z-[100] animate-in slide-in-from-bottom-5 duration-500 pointer-events-none">
-      <div className="bg-[#0a101f] border-2 border-[#22c55e] rounded-3xl p-5 shadow-2xl relative overflow-hidden pointer-events-auto">
+    <div className="fixed top-24 right-4 left-4 z-[100] animate-in slide-in-from-top-5 duration-500 pointer-events-none">
+      <div className="max-w-md mx-auto bg-[#0a101f] border-2 border-[#22c55e] rounded-3xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden pointer-events-auto">
         <div className="flex items-start gap-4">
-          <div className="text-3xl bg-white/5 w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border border-white/10">
+          <div className="text-3xl bg-white/5 w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border border-white/10 animate-pulse">
             {current.icon}
           </div>
           <div className="flex-1">
@@ -173,22 +175,28 @@ const TutorialCaddy = ({
               </div>
             ) : (
               <div className="flex items-center justify-between gap-3">
-                {!current.auto || step === 9 ? (
+                {/* BLOQUEO DE CAPITÁN: Validamos si estamos en el paso id:2 (Capitán) */}
+                {!current.auto || step === 9 || (step === 2 && captain) ? (
                   <button
                     onClick={() =>
                       step < tutorialSteps.length - 1
                         ? onNext(tutorialSteps[step + 1].view)
                         : onClose(dontShowAgain)
                     }
-                    className="px-4 py-2 bg-[#22c55e] text-black font-black uppercase text-[9px] rounded-lg hover:scale-105 transition-transform"
+                    className="px-6 py-2.5 bg-[#22c55e] text-black font-black uppercase text-[9px] rounded-xl hover:scale-105 transition-all shadow-[0_0_15px_rgba(34,197,94,0.4)]"
                   >
                     {step === 9 ? '¡A JUGAR!' : 'SIGUIENTE'}
                   </button>
                 ) : (
-                  <span className="text-[9px] font-black text-white/20 uppercase animate-pulse italic">
-                    Esperando acción...
-                  </span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[9px] font-black text-white/20 uppercase animate-pulse italic">
+                      {step === 2 && !captain
+                        ? '⚓ Debes elegir capitán...'
+                        : 'Esperando acción...'}
+                    </span>
+                  </div>
                 )}
+
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -1151,44 +1159,69 @@ const FixedRulesView = () => {
           title="1. Plantilla Inicial"
           icon={<span className="text-2xl">👥</span>}
         >
+          {/* Texto introductorio mantenido */}
           <p className="mb-4 text-base leading-relaxed">
             Crea tu plantilla inicial compuesta por un máximo de{' '}
             <strong>21 jugadores</strong> distribuidos de la siguiente manera:{' '}
             <strong>11 Titulares, 6 suplentes</strong> y el resto esperarán su
             oportunidad desde la grada.
           </p>
-          <div className="bg-white/5 p-4 rounded-xl border border-white/10 mb-3 space-y-3">
-            <div className="flex items-center gap-3">
-              <span className="text-xl">⭐</span>
+
+          <div className="space-y-3">
+            {/* NOVEDAD: Presupuesto inicial con bolsa de dinero */}
+            <div className="flex items-center gap-3 bg-yellow-500/10 p-3 rounded-xl border border-yellow-500/40 shadow-[0_0_15px_rgba(234,179,8,0.1)]">
+              <span className="text-2xl">💰</span>
               <p className="text-sm">
-                <strong className="text-[#facc15] uppercase">Capitán:</strong>{' '}
-                Puntúa DOBLE (positivo o negativo).
+                El presupuesto inicial de{' '}
+                <strong className="text-yellow-400 text-lg">450M</strong>{' '}
+                aumentará con los premios de la{' '}
+                <strong className="text-[#22c55e] uppercase">
+                  QUINIELA MUNDIAL
+                </strong>
+                .
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-red-400 text-lg">⚠️</span>
-              <p className="text-sm">
-                <strong className="text-red-400 uppercase">
-                  Penalización:
-                </strong>{' '}
-                Cada hueco vacío en el 11 resta <strong>-1 punto</strong>.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-blue-400 text-xl">🔄</span>
-              <p className="text-sm">
-                <strong className="text-blue-400 uppercase">Suplentes:</strong>{' '}
-                Entran automático por orden (S1→S6) si un titular no juega.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 bg-blue-900/20 p-2 rounded border border-blue-500/30">
-              <span className="text-blue-400">✔️</span>
-              <p className="text-sm text-blue-200">
-                <strong>
+
+            <div className="bg-white/5 p-4 rounded-xl border border-white/10 space-y-3">
+              {/* Capitán */}
+              <div className="flex items-center gap-3">
+                <span className="text-xl">⭐</span>
+                <p className="text-sm">
+                  <strong className="text-[#facc15] uppercase">Capitán:</strong>{' '}
+                  Puntúa DOBLE (positivo o negativo).
+                </p>
+              </div>
+
+              {/* Penalización */}
+              <div className="flex items-center gap-3">
+                <span className="text-red-400 text-lg">⚠️</span>
+                <p className="text-sm">
+                  <strong className="text-red-400 uppercase">
+                    Penalización:
+                  </strong>{' '}
+                  Cada hueco vacío en el 11 resta <strong>-1 punto</strong>.
+                </p>
+              </div>
+
+              {/* Suplentes */}
+              <div className="flex items-center gap-3">
+                <span className="text-blue-400 text-xl">🔄</span>
+                <p className="text-sm">
+                  <strong className="text-blue-400 uppercase">
+                    Suplentes:
+                  </strong>{' '}
+                  Entran automático por orden (S1→S6) si un titular no juega.
+                </p>
+              </div>
+
+              {/* Límite de selección con BOLA DEL MUNDO */}
+              <div className="flex items-center gap-3 bg-blue-900/20 p-2 rounded border border-blue-500/30">
+                <span className="text-xl">🌍</span>
+                <p className="text-sm text-blue-200 font-bold">
                   En la primera fase el límite de jugadores de la misma
                   selección es 7.
-                </strong>
-              </p>
+                </p>
+              </div>
             </div>
           </div>
         </RuleCard>
@@ -1206,16 +1239,16 @@ const FixedRulesView = () => {
               (t) => (
                 <div
                   key={t}
-                  className="bg-[#22c55e]/10 p-3 rounded-lg border border-[#22c55e] text-[#22c55e] shadow-[0_0_10px_rgba(34,197,94,0.1)] hover:bg-[#22c55e]/20 transition-colors cursor-default"
+                  className="bg-[#22c55e]/10 p-3 rounded-lg border border-[#22c55e] text-[#22c55e] h-12 flex items-center justify-center"
                 >
                   {t}
                 </div>
               )
             )}
-            <div className="bg-[#22c55e]/10 p-3 rounded-lg border border-[#22c55e] text-[#22c55e] shadow-[0_0_10px_rgba(34,197,94,0.1)] flex justify-center gap-2 items-center">
-              1-3-5-2{' '}
-              <span className="text-red-500 font-black animate-pulse">
-                (NEW)
+            <div className="bg-[#22c55e]/10 p-3 rounded-lg border border-red-500 text-[#22c55e] h-12 flex items-center justify-center gap-2">
+              <span>1-3-5-2</span>
+              <span className="bg-red-600 text-white text-[7px] px-1.5 py-0.5 rounded font-black animate-pulse">
+                NOVEDAD
               </span>
             </div>
           </div>
@@ -1226,33 +1259,73 @@ const FixedRulesView = () => {
           title="3. Mercado de Fichajes"
           icon={<span className="text-2xl">💱</span>}
         >
-          <p className="mb-4 font-bold text-white text-base">
-            2 Ventanas de mercado abiertas:
-          </p>
-          <ul className="space-y-3 text-sm text-gray-200">
+          <div className="flex items-center gap-2 mb-4">
+            <p className="font-bold text-white text-base text-balance">
+              2 Ventanas de mercado:
+            </p>
+            <span className="bg-red-600 text-white text-[10px] px-2 py-1 rounded font-black animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]">
+              NOVEDAD
+            </span>
+          </div>
+
+          <div className="space-y-4 mb-6">
+            {/* Ventana 1 */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-black text-red-500 uppercase italic">
+                🚀 VENTANA 1:
+              </span>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-blue-900/40 border border-blue-500/50 p-2 rounded-lg text-center text-[9px] font-bold uppercase">
+                  Fase Grupos
+                </div>
+                <span className="text-white/30">⟷</span>
+                <div className="flex-1 bg-purple-900/40 border border-purple-500/50 p-2 rounded-lg text-center text-[9px] font-bold uppercase text-purple-200">
+                  16avos
+                </div>
+              </div>
+            </div>
+
+            {/* Ventana 2 */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-black text-red-500 uppercase italic">
+                🔥 VENTANA 2:
+              </span>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-amber-900/40 border border-amber-500/50 p-2 rounded-lg text-center text-[9px] font-bold uppercase text-amber-100">
+                  Octavos
+                </div>
+                <span className="text-white/30">⟷</span>
+                <div className="flex-1 bg-red-900/40 border border-red-500/50 p-2 rounded-lg text-center text-[9px] font-bold uppercase text-red-100">
+                  Cuartos
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <ul className="space-y-2 text-[11px] text-gray-200">
             <li className="flex items-center gap-3 bg-white/5 p-2 rounded">
-              <span className="text-[#22c55e]">✔️</span>{' '}
-              <strong>Fase de Grupos → 16avos</strong> y{' '}
-              <strong>Octavos → Cuartos</strong>.
-            </li>
-            <li className="flex items-center gap-3 bg-white/5 p-2 rounded">
-              <span className="text-[#22c55e]">✔️</span> Máximo{' '}
-              <strong>6 cambios</strong> permitidos por ventana.
-            </li>
-            <li className="flex items-center gap-3 bg-white/5 p-2 rounded">
-              <span className="text-[#22c55e]">✔️</span> Límite:{' '}
-              <strong>8 jugadores/país</strong>.
-            </li>
-            <li className="flex items-center gap-3 bg-white/5 p-2 rounded">
-              <span className="text-[#22c55e]">✔️</span> Tu presupuesto aumenta
-              con los premios de la{' '}
-              <span className="text-[#22c55e] font-black uppercase ml-1">
-                QUINIELA MUNDIAL.
+              <span className="text-[#22c55e]">✔️</span>
+              <span>
+                Máximo <strong>6 cambios</strong> por ventana.
               </span>
             </li>
             <li className="flex items-center gap-3 bg-white/5 p-2 rounded">
-              <span className="text-[#22c55e]">✔️</span> Presupuesto inicial:{' '}
-              <strong>450M</strong>.
+              <span className="text-[#22c55e]">✔️</span>
+              <span>
+                Límite: <strong>8 jugadores/país</strong>.
+              </span>
+            </li>
+            <li className="flex flex-col gap-1 bg-[#22c55e]/5 p-3 rounded border border-[#22c55e]/30">
+              <div className="flex items-center gap-2">
+                <span className="text-[#22c55e]">✔️</span>
+                <span>
+                  Presupuesto inicial de <strong>450M</strong> aumentará con los
+                  premios de la:
+                </span>
+              </div>
+              <span className="text-[#22c55e] font-black uppercase text-center text-sm tracking-widest mt-1">
+                QUINIELA MUNDIAL
+              </span>
             </li>
           </ul>
         </RuleCard>
@@ -1314,7 +1387,7 @@ const FixedRulesView = () => {
                 <ScoreRow
                   label={
                     <div className="flex items-center gap-2">
-                      🥅 🧤 <span>Portería a 0 (+60&apos;)</span>
+                      🥅 🧤 <span>Portería a 0 (+60')</span>
                     </div>
                   }
                   pts="+4"
@@ -2506,7 +2579,7 @@ const CalendarView = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-              {standings.map((team: any, index: number) => (
+                {standings.map((team, index) => (
                   <tr
                     key={team.name}
                     className="hover:bg-white/5 transition-colors"
@@ -2625,6 +2698,189 @@ const CalendarView = () => {
   );
 };
 
+const AuthScreen = ({
+  onLoginSuccess,
+}: {
+  onLoginSuccess: (user: any) => void;
+}) => {
+  const [isRegister, setIsRegister] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [teamName, setTeamName] = useState('');
+
+  // --- PASO 3: LÓGICA DE RECUPERAR CONTRASEÑA ---
+  const handleResetPassword = async () => {
+    if (!email) {
+      alert('Por favor, introduce tu email en el campo correspondiente.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      });
+      if (error) throw error;
+      alert('¡Email de recuperación enviado! Revisa tu bandeja de entrada.');
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      if (isRegister) {
+        // 1. Registro en Auth de Supabase
+        const { data: authData, error: authError } = await supabase.auth.signUp(
+          {
+            email,
+            password,
+          }
+        );
+        if (authError) throw authError;
+
+        // 2. Crear perfil en nuestra tabla pública
+        if (authData.user) {
+          // Al registrarse:
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([
+              {
+                id: authData.user.id,
+                email: email,
+                username: username, // Se guarda el nombre de usuario
+                team_name: teamName.toUpperCase(), // Se guarda el nombre del equipo
+              },
+            ]);
+          if (profileError) throw profileError;
+          alert('¡Cuenta creada! Ya puedes entrar.');
+          setIsRegister(false);
+        }
+      } else {
+        // Login
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+
+        // Buscamos los datos del perfil
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        onLoginSuccess({ ...data.user, ...profile });
+      }
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#05080f] flex items-center justify-center p-4 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]">
+      <div className="max-w-md w-full bg-[#0a101f]/80 backdrop-blur-xl border-2 border-[#22c55e]/30 rounded-[2.5rem] p-8 shadow-[0_0_50px_rgba(34,197,94,0.1)] transition-all">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-black italic text-white tracking-tighter mb-2">
+            MUNDIAL<span className="text-[#22c55e]">2026</span>
+          </h1>
+          <p className="text-white/50 text-xs font-bold uppercase tracking-widest">
+            Eurocopa Fantástica Edition
+          </p>
+        </div>
+
+        <form onSubmit={handleAuth} className="space-y-4">
+          {isRegister && (
+            <>
+              <input
+                type="text"
+                placeholder="Nombre de Usuario"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-[#22c55e] transition-colors"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Nombre de tu Equipo"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-[#22c55e] transition-colors"
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+                required
+              />
+            </>
+          )}
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-[#22c55e] transition-colors"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Contraseña"
+            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-[#22c55e] transition-colors"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required={!loading}
+          />
+
+          {/* BOTÓN RECUPERAR (Solo se muestra en modo Login) */}
+          {!isRegister && (
+            <button
+              type="button"
+              onClick={handleResetPassword}
+              className="text-[10px] text-white/30 hover:text-yellow-400 transition-colors uppercase font-black text-left w-full pl-2 mt-1"
+            >
+              ¿Has olvidado tu contraseña?
+            </button>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-4 bg-[#22c55e] text-black font-black uppercase rounded-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-[0_0_20px_rgba(34,197,94,0.3)] disabled:opacity-50"
+          >
+            {loading
+              ? 'Procesando...'
+              : isRegister
+              ? 'Crear Cuenta'
+              : 'Entrar al Estadio'}
+          </button>
+        </form>
+
+        <button
+          onClick={() => setIsRegister(!isRegister)}
+          className={`w-full mt-6 text-xs font-bold uppercase transition-all duration-300 ${
+            isRegister
+              ? 'text-white/40 hover:text-white'
+              : 'text-yellow-400 animate-pulse scale-110 hover:scale-125 shadow-yellow-400/20'
+          }`}
+        >
+          {isRegister ? (
+            '¿Ya tienes cuenta? Logueate'
+          ) : (
+            <span className="flex items-center justify-center gap-2">
+              ✨ ¿Eres nuevo? Regístrate aquí ✨
+            </span>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ==========================================
 // 9. APP PRINCIPAL: INTERFAZ Y ESTADOS GLOBALES
 // ==========================================
@@ -2632,7 +2888,77 @@ const CalendarView = () => {
 export default function MundialApp() {
   const [showSectionHelp, setShowSectionHelp] = useState<string | null>(null);
 
-  
+  const [session, setSession] = useState<any>(null);
+
+  // 1. Sincronización de Sesión y Perfil Real (Con carga de plantilla)
+  useEffect(() => {
+    const fetchUserProfile = async (userId: string) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('team_name, username, squad_data') // <-- Añadimos squad_data
+        .eq('id', userId)
+        .single();
+
+      if (data) {
+        setUser((prev: any) => ({
+          ...prev,
+          teamName: data.team_name,
+          username: data.username,
+          id: userId,
+        }));
+
+        // LA MAGIA: Si hay una plantilla guardada, la cargamos en el campo
+        if (data.squad_data) {
+          const {
+            selected: s,
+            bench: b,
+            extras: e,
+            captain: c,
+          } = data.squad_data;
+          if (s) setSelected(s);
+          if (b) setBench(b);
+          if (e) setExtras(e);
+          if (c) setCaptain(c);
+        }
+      }
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchUserProfile(session.user.id);
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+        if (session) {
+          fetchUserProfile(session.user.id);
+        } else {
+          setUser({
+            email: 'admin@mundial.com',
+            username: 'Admin',
+            teamName: 'MI EQUIPO',
+            id: '000-111',
+          });
+          // Limpiamos el campo si cierra sesión
+          setSelected({});
+          setBench({});
+          setExtras({});
+          setCaptain(null);
+        }
+      }
+    );
+
+    return () => authListener.subscription.unsubscribe();
+  }, []);
+
+  // 2. Estado de Usuario (Mantenemos la estructura)
+  const [user, setUser] = useState<any>({
+    email: 'admin@mundial.com',
+    username: 'Admin',
+    teamName: 'MI EQUIPO',
+    id: '000-111',
+  });
   const [isAdmin, setIsAdmin] = useState(true);
   const [view, setView] = useState<
     'rules' | 'squad' | 'quiniela' | 'calendar' | 'lineups' | 'scores' | 'admin'
@@ -2642,41 +2968,31 @@ export default function MundialApp() {
   const [isTutorialActive, setIsTutorialActive] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
 
-  // --- ESTADOS DE LA PLANTILLA CON COMPROBACIÓN DE SERVIDOR ---
-  // --- ESTADOS INICIALES (Limpios para evitar errores de hidratación) ---
-  const [selected, setSelected] = useState<any>({});
-  const [bench, setBench] = useState<any>({});
-  const [extras, setExtras] = useState<any>({});
-  const [captain, setCaptain] = useState<number | null>(null);
-  const [isSquadLocked, setIsSquadLocked] = useState(false);
-  const [user, setUser] = useState<any>({
-    email: 'admin@mundial.com',
-    username: 'Admin',
-    teamName: 'Mi Equipo',
-    id: '000-111',
+  // --- ESTADOS DE LA PLANTILLA CON AUTOGUARDADO ---
+  const [selected, setSelected] = useState<any>(() => {
+    const saved = localStorage.getItem('ef24_selected');
+    return saved ? JSON.parse(saved) : {};
   });
 
-  // Estado auxiliar para saber si ya estamos en el navegador
-  const [isMounted, setIsMounted] = useState(false);
+  const [bench, setBench] = useState<any>(() => {
+    const saved = localStorage.getItem('ef24_bench');
+    return saved ? JSON.parse(saved) : {};
+  });
 
-  // --- CARGA DE DATOS (Solo al iniciar la App en el navegador) ---
-  useEffect(() => {
-    const savedSelected = localStorage.getItem('ef24_selected');
-    const savedBench = localStorage.getItem('ef24_bench');
-    const savedExtras = localStorage.getItem('ef24_extras');
-    const savedCaptain = localStorage.getItem('ef24_captain');
-    const savedLocked = localStorage.getItem('ef24_isLocked');
-    const savedName = localStorage.getItem('ef24_teamName');
+  const [extras, setExtras] = useState<any>(() => {
+    const saved = localStorage.getItem('ef24_extras');
+    return saved ? JSON.parse(saved) : {};
+  });
 
-    if (savedSelected) setSelected(JSON.parse(savedSelected));
-    if (savedBench) setBench(JSON.parse(savedBench));
-    if (savedExtras) setExtras(JSON.parse(savedExtras));
-    if (savedCaptain) setCaptain(JSON.parse(savedCaptain));
-    if (savedLocked) setIsSquadLocked(JSON.parse(savedLocked));
-    if (savedName) setUser((prev: any) => ({ ...prev, teamName: savedName }));
+  const [captain, setCaptain] = useState<number | null>(() => {
+    const saved = localStorage.getItem('ef24_captain');
+    return saved ? JSON.parse(saved) : null;
+  });
 
-    setIsMounted(true);
-  }, []);
+  const [isSquadLocked, setIsSquadLocked] = useState(() => {
+    const saved = localStorage.getItem('ef24_isLocked');
+    return saved ? JSON.parse(saved) : false;
+  });
 
   // --- 4. OTROS ESTADOS DE LA APP ---
   const [results, setResults] = useState<Record<string, any>>({});
@@ -2696,6 +3012,31 @@ export default function MundialApp() {
   const [scores, setScores] = useState<Record<string, number | null>>({});
   const [adminScoreCountry, setAdminScoreCountry] = useState('SELECCIÓN');
 
+  // ==========================================
+  // NUEVA FUNCIÓN: GUARDADO EN SUPABASE
+  // ==========================================
+  const saveSquadToSupabase = async () => {
+    if (!session?.user?.id) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        squad_data: {
+          selected,
+          bench,
+          extras,
+          captain,
+        },
+      })
+      .eq('id', session.user.id);
+
+    if (error) {
+      console.error('Error al guardar en nube:', error.message);
+    } else {
+      console.log('¡Plantilla del Mundial sincronizada!');
+    }
+  };
+
   // --- 5. LÓGICA DE CONTROL DEL TUTORIAL ---
   useEffect(() => {
     const hasSeen = localStorage.getItem('mundial_caddy_v5');
@@ -2711,7 +3052,10 @@ export default function MundialApp() {
 
   const nextStep = (targetView?: any) => {
     if (targetView) setView(targetView);
-    if (targetView === 'quiniela') setIsSquadLocked(true); // Bloquea automáticamente al saltar a la quiniela
+    if (targetView === 'quiniela') {
+      setIsSquadLocked(true);
+      saveSquadToSupabase(); // <-- Añade esto aquí también
+    }
     setTutorialStep((prev) => prev + 1);
   };
 
@@ -2816,12 +3160,6 @@ export default function MundialApp() {
   // Para mantener compatibilidad con otras partes de tu código (como el texto)
   const isBudgetLow = budgetSpent >= 435;
 
-  // --- LISTA ORIGINAL (Para el Modo Dios y otros filtros) ---
-  const availableCountries = useMemo(() => {
-    const countries = new Set(PLAYERS_DB.map((p) => p.seleccion));
-    return ['SELECCIÓN', ...Array.from(countries).sort()];
-  }, []);
-  
   // Calculamos las selecciones y añadimos el contador dinámico (X/7)
   const availableCountriesWithCount = useMemo(() => {
     const countries = new Set(PLAYERS_DB.map((p) => p.seleccion));
@@ -3031,9 +3369,10 @@ export default function MundialApp() {
     return true;
   });
 
-  // Si aún no hemos cargado los datos del navegador, mostramos un fondo negro 
-  // para evitar el error de "texto que no coincide"
-  if (!isMounted) return <div className="min-h-screen bg-[#05080f]" />;
+  // Bajamos el "portero" al final de la función, después de todos los hooks
+  if (!session) {
+    return <AuthScreen onLoginSuccess={(userData) => setSession(userData)} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#05080f] text-white font-sans selection:bg-[#22c55e] selection:text-black pb-24">
@@ -3047,6 +3386,13 @@ export default function MundialApp() {
               Fantástico 2026
             </h2>
           </div>
+          {/* BOTÓN SALIR GLOBAL */}
+          <button
+            onClick={() => supabase.auth.signOut()}
+            className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase rounded-xl hover:bg-red-500 hover:text-white transition-all active:scale-95"
+          >
+            Salir
+          </button>
           <div className="text-right">
             <div className="text-xs font-bold text-white/50 flex items-center gap-1 justify-end">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
@@ -3121,7 +3467,14 @@ export default function MundialApp() {
                       if (!isSquadLocked && !formationInfo.isValidTactic) {
                         return alert(formationInfo.message);
                       }
-                      setIsSquadLocked(!isSquadLocked);
+
+                      const nextLockState = !isSquadLocked;
+                      setIsSquadLocked(nextLockState);
+
+                      if (nextLockState === true) {
+                        saveSquadToSupabase();
+                      }
+
                       setActiveSlot(null);
                     }}
                     className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg border-2 flex items-center justify-center gap-2 ${
@@ -3194,7 +3547,7 @@ export default function MundialApp() {
                 activeSlot={activeSlot}
                 setActiveSlot={setActiveSlot}
                 captain={captain}
-                setCaptain={(id: any) => {
+                setCaptain={(id) => {
                   if (isSquadLocked) return;
                   setCaptain(id);
                   if (tutorialStep === 2) nextStep();
@@ -3668,8 +4021,9 @@ export default function MundialApp() {
         active={isTutorialActive}
         onNext={nextStep}
         onClose={handleCloseTutorial}
-        userName={user?.teamName || 'Seleccionador'}
+        userName={user?.username || 'Seleccionador'}
         extrasCount={Object.values(extras || {}).filter(Boolean).length}
+        captain={captain} // <-- ¡No olvides esta línea!
       />
     </div>
   );
