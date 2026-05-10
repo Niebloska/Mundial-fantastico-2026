@@ -3008,6 +3008,7 @@ export default function MundialApp() {
   const [marketWindow, setMarketWindow] = useState<'groups' | 'octavos' | null>(
     'groups'
   );
+
   const [activeMatchday, setActiveMatchday] = useState('J1');
   const [scores, setScores] = useState<Record<string, number | null>>({});
   const [adminScoreCountry, setAdminScoreCountry] = useState('SELECCIÓN');
@@ -3142,9 +3143,42 @@ export default function MundialApp() {
     }
   }, [isAdmin]);
 
+  // --- AUTO-GUARDADO DE PLANTILLA EN SUPABASE ---
+useEffect(() => {
+  const saveSquadData = async () => {
+    // Si no hay usuario real o es el ID de prueba, no guardamos
+    if (!user?.id || user.id === '' || user.id === '000-111') return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        squad_data: { selected, bench, extras, captain },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' }); // Esto asegura que si no existe, lo cree
+
+    if (error) console.error("Error al guardar plantilla:", error);
+  };
+
+  saveSquadData();
+}, [selected, bench, extras, captain, user?.id]);
+
   // --- 8. FUNCIONES DE GESTIÓN ---
   const toggleMarket = async () => {
-    /* ... lógica supabase ... */
+    const newState = !isMarketOpen;
+    setIsMarketOpen(newState); // Cambia el color del botón al instante
+
+    // Mandamos la orden a la base de datos para que afecte a todos
+    const { error } = await supabase
+      .from('app_settings')
+      .update({ is_market_open: newState })
+      .eq('id', 1);
+
+    if (error) {
+      console.error("Error al cambiar el estado del mercado:", error.message);
+      // Si falla la base de datos, revertimos el botón
+      setIsMarketOpen(!newState);
+    }
   };
   const changeMatchday = async (j: string) => {
     /* ... lógica supabase ... */
