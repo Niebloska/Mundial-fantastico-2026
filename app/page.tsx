@@ -2579,7 +2579,7 @@ const CalendarView = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {standings.map((team, index) => (
+              {standings.map((team: any, index: number) => (
                   <tr
                     key={team.name}
                     className="hover:bg-white/5 transition-colors"
