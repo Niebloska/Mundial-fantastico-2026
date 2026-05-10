@@ -2815,6 +2815,12 @@ export default function MundialApp() {
   // Para mantener compatibilidad con otras partes de tu código (como el texto)
   const isBudgetLow = budgetSpent >= 435;
 
+  // --- LISTA ORIGINAL (Para el Modo Dios y otros filtros) ---
+  const availableCountries = useMemo(() => {
+    const countries = new Set(PLAYERS_DB.map((p) => p.seleccion));
+    return ['SELECCIÓN', ...Array.from(countries).sort()];
+  }, []);
+  
   // Calculamos las selecciones y añadimos el contador dinámico (X/7)
   const availableCountriesWithCount = useMemo(() => {
     const countries = new Set(PLAYERS_DB.map((p) => p.seleccion));
