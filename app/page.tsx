@@ -1387,7 +1387,7 @@ const FixedRulesView = () => {
                 <ScoreRow
                   label={
                     <div className="flex items-center gap-2">
-                      🥅 🧤 <span>Portería a 0 (+60')</span>
+                      🥅 🧤 <span>Portería a 0 (+60&apos;)</span>
                     </div>
                   }
                   pts="+4"
