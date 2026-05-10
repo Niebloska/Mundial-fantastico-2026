@@ -3013,6 +3013,41 @@ export default function MundialApp() {
   const [scores, setScores] = useState<Record<string, number | null>>({});
   const [adminScoreCountry, setAdminScoreCountry] = useState('SELECCIÓN');
 
+  // 1. Añade este estado arriba con tus otros useState de Admin
+const [adminTab, setAdminTab] = useState<'partidos' | 'tesoreria' | 'puntos'>('partidos');
+const [allProfiles, setAllProfiles] = useState<any[]>([]);
+
+// 2. Función para cargar todos los usuarios (solo para el Admin)
+const fetchAllProfiles = async () => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, username, team_name, has_paid')
+    .order('team_name', { ascending: true });
+  if (data) setAllProfiles(data);
+};
+
+// Cargar perfiles cuando entres en Tesorería
+useEffect(() => {
+  if (view === 'admin' && adminTab === 'tesoreria') {
+    fetchAllProfiles();
+  }
+}, [view, adminTab]);
+
+// 3. Función para cambiar el estado de pago
+// --- ÚLTIMA FUNCIÓN DE LÓGICA (Asegúrate de que termina así) ---
+const togglePayment = async (profileId: string, currentState: boolean) => {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ has_paid: !currentState })
+    .eq('id', profileId);
+
+  if (!error) {
+    setAllProfiles(prev => 
+      prev.map(p => p.id === profileId ? { ...p, has_paid: !currentState } : p)
+    );
+  }
+};
+
   // ==========================================
   // NUEVA FUNCIÓN: GUARDADO EN SUPABASE
   // ==========================================
@@ -3430,9 +3465,9 @@ useEffect(() => {
     return true;
   });
 
-  // Bajamos el "portero" al final de la función, después de todos los hooks
+  // --- EL PORTERO (Guardia de sesión) ---
   if (!session) {
-    return <AuthScreen onLoginSuccess={(userData) => setSession(userData)} />;
+    return <AuthScreen onLoginSuccess={(userData: any) => setSession(userData)} />;
   }
 
   return (
@@ -3861,190 +3896,160 @@ useEffect(() => {
         )}
 
         {view === 'admin' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
-            {/* CABECERA Y MERCADO */}
-            <div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-[0_0_30px_rgba(239,68,68,0.15)] relative overflow-hidden">
-              <div className="absolute -top-20 -right-20 text-[150px] opacity-5 pointer-events-none">
-                ⚙️
+  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
+    
+    {/* --- NUEVA SUB-NAVEGACIÓN DE TESORERÍA --- */}
+    <div className="flex gap-2 p-1 bg-black/40 border border-white/5 rounded-2xl max-w-md mx-auto mb-6">
+      {['puntos', 'partidos', 'tesoreria'].map((tab) => (
+        <button
+          key={tab}
+          onClick={() => setAdminTab(tab as any)}
+          className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
+            adminTab === tab ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5'
+          }`}
+        >
+          {tab}
+        </button>
+      ))}
+    </div>
+
+    {/* ==========================================
+        PESTAÑA: PARTIDOS (MERCADO + MARCADORES)
+        ========================================== */}
+    {adminTab === 'partidos' && (
+      <div className="space-y-6 animate-in fade-in duration-300">
+        {/* CABECERA Y MERCADO (Tu código original) */}
+        <div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-[0_0_30px_rgba(239,68,68,0.15)] relative overflow-hidden text-left">
+          <h2 className="text-2xl font-black italic text-red-500 uppercase tracking-tighter mb-6 flex items-center gap-2">
+            <span>MODO DIOS</span>
+            <span className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full not-italic">Admin</span>
+          </h2>
+          {/* Aquí va tu bloque de Estado del Mercado y Jornada Activa... */}
+          <div className="bg-black/40 border border-white/5 rounded-2xl p-5 mb-6">
+            <h3 className="text-sm font-black text-white/70 uppercase mb-4">Estado del Mercado</h3>
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${isMarketOpen ? 'bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]' : 'bg-red-500'}`}></div>
+                <span className="font-bold text-sm uppercase">{isMarketOpen ? 'Mercado Abierto' : 'Mercado Cerrado'}</span>
               </div>
-              <h2 className="text-2xl font-black italic text-red-500 uppercase tracking-tighter mb-6 flex items-center gap-2">
-                <span>Modo Dios</span>
-                <span className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full not-italic">
-                  Admin
-                </span>
-              </h2>
-
-              <div className="bg-black/40 border border-white/5 rounded-2xl p-5 mb-6">
-                <h3 className="text-sm font-black text-white/70 uppercase mb-4 text-left">
-                  Estado del Mercado
-                </h3>
-                <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        isMarketOpen
-                          ? 'bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]'
-                          : 'bg-red-500'
-                      }`}
-                    ></div>
-                    <span className="font-bold text-sm uppercase">
-                      {isMarketOpen ? 'Mercado Abierto' : 'Mercado Cerrado'}
-                    </span>
-                  </div>
-                  <button
-                    onClick={toggleMarket}
-                    className={`px-6 py-2 rounded-xl text-xs font-black uppercase transition-all shadow-lg ${
-                      isMarketOpen
-                        ? 'bg-red-500/20 text-red-400 hover:bg-red-500/40'
-                        : 'bg-green-500/20 text-green-400 hover:bg-green-500/40'
-                    }`}
-                  >
-                    {isMarketOpen ? 'Cerrar Mercado' : 'Abrir Mercado'}
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-black/40 border border-white/5 rounded-2xl p-5">
-                <h3 className="text-sm font-black text-white/70 uppercase mb-4 flex justify-between">
-                  <span>Jornada Activa</span>
-                  <span className="text-red-400">{activeMatchday}</span>
-                </h3>
-                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-                  {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map(
-                    (j) => (
-                      <button
-                        key={j}
-                        onClick={() => changeMatchday(j)}
-                        className={`py-3 rounded-xl text-xs font-black transition-colors border border-transparent ${
-                          activeMatchday === j
-                            ? 'bg-red-500/20 text-white border-red-500'
-                            : 'bg-white/5 text-white/50 hover:bg-white/10'
-                        }`}
-                      >
-                        {j}
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* NUEVA SECCIÓN: INYECTAR MARCADORES */}
-            <div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
-              <h2 className="text-xl font-black italic text-red-500 uppercase tracking-tighter mb-4 text-left">
-                Inyectar Marcadores
-              </h2>
-              <p className="text-[10px] text-white/40 font-bold uppercase mb-4 text-left">
-                Selecciona un grupo para actualizar los resultados de sus 6
-                partidos:
-              </p>
-
-              <select
-                value={adminScoreCountry.length > 1 ? 'A' : adminScoreCountry}
-                onChange={(e) => setAdminScoreCountry(e.target.value)}
-                className="w-full bg-black/50 border border-red-500/30 rounded-xl px-4 py-3 text-sm font-bold text-white mb-6 focus:border-red-500 outline-none"
-              >
-                {GROUPS_2026.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    GRUPO {g.id}
-                  </option>
-                ))}
-              </select>
-
-              <div className="space-y-3">
-                {[1, 2, 3, 4, 5, 6].map((num) => {
-                  const group = GROUPS_2026.find(
-                    (g) =>
-                      g.id ===
-                      (adminScoreCountry.length > 1 ? 'A' : adminScoreCountry)
-                  );
-                  if (!group) return null;
-                  const order = [
-                    [0, 1],
-                    [2, 3],
-                    [0, 2],
-                    [3, 1],
-                    [3, 0],
-                    [1, 2],
-                  ];
-                  const home = group.teams[order[num - 1][0]];
-                  const away = group.teams[order[num - 1][1]];
-                  const mId = `G_${group.id}_${num}`;
-
-                  return (
-                    <MatchAdminRow
-                      key={mId}
-                      match={{
-                        id: mId,
-                        home,
-                        away,
-                        home_score: results[mId]?.home_score,
-                        away_score: results[mId]?.away_score,
-                      }}
-                      onSave={async (id: string, hs: number, as: number) => {
-                        const { error } = await supabase
-                          .from('match_results')
-                          .upsert({
-                            match_id: id,
-                            group_id: group.id,
-                            home_score: hs,
-                            away_score: as,
-                          });
-                        if (!error) {
-                          const { data } = await supabase
-                            .from('match_results')
-                            .select('*');
-                          const map: any = {};
-                          data?.forEach((r) => (map[r.match_id] = r));
-                          setResults(map);
-                        }
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* PANEL DE PUNTOS POR JUGADOR */}
-            <div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
-              <h2 className="text-xl font-black italic text-red-500 uppercase tracking-tighter mb-4 text-left">
-                Inyectar Puntos Jugadores
-              </h2>
-              <div className="mb-6">
-                <label className="text-[10px] text-white/50 font-bold uppercase tracking-widest mb-2 block text-left">
-                  1. Elegir Selección Nacional
-                </label>
-                <select
-                  value={adminScoreCountry}
-                  onChange={(e) => setAdminScoreCountry(e.target.value)}
-                  className="w-full bg-black/50 border border-red-500/30 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-red-500 cursor-pointer"
-                >
-                  {availableCountries.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {adminScoreCountry !== 'SELECCIÓN' && (
-                <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 scrollbar-hide">
-                  {PLAYERS_DB.filter(
-                    (p) => p.seleccion === adminScoreCountry
-                  ).map((p) => (
-                    <PlayerAdminRow
-                      key={p.id}
-                      p={p}
-                      savedScore={scores[p.id]}
-                      onScoreSaved={handleScoreSaved}
-                      adminMatchday={activeMatchday}
-                      isMatchdayClosed={false}
-                    />
-                  ))}
-                </div>
-              )}
+              <button onClick={toggleMarket} className={`px-6 py-2 rounded-xl text-xs font-black uppercase transition-all shadow-lg ${isMarketOpen ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
+                {isMarketOpen ? 'Cerrar Mercado' : 'Abrir Mercado'}
+              </button>
             </div>
           </div>
-        )}
+          {/* Bloque Jornada Activa */}
+          <div className="bg-black/40 border border-white/5 rounded-2xl p-5">
+            <h3 className="text-sm font-black text-white/70 uppercase mb-4 flex justify-between">
+              <span>Jornada Activa</span>
+              <span className="text-red-400">{activeMatchday}</span>
+            </h3>
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+              {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => (
+                <button key={j} onClick={() => changeMatchday(j)} className={`py-3 rounded-xl text-xs font-black transition-colors border border-transparent ${activeMatchday === j ? 'bg-red-500/20 text-white border-red-500' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
+                  {j}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* INYECTAR MARCADORES (Tu código original) */}
+        <div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden text-left">
+          <h2 className="text-xl font-black italic text-red-500 uppercase tracking-tighter mb-4">Inyectar Marcadores</h2>
+          <select value={adminScoreCountry.length > 1 ? 'A' : adminScoreCountry} onChange={(e) => setAdminScoreCountry(e.target.value)} className="w-full bg-black/50 border border-red-500/30 rounded-xl px-4 py-3 text-sm font-bold text-white mb-6 focus:border-red-500 outline-none">
+            {GROUPS_2026.map((g) => (<option key={g.id} value={g.id}>GRUPO {g.id}</option>))}
+          </select>
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5, 6].map((num) => {
+              const group = GROUPS_2026.find(g => g.id === (adminScoreCountry.length > 1 ? 'A' : adminScoreCountry));
+              if (!group) return null;
+              const order = [[0, 1], [2, 3], [0, 2], [3, 1], [3, 0], [1, 2]];
+              const home = group.teams[order[num - 1][0]];
+              const away = group.teams[order[num - 1][1]];
+              const mId = `G_${group.id}_${num}`;
+              return (
+                <MatchAdminRow key={mId} match={{id: mId, home, away, home_score: results[mId]?.home_score, away_score: results[mId]?.away_score}}
+                  onSave={async (id: string, hs: number, as: number) => {
+                    const { error } = await supabase.from('match_results').upsert({ match_id: id, group_id: group.id, home_score: hs, away_score: as });
+                    if (!error) {
+                      const { data } = await supabase.from('match_results').select('*');
+                      const map: any = {};
+                      data?.forEach((r) => (map[r.match_id] = r));
+                      setResults(map);
+                    }
+                  }}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ==========================================
+        PESTAÑA: PUNTOS (INYECTAR PUNTOS JUGADORES)
+        ========================================== */}
+    {adminTab === 'puntos' && (
+      <div className="animate-in fade-in duration-300">
+        <div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden text-left">
+          <h2 className="text-xl font-black italic text-red-500 uppercase tracking-tighter mb-4">Inyectar Puntos Jugadores</h2>
+          <div className="mb-6">
+            <label className="text-[10px] text-white/50 font-bold uppercase tracking-widest mb-2 block">1. Elegir Selección Nacional</label>
+            <select value={adminScoreCountry} onChange={(e) => setAdminScoreCountry(e.target.value)} className="w-full bg-black/50 border border-red-500/30 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-red-500 cursor-pointer">
+              {availableCountries.map((c) => (<option key={c} value={c}>{c}</option>))}
+            </select>
+          </div>
+          {adminScoreCountry !== 'SELECCIÓN' && (
+            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 scrollbar-hide">
+              {PLAYERS_DB.filter(p => p.seleccion === adminScoreCountry).map((p) => (
+                <PlayerAdminRow key={p.id} p={p} savedScore={scores[p.id]} onScoreSaved={handleScoreSaved} adminMatchday={activeMatchday} isMatchdayClosed={false} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+
+    {/* ==========================================
+        PESTAÑA: TESORERÍA (CONTROL DE PAGOS)
+        ========================================== */}
+    {adminTab === 'tesoreria' && (
+      <div className="animate-in fade-in duration-300 space-y-4 text-left">
+        <div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-2xl">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-black italic text-red-500 uppercase">Tesorería</h2>
+            <div className="text-[10px] font-black text-white/30 uppercase tracking-widest">Control de Pagos</div>
+          </div>
+          
+          <div className="space-y-3">
+            {allProfiles.length > 0 ? (
+              allProfiles.map((p) => (
+                <div key={p.id} className="bg-black/40 border border-white/5 rounded-2xl p-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-black text-white uppercase text-sm italic">{p.team_name || 'Sin Equipo'}</h3>
+                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-tighter">👤 {p.username}</p>
+                  </div>
+                  <button
+                    onClick={() => togglePayment(p.id, p.has_paid)}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${
+                      p.has_paid 
+                        ? 'bg-yellow-500 text-black border-black shadow-[0_0_15px_rgba(234,179,8,0.3)]' 
+                        : 'bg-white/5 text-white/20 border-transparent hover:bg-white/10'
+                    }`}
+                  >
+                    {p.has_paid ? '✓ Pagado' : '✕ Sin Apuesta'}
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-10 text-white/20 font-bold uppercase text-xs">Cargando tesorería...</div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+)}
       </main>
 
       {/* NUEVO BOTÓN DE AYUDA (Abajo a la derecha, verde semitransparente) */}
