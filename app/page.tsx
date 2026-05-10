@@ -2970,29 +2970,14 @@ export default function MundialApp() {
   const [isTutorialActive, setIsTutorialActive] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
 
-  // --- ESTADOS DE LA PLANTILLA CON AUTOGUARDADO ---
-  const [selected, setSelected] = useState<any>(() => {
-    const saved = localStorage.getItem('ef24_selected');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [bench, setBench] = useState<any>(() => {
-    const saved = localStorage.getItem('ef24_bench');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [extras, setExtras] = useState<any>(() => {
-    const saved = localStorage.getItem('ef24_extras');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [captain, setCaptain] = useState<number | null>(() => {
-    const saved = localStorage.getItem('ef24_captain');
-    return saved ? JSON.parse(saved) : null;
-  });
+  // --- ESTADOS DE LA PLANTILLA (Carga desde Supabase) ---
+  const [selected, setSelected] = useState<any>({});
+  const [bench, setBench] = useState<any>({});
+  const [extras, setExtras] = useState<any>({});
+  const [captain, setCaptain] = useState<number | null>(null);
 
   const [isSquadLocked, setIsSquadLocked] = useState(() => {
-    // Comprobamos si estamos en el navegador del jugador antes de leer la memoria
+    // Comprobamos si estamos en el navegador antes de leer la memoria
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('ef24_isLocked');
       return saved ? JSON.parse(saved) : false;
