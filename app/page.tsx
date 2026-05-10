@@ -3547,7 +3547,7 @@ export default function MundialApp() {
                 activeSlot={activeSlot}
                 setActiveSlot={setActiveSlot}
                 captain={captain}
-                setCaptain={(id) => {
+                setCaptain={(id: any) => {
                   if (isSquadLocked) return;
                   setCaptain(id);
                   if (tutorialStep === 2) nextStep();
