@@ -2992,8 +2992,12 @@ export default function MundialApp() {
   });
 
   const [isSquadLocked, setIsSquadLocked] = useState(() => {
-    const saved = localStorage.getItem('ef24_isLocked');
-    return saved ? JSON.parse(saved) : false;
+    // Comprobamos si estamos en el navegador del jugador antes de leer la memoria
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ef24_isLocked');
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false; // Valor por defecto seguro para el servidor de Vercel
   });
 
   // --- 4. OTROS ESTADOS DE LA APP ---
