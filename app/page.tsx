@@ -2895,6 +2895,58 @@ const AuthScreen = ({
 // ==========================================
 
 export default function MundialApp() {
+  
+  // --- RELOJ MAESTRO DEL MUNDIAL ---
+const [countdown, setCountdown] = useState({
+  d: 0, h: 0, m: 0, s: 0,
+  targetName: 'EL MUNDIAL',
+  targetId: 'J1',
+  expired: false
+});
+
+const [lineupsMatchday, setLineupsMatchday] = useState('J1');
+
+useEffect(() => {
+  // Fechas de inicio de los primeros partidos de cada jornada/ronda
+  const JORNADAS_DEADLINES = [
+    { id: 'J1', label: 'EL MUNDIAL', date: new Date('2026-06-11T20:00:00+02:00').getTime() },
+    { id: 'J2', label: 'ALINEACIÓN J2', date: new Date('2026-06-18T15:00:00+02:00').getTime() },
+    { id: 'J3', label: 'ALINEACIÓN J3', date: new Date('2026-06-24T15:00:00+02:00').getTime() },
+    { id: 'D16', label: 'DIECISEISAVOS', date: new Date('2026-06-28T18:00:00+02:00').getTime() },
+    { id: 'OCT', label: 'OCTAVOS', date: new Date('2026-07-04T18:00:00+02:00').getTime() },
+    { id: 'CUA', label: 'CUARTOS', date: new Date('2026-07-09T18:00:00+02:00').getTime() },
+    { id: 'SEM', label: 'SEMIFINALES', date: new Date('2026-07-14T20:00:00+02:00').getTime() },
+    { id: 'FIN', label: 'LA FINAL', date: new Date('2026-07-18T22:00:00+02:00').getTime() }
+  ];
+
+  const timer = setInterval(() => {
+    const now = new Date().getTime();
+    
+    // Busca automáticamente cuál es la PRÓXIMA jornada que aún no ha empezado
+    const nextDeadline = JORNADAS_DEADLINES.find(j => j.date > now);
+
+    if (!nextDeadline) {
+      setCountdown(prev => ({ ...prev, targetName: 'TORNEO FINALIZADO', expired: true }));
+      clearInterval(timer);
+      return;
+    }
+
+    const distance = nextDeadline.date - now;
+
+    setCountdown({
+      d: Math.floor(distance / (1000 * 60 * 60 * 24)),
+      h: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+      m: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+      s: Math.floor((distance % (1000 * 60)) / 1000),
+      targetName: nextDeadline.label,
+      targetId: nextDeadline.id,
+      expired: false
+    });
+  }, 1000);
+
+  return () => clearInterval(timer);
+}, []);
+  
   const [showSectionHelp, setShowSectionHelp] = useState<string | null>(null);
 
   const [session, setSession] = useState<any>(null);
@@ -3116,6 +3168,8 @@ const togglePayment = async (profileId: string, currentState: boolean) => {
     // ¡El salto automático del paso 4 ha desaparecido!
   }, [selected, bench, extras, captain, tutorialStep, isTutorialActive]);
 
+  const [isLineupsLocked, setIsLineupsLocked] = useState(false);
+
   // --- 7. CARGA DE DATOS (SUPABASE) ---
   useEffect(() => {
     const fetchData = async () => {
@@ -3128,6 +3182,7 @@ const togglePayment = async (profileId: string, currentState: boolean) => {
         setIsMarketOpen(config.is_market_open);
         setMarketWindow(config.market_window);
         setActiveMatchday(config.active_matchday);
+        setIsLineupsLocked(config.is_lineups_locked);
 
         const { data: scoresData } = await supabase
           .from('player_scores')
@@ -3142,6 +3197,22 @@ const togglePayment = async (profileId: string, currentState: boolean) => {
     };
     fetchData();
   }, [activeMatchday]);
+
+  // 3. Función para que el Admin cambie el estado
+const toggleLineupsLock = async () => {
+  const newState = !isLineupsLocked;
+  setIsLineupsLocked(newState);
+
+  const { error } = await supabase
+    .from('app_settings')
+    .update({ is_lineups_locked: newState })
+    .eq('id', 1);
+
+  if (error) {
+    console.error("Error al bloquear alineaciones:", error.message);
+    setIsLineupsLocked(!newState);
+  }
+};
 
   // --- EFECTO DE AUTOGUARDADO (LocalStorage) ---
   useEffect(() => {
@@ -3465,6 +3536,81 @@ useEffect(() => {
     return true;
   });
 
+  // 👇 FUNCIÓN DE SUSTITUCIONES (Nueva) 👇
+  const renderSubstitutionOptions = () => {
+    if (!activeSlot) return null;
+
+    const originPlayer = activeSlot.type === 'titular' ? selected[activeSlot.id] :
+                         activeSlot.type === 'bench' ? bench[activeSlot.id] : extras[activeSlot.id];
+
+    if (!originPlayer) {
+       return <div className="text-center text-white/40 mt-10 text-xs font-bold uppercase bg-white/5 p-6 rounded-2xl">Este hueco está vacío. Ve a PLANTILLA para fichar.</div>;
+    }
+
+    let options: any[] = [];
+    if (activeSlot.type !== 'titular') {
+      Object.entries(selected).forEach(([id, p]: any) => {
+        if (p && p.posicion === originPlayer.posicion) options.push({ slotId: id, type: 'titular', player: p });
+      });
+    }
+    if (activeSlot.type !== 'bench') {
+      Object.entries(bench).forEach(([id, p]: any) => {
+        if (p && p.posicion === originPlayer.posicion) options.push({ slotId: id, type: 'bench', player: p });
+      });
+    }
+    if (activeSlot.type !== 'extras') {
+      Object.entries(extras).forEach(([id, p]: any) => {
+        if (p && p.posicion === originPlayer.posicion) options.push({ slotId: id, type: 'extras', player: p });
+      });
+    }
+
+    if (options.length === 0) {
+       return <div className="text-center text-white/40 mt-10 text-xs font-bold uppercase bg-white/5 p-6 rounded-2xl">No tienes más jugadores de posición {originPlayer.posicion} para realizar el cambio.</div>;
+    }
+
+    return options.map((opt) => (
+      <div key={opt.player.id} className="flex items-center justify-between bg-black/40 border border-white/10 p-3 rounded-xl hover:border-blue-500 transition-colors mb-2">
+        <div className="flex flex-col">
+          <span className="font-black text-sm uppercase">{opt.player.nombre}</span>
+          <div className="flex items-center gap-2 mt-1">
+            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded bg-gray-500 text-white`}>{opt.player.posicion}</span>
+            <span className="text-[10px] text-white/50">{opt.player.seleccion} | En: {opt.type === 'titular' ? 'Campo 11' : opt.type === 'bench' ? 'Banquillo' : 'Grada'}</span>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            const playerA = originPlayer;
+            const playerB = opt.player;
+            const newSelected = { ...selected };
+            const newBench = { ...bench };
+            const newExtras = { ...extras };
+
+            if (opt.type === 'titular') newSelected[opt.slotId] = playerA;
+            else if (opt.type === 'bench') newBench[opt.slotId] = playerA;
+            else newExtras[opt.slotId] = playerA;
+
+            if (activeSlot.type === 'titular') newSelected[activeSlot.id] = playerB;
+            else if (activeSlot.type === 'bench') newBench[activeSlot.id] = playerB;
+            else newExtras[activeSlot.id] = playerB;
+
+            setSelected(newSelected);
+            setBench(newBench);
+            setExtras(newExtras);
+
+            if (captain === playerA.id && activeSlot.type === 'titular' && opt.type !== 'titular') setCaptain(null);
+            if (captain === playerB.id && opt.type === 'titular' && activeSlot.type !== 'titular') setCaptain(null);
+
+            setActiveSlot(null);
+          }}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg font-black text-xs uppercase hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+        >
+          🔄 Cambiar
+        </button>
+      </div>
+    ));
+  };
+  // 👆 FIN DE LA FUNCIÓN DE SUSTITUCIONES 👆
+
   // --- EL PORTERO (Guardia de sesión) ---
   if (!session) {
     return <AuthScreen onLoginSuccess={(userData: any) => setSession(userData)} />;
@@ -3576,33 +3722,37 @@ useEffect(() => {
                   </div>
 
                   {/* Botón Validar y Táctica */}
-                  <button
-                    onClick={() => {
-                      if (!isSquadLocked && !formationInfo.isValidTactic) {
-                        return alert(formationInfo.message);
-                      }
+<button
+  onClick={() => {
+    // 1. PRIMERA BARRERA: Si el Admin ha congelado y NO eres el Admin, bloqueamos.
+    if (isLineupsLocked && !isAdmin) {
+      return alert('🚫 Las alineaciones están congeladas para la jornada actual. No se pueden realizar cambios.');
+    }
 
-                      const nextLockState = !isSquadLocked;
-                      setIsSquadLocked(nextLockState);
+    // 2. SEGUNDA BARRERA: Validación de táctica (solo si estamos validando)
+    if (!isSquadLocked && !formationInfo.isValidTactic) {
+      return alert(formationInfo.message);
+    }
 
-                      if (nextLockState === true) {
-                        saveSquadToSupabase();
-                      }
+    const nextLockState = !isSquadLocked;
+    setIsSquadLocked(nextLockState);
 
-                      setActiveSlot(null);
-                    }}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg border-2 flex items-center justify-center gap-2 ${
-                      isSquadLocked
-                        ? 'bg-yellow-500 text-black border-yellow-400 hover:bg-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.3)]'
-                        : formationInfo.isValidTactic
-                        ? 'bg-[#22c55e] text-black border-[#22c55e] hover:brightness-110 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
-                        : 'bg-gray-600 text-white/50 border-white/10 cursor-not-allowed'
-                    }`}
-                  >
-                    {isSquadLocked
-                      ? '🔓 Editar Plantilla'
-                      : '🔒 Validar Plantilla'}
-                  </button>
+    if (nextLockState === true) {
+      saveSquadToSupabase();
+    }
+
+    setActiveSlot(null);
+  }}
+  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg border-2 flex items-center justify-center gap-2 ${
+    isSquadLocked
+      ? 'bg-yellow-500 text-black border-yellow-400 hover:bg-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.3)]'
+      : formationInfo.isValidTactic
+      ? 'bg-[#22c55e] text-black border-[#22c55e] hover:brightness-110 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+      : 'bg-gray-600 text-white/50 border-white/10 cursor-not-allowed'
+  }`}
+>
+  {isSquadLocked ? '🔓 Editar Plantilla' : '🔒 Validar Plantilla'}
+</button>
 
                   <div
                     className={`mt-2 text-[10px] font-black uppercase tracking-tighter flex items-center gap-2 ${formationInfo.statusColor}`}
@@ -3656,7 +3806,9 @@ useEffect(() => {
                 selected={selected}
                 step={step}
                 canInteractField={
-                  (!isTutorialActive || tutorialStep >= 1) && !isSquadLocked
+                  (!isTutorialActive || tutorialStep >= 1) && 
+                  !isSquadLocked && 
+                  !(isLineupsLocked && !isAdmin) // <-- Bloqueo extra si el admin congela
                 }
                 activeSlot={activeSlot}
                 setActiveSlot={setActiveSlot}
@@ -3677,19 +3829,23 @@ useEffect(() => {
                   <div className="grid grid-cols-2 gap-2">
                     {['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].map((id) => (
                       <BenchCard
-                        key={id}
-                        id={id}
-                        player={bench[id]}
-                        isActive={activeSlot?.id === id}
-                        onClick={() =>
-                          !isSquadLocked &&
+                      key={id}
+                      id={id}
+                      player={bench[id]}
+                      isActive={activeSlot?.id === id}
+                      onClick={() => {
+                        // Si el admin congela, no se puede pinchar (excepto el admin)
+                        if (isLineupsLocked && !isAdmin) return; 
+                        
+                        if (!isSquadLocked) {
                           setActiveSlot({
                             id,
                             type: 'bench',
                             pos: bench[id]?.posicion,
-                          })
+                          });
                         }
-                      />
+                      }}
+                    />
                     ))}
                   </div>
                 </div>
@@ -3700,19 +3856,23 @@ useEffect(() => {
                   <div className="grid grid-cols-2 gap-2">
                     {['NC1', 'NC2', 'NC3', 'NC4'].map((id) => (
                       <BenchCard
-                        key={id}
-                        id={id}
-                        player={extras[id]}
-                        isActive={activeSlot?.id === id}
-                        onClick={() =>
-                          !isSquadLocked &&
+                      key={id}
+                      id={id}
+                      player={extras[id]}
+                      isActive={activeSlot?.id === id}
+                      onClick={() => {
+                        // Si el admin congela, no se puede pinchar (excepto el admin)
+                        if (isLineupsLocked && !isAdmin) return;
+                    
+                        if (!isSquadLocked) {
                           setActiveSlot({
                             id,
                             type: 'extras',
                             pos: extras[id]?.posicion,
-                          })
+                          });
                         }
-                      />
+                      }}
+                    />
                     ))}
                   </div>
                 </div>
@@ -3885,8 +4045,141 @@ useEffect(() => {
         {view === 'quiniela' && <QuinielaView user={user} />}
         {view === 'calendar' && <CalendarView />}
         {view === 'lineups' && (
-          <div className="p-8 border border-white/10 rounded-2xl text-center text-white/40 bg-white/5">
-            👕 Alineaciones en construcción...
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
+            
+            {/* 1. SELECTOR DE JORNADA */}
+            <nav className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide justify-start sm:justify-center">
+              {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => {
+                const isEditable = countdown.targetId === j;
+                return (
+                  <button
+                    key={j}
+                    onClick={() => setLineupsMatchday(j)}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2 flex items-center gap-1.5 whitespace-nowrap ${
+                      lineupsMatchday === j 
+                      ? 'bg-[#22c55e] border-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
+                      : 'bg-white/5 border-transparent text-white/40 hover:bg-white/10'
+                    }`}
+                  >
+                    {j} {isEditable && <span className="text-xs animate-bounce">🔓</span>}
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* 2. EL TERRENO DE JUEGO */}
+            <div className="bg-[#1a2b1a] border-4 border-[#22c55e]/30 rounded-[2.5rem] p-4 sm:p-6 shadow-2xl relative overflow-hidden">
+              <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/grass.png')]"></div>
+              
+              <div className="relative z-10 flex justify-between items-center mb-6 bg-black/40 p-3 sm:p-4 rounded-2xl border border-white/10">
+                 <div>
+                   <h3 className="text-white font-black italic uppercase text-lg">Alineación {lineupsMatchday}</h3>
+                   <p className={`text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 mt-1 ${
+                     countdown.targetId === lineupsMatchday ? 'text-[#22c55e]' : 'text-red-500'
+                   }`}>
+                     <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+                     {countdown.targetId === lineupsMatchday ? 'Edición Abierta' : 'Bloqueado (Solo lectura)'}
+                   </p>
+                 </div>
+                 
+                 {countdown.targetId === lineupsMatchday ? (
+                    <button 
+                      className="bg-[#22c55e] text-black px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:scale-105 transition-transform"
+                      onClick={() => {
+                        alert(`¡Alineación para la ${lineupsMatchday} guardada con éxito!`);
+                      }}
+                    >
+                      Confirmar 11
+                    </button>
+                 ) : (
+                    <div className="bg-white/5 border border-white/10 text-white/40 px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase flex items-center gap-2 cursor-not-allowed">
+                      <span>🔒 Cerrado</span>
+                    </div>
+                 )}
+              </div>
+
+              <div className="relative z-10">
+                <Field
+                  selected={selected}
+                  step={2}
+                  canInteractField={countdown.targetId === lineupsMatchday}
+                  activeSlot={activeSlot}
+                  setActiveSlot={setActiveSlot}
+                  captain={captain}
+                  setCaptain={(id: any) => {
+                    if (countdown.targetId === lineupsMatchday) setCaptain(id);
+                  }}
+                />
+              </div>
+
+              {/* 3. BANQUILLO Y GRADA EN ALINEACIONES */}
+              <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <div className="bg-black/40 border border-white/10 rounded-3xl p-4">
+                  <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Banquillo Oficial</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].map((id) => (
+                      <BenchCard
+                        key={id}
+                        id={id}
+                        player={bench[id]}
+                        isActive={activeSlot?.id === id}
+                        onClick={() => {
+                          if (countdown.targetId === lineupsMatchday) {
+                            setActiveSlot({ id, type: 'bench', pos: bench[id]?.posicion });
+                          }
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-black/40 border border-white/10 rounded-3xl p-4">
+                  <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Grada (No Convocados)</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['NC1', 'NC2', 'NC3', 'NC4'].map((id) => (
+                      <BenchCard
+                        key={id}
+                        id={id}
+                        player={extras[id]}
+                        isActive={activeSlot?.id === id}
+                        onClick={() => {
+                          if (countdown.targetId === lineupsMatchday) {
+                            setActiveSlot({ id, type: 'extras', pos: extras[id]?.posicion });
+                          }
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="relative z-10 mt-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4">
+                <p className="text-[9px] sm:text-[10px] font-black text-yellow-500 uppercase text-center leading-relaxed">
+                  ⚠️ Toca a un jugador para sustituirlo por otro de su misma posición. El capitán (C) suma doble.
+                </p>
+              </div>
+            </div>
+
+            {/* 4. MODAL DE SUSTITUCIONES FLOTANTE (Exclusivo para Alineaciones) */}
+            {activeSlot && (
+              <div className="fixed inset-0 z-[80] bg-[#05080f]/95 backdrop-blur-md p-4 flex flex-col animate-in zoom-in-95 duration-200">
+                <div className="max-w-md w-full mx-auto flex flex-col h-full pt-16 pb-20">
+                  <div className="flex justify-between items-center mb-4 bg-[#1a0b0b] p-4 rounded-2xl border-2 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.15)]">
+                    <div>
+                      <h3 className="text-xl font-black italic text-blue-500 uppercase">Sustitución</h3>
+                      <p className="text-xs text-white/60 font-bold uppercase">
+                        Posición requerida: <span className="text-white">{activeSlot.pos || 'Cualquiera'}</span>
+                      </p>
+                    </div>
+                    <button onClick={() => setActiveSlot(null)} className="bg-white/10 text-white border border-white/20 w-10 h-10 rounded-xl flex items-center justify-center font-black text-xl hover:bg-white hover:text-black transition-all active:scale-95">✕</button>
+                  </div>
+
+                  {/* LLAMADA A LA FUNCIÓN LIMPIA AQUÍ */}
+                  <div className="flex-1 overflow-y-auto space-y-2 pb-4 scrollbar-hide">
+                    {renderSubstitutionOptions()}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
         {view === 'scores' && (
@@ -4033,6 +4326,28 @@ useEffect(() => {
           </div>
         </div>
 
+        <div className="bg-black/40 border border-white/5 rounded-2xl p-5 mb-6 text-left">
+  <h3 className="text-sm font-black text-white/70 uppercase mb-4">Alineaciones de Usuarios</h3>
+  <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+    <div className="flex items-center gap-3">
+      <div className={`w-3 h-3 rounded-full ${isLineupsLocked ? 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]' : 'bg-gray-600'}`}></div>
+      <span className="font-bold text-sm uppercase">
+        {isLineupsLocked ? 'Alineaciones Congeladas' : 'Edición Permitida'}
+      </span>
+    </div>
+    <button
+      onClick={toggleLineupsLock}
+      className={`px-6 py-2 rounded-xl text-xs font-black uppercase transition-all shadow-lg ${
+        isLineupsLocked 
+          ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 border border-blue-500/30' 
+          : 'bg-white/10 text-white hover:bg-white/20'
+      }`}
+    >
+      {isLineupsLocked ? '❄️ Descongelar' : '🔒 Congelar Todo'}
+    </button>
+  </div>
+</div>
+
         {/* INYECTAR MARCADORES (Tu código original) */}
         <div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden text-left">
           <h2 className="text-xl font-black italic text-red-500 uppercase tracking-tighter mb-4">Inyectar Marcadores</h2>
@@ -4131,6 +4446,38 @@ useEffect(() => {
   </div>
 )}
       </main>
+
+      {/* WIDGET RELOJ MAESTRO / CUENTA ATRÁS */}
+      {!countdown.expired && (
+        <div className="fixed bottom-24 right-6 z-[60] bg-[#0a101f]/95 border-2 border-red-500 rounded-2xl p-3 shadow-[0_0_20px_rgba(239,68,68,0.4)] backdrop-blur-md animate-in slide-in-from-right-8 duration-500">
+          <p className="text-[9px] font-black text-red-500 uppercase mb-1.5 text-center tracking-widest flex items-center justify-center gap-1">
+            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
+            {countdown.targetId === 'J1' ? 'EL JUEGO EMPIEZA EN:' : `CIERRE ${countdown.targetName}`}
+          </p>
+          <div className="flex gap-2.5 text-white font-black italic items-end justify-center">
+            {countdown.d > 0 && (
+              <div className="text-center flex flex-col">
+                <span className="text-lg leading-none">{countdown.d}</span>
+                <span className="text-[7px] uppercase text-white/50 not-italic">Días</span>
+              </div>
+            )}
+            <div className="text-center flex flex-col">
+              <span className="text-lg leading-none">{countdown.h.toString().padStart(2, '0')}</span>
+              <span className="text-[7px] uppercase text-white/50 not-italic">Hrs</span>
+            </div>
+            <span className="text-red-500/50 mb-2">:</span>
+            <div className="text-center flex flex-col">
+              <span className="text-lg leading-none">{countdown.m.toString().padStart(2, '0')}</span>
+              <span className="text-[7px] uppercase text-white/50 not-italic">Min</span>
+            </div>
+            <span className="text-red-500/50 mb-2">:</span>
+            <div className="text-center flex flex-col">
+              <span className="text-lg leading-none text-red-500 animate-pulse">{countdown.s.toString().padStart(2, '0')}</span>
+              <span className="text-[7px] uppercase text-red-500/50 not-italic">Seg</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* NUEVO BOTÓN DE AYUDA (Abajo a la derecha, verde semitransparente) */}
       <button
