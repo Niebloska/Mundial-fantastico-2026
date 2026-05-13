@@ -3168,8 +3168,6 @@ const togglePayment = async (profileId: string, currentState: boolean) => {
     // ¡El salto automático del paso 4 ha desaparecido!
   }, [selected, bench, extras, captain, tutorialStep, isTutorialActive]);
 
-  const [isLineupsLocked, setIsLineupsLocked] = useState(false);
-
   // --- 7. CARGA DE DATOS (SUPABASE) ---
   useEffect(() => {
     const fetchData = async () => {
@@ -3182,8 +3180,7 @@ const togglePayment = async (profileId: string, currentState: boolean) => {
         setIsMarketOpen(config.is_market_open);
         setMarketWindow(config.market_window);
         setActiveMatchday(config.active_matchday);
-        setIsLineupsLocked(config.is_lineups_locked);
-
+        
         const { data: scoresData } = await supabase
           .from('player_scores')
           .select('*')
@@ -3197,22 +3194,6 @@ const togglePayment = async (profileId: string, currentState: boolean) => {
     };
     fetchData();
   }, [activeMatchday]);
-
-  // 3. Función para que el Admin cambie el estado
-const toggleLineupsLock = async () => {
-  const newState = !isLineupsLocked;
-  setIsLineupsLocked(newState);
-
-  const { error } = await supabase
-    .from('app_settings')
-    .update({ is_lineups_locked: newState })
-    .eq('id', 1);
-
-  if (error) {
-    console.error("Error al bloquear alineaciones:", error.message);
-    setIsLineupsLocked(!newState);
-  }
-};
 
   // --- EFECTO DE AUTOGUARDADO (LocalStorage) ---
   useEffect(() => {
@@ -4183,90 +4164,275 @@ useEffect(() => {
           </div>
         )}
         {view === 'scores' && (
-  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-3">
-    {/* CABECERA DEL RANKING */}
-    <div className="flex justify-between items-center px-4 mb-2">
-      <h2 className="text-xl font-black italic uppercase tracking-tighter text-[#22c55e]">
-        Ranking Mundial 2026
-      </h2>
-      <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">
-        Total {allProfiles.length} Equipos
-      </span>
-    </div>
-
-    {/* LISTADO DE EQUIPOS ESTILO CARTA */}
-    <div className="flex flex-col gap-3">
-      {allProfiles.length > 0 ? (
-        [...allProfiles]
-          .sort((a, b) => (b.total_points || 0) - (a.total_points || 0))
-          .map((p, index) => {
-            // Lógica de colores para las posiciones
-            const isFirst = index === 0;
-            const isSecond = index === 1;
-            const isThird = index === 2;
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto space-y-6">
             
-            const posColor = isFirst ? 'text-yellow-500' : 
-                             isSecond ? 'text-gray-300' : 
-                             isThird ? 'text-[#cd7f32]' : // Bronce
-                             'text-gray-500';
+            {/* NUEVA CABECERA GENERAL */}
+            <h2 className="text-2xl sm:text-3xl font-black italic text-[#eab308] uppercase flex items-center gap-2 mb-2">
+              🏆 CLASIFICACIÓN GENERAL
+            </h2>
 
-            return (
-              <div 
-                key={p.id} 
-                className={`flex items-center justify-between p-5 rounded-[2rem] transition-all bg-[#0a101f] border border-white/5 hover:border-white/10 ${
-                  p.id === user.id ? 'ring-2 ring-[#22c55e]/30 bg-[#0d1629]' : ''
-                }`}
-              >
-                {/* POSICIÓN Y NOMBRE */}
-                <div className="flex items-center gap-5">
-                  <span className={`text-3xl font-black italic min-w-[3rem] ${posColor}`}>
-                    #{index + 1}
-                  </span>
-                  
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-3">
-                      <span className="font-black uppercase text-base italic text-white tracking-tight">
-                        {p.team_name || 'Sin Equipo'}
+            {/* 1. ACORDEÓN DE USUARIOS HUMANOS (Ordenado por Puntos Automáticamente) */}
+            <div className="space-y-3">
+              {[
+                {
+                  id: 'rival3',
+                  name: 'SHEARER IS BACK',
+                  username: 'KATDELO',
+                  total: 654,
+                  isMe: false,
+                  hasPaid: true,
+                  players: []
+                },
+                {
+                  id: 'rival2',
+                  name: 'MINABO DE KIEV',
+                  username: 'PITOCLES',
+                  total: 631,
+                  isMe: false,
+                  hasPaid: true,
+                  players: []
+                },
+                {
+                  id: 'rival1',
+                  name: 'ZICOTEAM',
+                  username: 'ZICO67',
+                  total: 612,
+                  isMe: false,
+                  hasPaid: true,
+                  players: [
+                    { id: 'f3', nombre: 'Donnarumma', posicion: 'POR', seleccion: 'Italia', captain: false },
+                    { id: 'f1', nombre: 'Mbappé', posicion: 'DEL', seleccion: 'Francia', captain: false },
+                  ].sort((a: any, b: any) => {
+                    const order: any = { POR: 1, DEF: 2, MED: 3, DEL: 4 };
+                    return (order[a.posicion] || 5) - (order[b.posicion] || 5);
+                  })
+                },
+                {
+                  id: 'me',
+                  name: 'NIEBLOSKA TEAM',
+                  username: user?.username || 'SERGIO',
+                  total: 608,
+                  isMe: true,
+                  hasPaid: true,
+                  players: [
+                    ...Object.values(selected).filter(Boolean),
+                    ...Object.values(bench).filter(Boolean),
+                    ...Object.values(extras).filter(Boolean)
+                  ].sort((a: any, b: any) => {
+                    const order: any = { POR: 1, DEF: 2, MED: 3, DEL: 4 };
+                    return (order[a.posicion] || 5) - (order[b.posicion] || 5);
+                  })
+                }
+              ]
+              // LA MAGIA: ORDENAMOS POR PUNTOS Y ASIGNAMOS POSICIÓN
+              .sort((a, b) => b.total - a.total)
+              .map((u, idx) => {
+                u.pos = idx + 1;
+                return u;
+              })
+              .map((u) => (
+                <details 
+                  key={u.id} 
+                  className={`group border rounded-2xl overflow-hidden transition-all relative ${
+                    u.pos === 1 ? 'border-[#eab308] shadow-[0_0_15px_rgba(234,179,8,0.15)] bg-[#1a1c23]' :
+                    u.isMe ? 'border-[#22c55e] border-2 shadow-[0_0_15px_rgba(34,197,94,0.15)] bg-[#1a2b1a]' : 
+                    'border-white/10 hover:border-white/20 bg-[#0f172a]'
+                  }`}
+                  open={u.isMe}
+                >
+                  <summary className={`flex justify-between items-center p-3 sm:p-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden ${u.pos === 1 ? 'bg-[#1a1c23]' : 'bg-[#0f172a]'}`}>
+                    
+                    <div className="flex items-center gap-4 sm:gap-6">
+                      {/* POSICIÓN ORO, PLATA, BRONCE */}
+                      <span className={`font-black italic text-3xl sm:text-4xl w-10 text-center ${
+                        u.pos === 1 ? 'text-[#eab308] drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]' :
+                        u.pos === 2 ? 'text-gray-300 drop-shadow-[0_0_8px_rgba(209,213,219,0.5)]' :
+                        u.pos === 3 ? 'text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.5)]' :
+                        'text-white/20'
+                      }`}>
+                        #{u.pos}
                       </span>
-                      {/* MONEDA DE 5€ MÁS GRANDE */}
-                      {p.has_paid && (
-                        <div 
-                          className="flex items-center justify-center w-7 h-7 bg-yellow-500 rounded-full border-2 border-black/20 shadow-[0_0_15px_rgba(234,179,8,0.4)] shrink-0"
-                          title="Apuesta de 5€ Realizada"
-                        >
-                          <span className="text-[10px] font-black text-black">5€</span>
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-[11px] font-bold text-white/30 uppercase tracking-tighter">
-                      👤 {p.username}
-                    </span>
-                  </div>
-                </div>
 
-                {/* PUNTOS Y DETALLES */}
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <span className="text-2xl font-black text-[#22c55e] italic leading-none">
-                      {p.total_points || 0} <span className="text-xs ml-0.5">PTS</span>
-                    </span>
+                      {/* DATOS DEL EQUIPO */}
+                      <div className="flex flex-col">
+                        <h3 className={`font-black italic uppercase text-base sm:text-lg tracking-wider ${
+                          u.pos === 1 ? 'text-[#eab308]' : u.isMe ? 'text-[#22c55e]' : 'text-white'
+                        }`}>
+                          {u.name}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-[9px] sm:text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1">
+                            <span>👤</span> {u.username}
+                          </p>
+                          {/* MONEDA DE 5€ */}
+                          {u.hasPaid && (
+                            <span className="bg-[#eab308] text-black text-[9px] font-black rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
+                              5€
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col items-end">
+                        <span className={`font-black text-xl sm:text-2xl leading-none ${u.isMe ? 'text-[#22c55e]' : 'text-[#38bdf8]'}`}>
+                          {u.total} <span className="text-sm">PTS</span>
+                        </span>
+                      </div>
+                      <span className="text-sm group-open:rotate-180 transition-transform duration-300 text-white/40">▼</span>
+                    </div>
+                  </summary>
+                  
+                  {/* TABLA DE JUGADORES Y JORNADAS */}
+                  <div className="border-t border-white/5 bg-[#0a101f]">
+                    <div className="overflow-x-auto scrollbar-hide">
+                      <table className="w-full text-left text-xs whitespace-nowrap min-w-[700px]">
+                        <thead className="bg-[#111827] border-b border-white/10 uppercase font-black text-[#38bdf8] text-[10px] sm:text-xs tracking-wider">
+                          <tr>
+                            <th className="p-3 sticky left-0 z-10 bg-[#111827] shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5">
+                              <div className="flex gap-4"><span className="w-8">POS</span><span className="w-6">SEL</span><span>NOMBRE</span></div>
+                            </th>
+                            <th className="p-3 text-center text-white bg-[#3b82f6]/20 border-r border-white/5">TOTAL</th>
+                            {['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'].map(j => (
+                              <th key={j} className="p-3 text-center text-white/70">{j}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {u.players.length > 0 ? (
+                            u.players.map((p: any) => {
+                              const isCap = u.isMe ? captain === p.id : p.captain;
+                              
+                              const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
+                              const flags: any = { 'España': '🇪🇸', 'Francia': '🇫🇷', 'Inglaterra': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Italia': '🇮🇹', 'Alemania': '🇩🇪', 'Turquía': '🇹🇷', 'Eslovaquia': '🇸🇰', 'Rumanía': '🇷🇴'};
+                              const playerFlag = flags[p.seleccion] || '🏳️';
+                              
+                              const nameLen = p.nombre.length;
+                              const isNotCalled = Math.random() > 0.8; 
+                              const ptJ1 = isCap ? 22 : (isNotCalled ? 'X' : nameLen + 5); 
+                              const ptJ2 = isNotCalled ? 'X' : (nameLen % 2 === 0 ? '-' : nameLen); 
+                              
+                              const getNum = (val: any) => typeof val === 'number' ? val : 0;
+                              const ptTot = getNum(ptJ1) + getNum(ptJ2);
+
+                              const renderScore = (val: any) => {
+                                if (val === '-') return <span className="text-white/20 font-bold">-</span>;
+                                if (val === 'X') return <span className="text-red-500 font-black">X</span>;
+                                if (typeof val === 'number') {
+                                  if (val < 0) return <span className="text-red-500 font-black">{val}</span>;
+                                  if (val > 0) return <span className="text-[#22c55e] font-black">{val}</span>;
+                                  return <span className="text-white/50 font-bold">0</span>;
+                                }
+                                return val;
+                              };
+
+                              return (
+                                <tr key={p.id} className="hover:bg-white/5 transition-colors bg-[#0f172a]">
+                                  <td className="p-3 sticky left-0 z-10 bg-[#0f172a] shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5">
+                                    <div className="flex items-center gap-4">
+                                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${posColors[p.posicion] || 'bg-gray-500 text-white'}`}>{p.posicion}</span>
+                                      <span className="text-sm w-6 text-center" title={p.seleccion}>{playerFlag}</span>
+                                      <span className="font-bold text-white/90 truncate max-w-[120px]">
+                                        {p.nombre} {isCap && <span className="text-[#eab308] ml-1 drop-shadow-[0_0_2px_rgba(234,179,8,0.8)] text-xs bg-black/50 px-1 rounded">C</span>}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  
+                                  <td className="p-3 text-center font-black text-white bg-[#3b82f6]/10 border-r border-white/5 text-sm">{ptTot}</td>
+                                  <td className="p-3 text-center">{renderScore(ptJ1)}</td>
+                                  <td className="p-3 text-center">{renderScore(ptJ2)}</td>
+                                  <td className="p-3 text-center">{renderScore('-')}</td>
+                                  <td className="p-3 text-center">{renderScore('-')}</td>
+                                  <td className="p-3 text-center">{renderScore('-')}</td>
+                                  <td className="p-3 text-center">{renderScore('-')}</td>
+                                  <td className="p-3 text-center">{renderScore('-')}</td>
+                                </tr>
+                              )
+                            })
+                          ) : (
+                            <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">Sin alineación revelada.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                  {/* Icono de flecha como en tu imagen */}
-                  <svg className="w-5 h-5 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
+                </details>
+              ))}
+            </div>
+
+            {/* 2. EVOLUCIÓN DEL RANKING */}
+            <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-8">
+               <h3 className="text-lg font-black italic text-[#eab308] uppercase mb-6 flex items-center gap-2">
+                 <span>📈</span> Evolución del Ranking
+               </h3>
+               <div className="relative w-full h-48 sm:h-64 rounded-xl border border-white/5 bg-[#0a101f] p-4 flex items-end">
+                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full absolute inset-0 py-6 px-4 opacity-80 overflow-visible">
+                    {[10, 30, 50, 70, 90].map(y => <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />)}
+                    <path d="M0,20 L20,20 L40,40 L60,10 L80,30 L100,10" fill="none" stroke="#22c55e" strokeWidth="1.5" className="drop-shadow-[0_0_3px_rgba(34,197,94,0.8)]" />
+                    <circle cx="0" cy="20" r="1.5" fill="#22c55e" /><circle cx="20" cy="20" r="1.5" fill="#22c55e" /><circle cx="40" cy="40" r="1.5" fill="#22c55e" />
+                    
+                    <path d="M0,50 L20,40 L40,20 L60,50 L80,60 L100,50" fill="none" stroke="#3b82f6" strokeWidth="1.5" className="drop-shadow-[0_0_3px_rgba(59,130,246,0.8)]" />
+                    <circle cx="0" cy="50" r="1.5" fill="#3b82f6" /><circle cx="20" cy="40" r="1.5" fill="#3b82f6" /><circle cx="40" cy="20" r="1.5" fill="#3b82f6" />
+                 </svg>
+                 <div className="absolute bottom-2 left-0 right-0 flex justify-between px-6 text-[8px] sm:text-[10px] text-white/40 font-bold tracking-widest uppercase">
+                   <span>J1</span><span>J2</span><span>J3</span><span>OCT</span><span>CUA</span><span>SEM</span>
+                 </div>
+               </div>
+               
+               <div className="flex flex-wrap gap-2 mt-6 justify-center">
+                 <span className="text-[9px] font-bold px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white flex items-center gap-1.5">
+                   <div className="w-2 h-2 rounded-full bg-[#22c55e] shadow-[0_0_5px_#22c55e]"></div> NIEBLOSKA TEAM
+                 </span>
+                 <span className="text-[9px] font-bold px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white flex items-center gap-1.5">
+                   <div className="w-2 h-2 rounded-full bg-[#3b82f6] shadow-[0_0_5px_#3b82f6]"></div> ZICOTEAM
+                 </span>
+               </div>
+            </div>
+
+            {/* 3. CLASIFICACIÓN POR JORNADA */}
+            <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-6">
+              <h3 className="text-lg font-black italic text-[#22c55e] uppercase mb-4 flex items-center gap-2">
+                 <span>🏆</span> Clasificación por Jornada
+              </h3>
+              
+              <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
+                {['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'].map((j, idx) => (
+                  <button key={j} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
+                    idx === 0 ? 'bg-[#22c55e] text-black shadow-[0_0_10px_rgba(34,197,94,0.4)]' : 'bg-black/40 text-white/50 border border-white/5'
+                  }`}>
+                    {j}
+                  </button>
+                ))}
               </div>
-            );
-          })
-      ) : (
-        <div className="text-center py-20 bg-white/5 rounded-3xl border border-dashed border-white/10 text-white/20 font-black uppercase text-sm">
-          Calculando clasificaciones...
-        </div>
-      )}
-    </div>
-  </div>
-)}
+
+              <div className="space-y-2">
+                {[
+                  { name: 'ZICOTEAM', user: 'Zico67', pts: 159, pos: 1 },
+                  { name: 'NIEBLOSKA TEAM', user: 'Sergio', pts: 147, pos: 2 },
+                  { name: 'MINABO DE KIEV', user: 'Pitocles', pts: 134, pos: 3 },
+                  { name: 'JONIMON_LVE', user: 'Jonimon7', pts: 129, pos: 4 },
+                ].map((r) => (
+                  <div key={r.pos} className="flex justify-between items-center bg-[#111827] border border-white/5 p-3 sm:p-4 rounded-xl">
+                    <div className="flex items-center gap-4">
+                      <span className={`font-black text-xl w-6 text-center ${
+                        r.pos === 1 ? 'text-[#eab308] drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]' : 'text-white/40'
+                      }`}>
+                        {r.pos}
+                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-black text-white text-sm uppercase italic tracking-wide">{r.name}</span>
+                        <span className="text-[9px] text-white/40 font-bold uppercase">{r.user}</span>
+                      </div>
+                    </div>
+                    <span className="font-black text-[#22c55e] text-base">{r.pts} PTS</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        )}
 
         {view === 'admin' && (
   <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
@@ -4325,28 +4491,6 @@ useEffect(() => {
             </div>
           </div>
         </div>
-
-        <div className="bg-black/40 border border-white/5 rounded-2xl p-5 mb-6 text-left">
-  <h3 className="text-sm font-black text-white/70 uppercase mb-4">Alineaciones de Usuarios</h3>
-  <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-    <div className="flex items-center gap-3">
-      <div className={`w-3 h-3 rounded-full ${isLineupsLocked ? 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]' : 'bg-gray-600'}`}></div>
-      <span className="font-bold text-sm uppercase">
-        {isLineupsLocked ? 'Alineaciones Congeladas' : 'Edición Permitida'}
-      </span>
-    </div>
-    <button
-      onClick={toggleLineupsLock}
-      className={`px-6 py-2 rounded-xl text-xs font-black uppercase transition-all shadow-lg ${
-        isLineupsLocked 
-          ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 border border-blue-500/30' 
-          : 'bg-white/10 text-white hover:bg-white/20'
-      }`}
-    >
-      {isLineupsLocked ? '❄️ Descongelar' : '🔒 Congelar Todo'}
-    </button>
-  </div>
-</div>
 
         {/* INYECTAR MARCADORES (Tu código original) */}
         <div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden text-left">
