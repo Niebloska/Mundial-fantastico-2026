@@ -3784,8 +3784,7 @@ useEffect(() => {
                 step={step}
                 canInteractField={
                   (!isTutorialActive || tutorialStep >= 1) && 
-                  !isSquadLocked && 
-                  !(isLineupsLocked && !isAdmin) // <-- Bloqueo extra si el admin congela
+                  !isSquadLocked
                 }
                 activeSlot={activeSlot}
                 setActiveSlot={setActiveSlot}
