@@ -4215,10 +4215,7 @@ useEffect(() => {
               ]
               // LA MAGIA: ORDENAMOS POR PUNTOS Y ASIGNAMOS POSICIÓN
               .sort((a, b) => b.total - a.total)
-              .map((u, idx) => {
-                u.pos = idx + 1;
-                return u;
-              })
+              .map((u, idx) => ({ ...u, pos: idx + 1 }))
               .map((u) => (
                 <details 
                   key={u.id} 
