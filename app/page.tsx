@@ -3705,11 +3705,7 @@ useEffect(() => {
                   {/* Botón Validar y Táctica */}
 <button
   onClick={() => {
-    // 1. PRIMERA BARRERA: Si el Admin ha congelado y NO eres el Admin, bloqueamos.
-    if (isLineupsLocked && !isAdmin) {
-      return alert('🚫 Las alineaciones están congeladas para la jornada actual. No se pueden realizar cambios.');
-    }
-
+    
     // 2. SEGUNDA BARRERA: Validación de táctica (solo si estamos validando)
     if (!isSquadLocked && !formationInfo.isValidTactic) {
       return alert(formationInfo.message);
@@ -3814,10 +3810,7 @@ useEffect(() => {
                       id={id}
                       player={bench[id]}
                       isActive={activeSlot?.id === id}
-                      onClick={() => {
-                        // Si el admin congela, no se puede pinchar (excepto el admin)
-                        if (isLineupsLocked && !isAdmin) return; 
-                        
+                      onClick={() => {                                           
                         if (!isSquadLocked) {
                           setActiveSlot({
                             id,
@@ -3842,9 +3835,6 @@ useEffect(() => {
                       player={extras[id]}
                       isActive={activeSlot?.id === id}
                       onClick={() => {
-                        // Si el admin congela, no se puede pinchar (excepto el admin)
-                        if (isLineupsLocked && !isAdmin) return;
-                    
                         if (!isSquadLocked) {
                           setActiveSlot({
                             id,
