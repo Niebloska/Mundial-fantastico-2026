@@ -11,8 +11,8 @@ import { availableCountries } from '../lib/countries';
 // ==========================================
 
 const ADMIN_EMAIL = 'admin@mundial2026.com';
-const GAME_START_DATE = '2026-06-11T20:00:00'; // Fecha del partido inaugural
-const SIMULATED_GAME_START = '2026-06-11T20:00:00';
+const GAME_START_DATE = '2026-06-11T21:00:00'; // Fecha del partido inaugural (Ajustado +1h verano)
+const SIMULATED_GAME_START = '2026-06-11T21:00:00';
 const MAX_BUDGET = 450;
 
 const LINEUP_MATCHDAYS = ['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'];
@@ -2478,14 +2478,14 @@ const CalendarView = () => {
       [3, 0],
       [1, 2],
     ];
-    // Horarios aproximados basados en el orden de partidos
+    // Horarios aproximados basados en el orden de partidos (+1h horario de verano aplicado)
     const schedule = [
-      { d: '11/12 Jun', t: '20:00/03:00' },
-      { d: '12/13 Jun', t: '20:00/02:00' },
-      { d: '17/18 Jun', t: '21:00/03:00' },
-      { d: '18/19 Jun', t: '21:00/03:00' },
-      { d: '24 Jun', t: '03:00' },
-      { d: '24 Jun', t: '03:00' },
+      { d: '11/12 Jun', t: '21:00/04:00' },
+      { d: '12/13 Jun', t: '21:00/03:00' },
+      { d: '17/18 Jun', t: '22:00/04:00' },
+      { d: '18/19 Jun', t: '22:00/04:00' },
+      { d: '24 Jun', t: '04:00' },
+      { d: '24 Jun', t: '04:00' },
     ];
     return order.map((idx, i) => ({
       id: `G_${activeGroup}_${i + 1}`,
@@ -2907,16 +2907,16 @@ const [countdown, setCountdown] = useState({
 const [lineupsMatchday, setLineupsMatchday] = useState('J1');
 
 useEffect(() => {
-  // Fechas de inicio de los primeros partidos de cada jornada/ronda
+  // Fechas de inicio de los primeros partidos de cada jornada/ronda (+1h horario de verano aplicado)
   const JORNADAS_DEADLINES = [
-    { id: 'J1', label: 'EL MUNDIAL', date: new Date('2026-06-11T20:00:00+02:00').getTime() },
-    { id: 'J2', label: 'ALINEACIÓN J2', date: new Date('2026-06-18T15:00:00+02:00').getTime() },
-    { id: 'J3', label: 'ALINEACIÓN J3', date: new Date('2026-06-24T15:00:00+02:00').getTime() },
-    { id: 'D16', label: 'DIECISEISAVOS', date: new Date('2026-06-28T18:00:00+02:00').getTime() },
-    { id: 'OCT', label: 'OCTAVOS', date: new Date('2026-07-04T18:00:00+02:00').getTime() },
-    { id: 'CUA', label: 'CUARTOS', date: new Date('2026-07-09T18:00:00+02:00').getTime() },
-    { id: 'SEM', label: 'SEMIFINALES', date: new Date('2026-07-14T20:00:00+02:00').getTime() },
-    { id: 'FIN', label: 'LA FINAL', date: new Date('2026-07-18T22:00:00+02:00').getTime() }
+    { id: 'J1', label: 'EL MUNDIAL', date: new Date('2026-06-11T21:00:00+02:00').getTime() },
+    { id: 'J2', label: 'ALINEACIÓN J2', date: new Date('2026-06-18T16:00:00+02:00').getTime() },
+    { id: 'J3', label: 'ALINEACIÓN J3', date: new Date('2026-06-24T16:00:00+02:00').getTime() },
+    { id: 'D16', label: 'DIECISEISAVOS', date: new Date('2026-06-28T19:00:00+02:00').getTime() },
+    { id: 'OCT', label: 'OCTAVOS', date: new Date('2026-07-04T19:00:00+02:00').getTime() },
+    { id: 'CUA', label: 'CUARTOS', date: new Date('2026-07-09T19:00:00+02:00').getTime() },
+    { id: 'SEM', label: 'SEMIFINALES', date: new Date('2026-07-14T21:00:00+02:00').getTime() },
+    { id: 'FIN', label: 'LA FINAL', date: new Date('2026-07-18T23:00:00+02:00').getTime() }
   ];
 
   const timer = setInterval(() => {
@@ -3505,9 +3505,9 @@ useEffect(() => {
     { id: 'rules', label: 'REGLAS', icon: '📖' },
     { id: 'squad', label: 'PLANTILLA', icon: '📋' },
     { id: 'quiniela', label: 'QUINIELA', icon: '🏆' },
-    { id: 'calendar', label: 'CALENDARIO', icon: '📅' },
     { id: 'lineups', label: 'ALINEACIONES', icon: '👕' },
-    { id: 'scores', label: 'PUNTOS', icon: '⭐' },
+    { id: 'scores', label: 'CLASIFICACIÓN', icon: '⭐' },
+    { id: 'calendar', label: 'CALENDARIO', icon: '📅' },
     { id: 'admin', label: 'MODO DIOS', icon: '⚙️' },
   ];
 
