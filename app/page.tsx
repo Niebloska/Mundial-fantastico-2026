@@ -2935,64 +2935,99 @@ const AuthScreen = ({
 export default function MundialApp() {
   
   // --- RELOJ MAESTRO DEL MUNDIAL ---
-const [countdown, setCountdown] = useState({
-  d: 0, h: 0, m: 0, s: 0,
-  targetName: 'EL MUNDIAL',
-  targetId: 'J1',
-  expired: false
-});
+  const [countdown, setCountdown] = useState({
+    d: 0, h: 0, m: 0, s: 0,
+    targetName: 'EL MUNDIAL',
+    targetId: 'J1',
+    expired: false
+  });
 
-const [lineupsMatchday, setLineupsMatchday] = useState('J1');
+  const [lineupsMatchday, setLineupsMatchday] = useState('J1');
 
-useEffect(() => {
-  // Fechas de inicio de los primeros partidos de cada jornada/ronda (+1h horario de verano aplicado)
-  const JORNADAS_DEADLINES = [
-    { id: 'J1', label: 'EL MUNDIAL', date: new Date('2026-06-11T21:00:00+02:00').getTime() },
-    { id: 'J2', label: 'ALINEACIÓN J2', date: new Date('2026-06-18T16:00:00+02:00').getTime() },
-    { id: 'J3', label: 'ALINEACIÓN J3', date: new Date('2026-06-24T16:00:00+02:00').getTime() },
-    { id: 'D16', label: 'DIECISEISAVOS', date: new Date('2026-06-28T19:00:00+02:00').getTime() },
-    { id: 'OCT', label: 'OCTAVOS', date: new Date('2026-07-04T19:00:00+02:00').getTime() },
-    { id: 'CUA', label: 'CUARTOS', date: new Date('2026-07-09T19:00:00+02:00').getTime() },
-    { id: 'SEM', label: 'SEMIFINALES', date: new Date('2026-07-14T21:00:00+02:00').getTime() },
-    { id: 'FIN', label: 'LA FINAL', date: new Date('2026-07-18T23:00:00+02:00').getTime() }
-  ];
+  // Estados para Intro y Música
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [isPlayingVideo, setIsPlayingVideo] = useState(false);
+  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const [currentTrack, setCurrentTrack] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  const timer = setInterval(() => {
-    const now = new Date().getTime();
-    
-    // Busca automáticamente cuál es la PRÓXIMA jornada que aún no ha empezado
-    const nextDeadline = JORNADAS_DEADLINES.find(j => j.date > now);
+  const playlist = ['/audio/tema1.mp3', '/audio/tema2.mp3'];
 
-    if (!nextDeadline) {
-      setCountdown(prev => ({ ...prev, targetName: 'TORNEO FINALIZADO', expired: true }));
-      clearInterval(timer);
-      return;
+  const startApp = () => {
+    setShowWelcome(false);
+    setIsPlayingVideo(true);
+    if (videoRef.current) {
+      videoRef.current.play();
     }
+  };
 
-    const distance = nextDeadline.date - now;
+  const handleVideoEnd = () => {
+    setIsPlayingVideo(false);
+    setIsMusicPlaying(true);
+    if (audioRef.current) {
+      audioRef.current.play();
+    }
+  };
 
-    setCountdown({
-      d: Math.floor(distance / (1000 * 60 * 60 * 24)),
-      h: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-      m: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-      s: Math.floor((distance % (1000 * 60)) / 1000),
-      targetName: nextDeadline.label,
-      targetId: nextDeadline.id,
-      expired: false
-    });
-  }, 1000);
+  const toggleMusic = () => {
+    if (isMusicPlaying) {
+      audioRef.current?.pause();
+    } else {
+      audioRef.current?.play();
+    }
+    setIsMusicPlaying(!isMusicPlaying);
+  };
 
-  return () => clearInterval(timer);
-}, []);
-  
+  const nextTrack = () => {
+    const next = (currentTrack + 1) % playlist.length;
+    setCurrentTrack(next);
+    if (isMusicPlaying && audioRef.current) {
+      setTimeout(() => audioRef.current?.play(), 50);
+    }
+  };
+
+  useEffect(() => {
+    const JORNADAS_DEADLINES = [
+      { id: 'J1', label: 'EL MUNDIAL', date: new Date('2026-06-11T21:00:00+02:00').getTime() },
+      { id: 'J2', label: 'ALINEACIÓN J2', date: new Date('2026-06-18T16:00:00+02:00').getTime() },
+      { id: 'J3', label: 'ALINEACIÓN J3', date: new Date('2026-06-24T16:00:00+02:00').getTime() },
+      { id: 'D16', label: 'DIECISEISAVOS', date: new Date('2026-06-28T19:00:00+02:00').getTime() },
+      { id: 'OCT', label: 'OCTAVOS', date: new Date('2026-07-04T19:00:00+02:00').getTime() },
+      { id: 'CUA', label: 'CUARTOS', date: new Date('2026-07-09T19:00:00+02:00').getTime() },
+      { id: 'SEM', label: 'SEMIFINALES', date: new Date('2026-07-14T21:00:00+02:00').getTime() },
+      { id: 'FIN', label: 'LA FINAL', date: new Date('2026-07-18T23:00:00+02:00').getTime() }
+    ];
+
+    const timer = setInterval(() => {
+      const now = new Date().getTime();
+      const nextDeadline = JORNADAS_DEADLINES.find(j => j.date > now);
+
+      if (!nextDeadline) {
+        setCountdown(prev => ({ ...prev, targetName: 'TORNEO FINALIZADO', expired: true }));
+        clearInterval(timer);
+        return;
+      }
+
+      const distance = nextDeadline.date - now;
+      setCountdown({
+        d: Math.floor(distance / (1000 * 60 * 60 * 24)),
+        h: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        m: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+        s: Math.floor((distance % (1000 * 60)) / 1000),
+        targetName: nextDeadline.label,
+        targetId: nextDeadline.id,
+        expired: false
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+    
   const [showSectionHelp, setShowSectionHelp] = useState<string | null>(null);
-
   const [session, setSession] = useState<any>(null);
 
-  // 1. Sincronización de Sesión y Perfil Real (Con carga de plantilla)
-  // 1. Sincronización de Sesión y Perfil Real (Con carga de plantilla)
   useEffect(() => {
-    // Le pasamos el objeto de usuario completo de la sesión (que incluye el email real)
     const fetchUserProfile = async (sessionUser: any) => {
       const { data, error } = await supabase
         .from('profiles')
@@ -3002,13 +3037,12 @@ useEffect(() => {
 
       if (data) {
         setUser({
-          email: sessionUser.email, // <-- ¡LA CLAVE! Aquí sobreescribimos con el email real
+          email: sessionUser.email,
           teamName: data.team_name,
           username: data.username,
           id: sessionUser.id
         });
 
-        // Si hay datos de equipo guardados, los cargamos
         if (data.squad_data) {
           const { selected: s, bench: b, extras: e, captain: c } = data.squad_data;
           if (s) setSelected(s);
@@ -3029,13 +3063,7 @@ useEffect(() => {
       if (session) {
         fetchUserProfile(session.user);
       } else {
-        // Al salir, lo dejamos como un simple invitado sin privilegios
-        setUser({
-          email: '', // <-- Ya no es admin por defecto
-          username: 'Invitado',
-          teamName: 'MI EQUIPO',
-          id: '',
-        });
+        setUser({ email: '', username: 'Invitado', teamName: 'MI EQUIPO', id: '' });
         setSelected({});
         setBench({});
         setExtras({});
@@ -3046,27 +3074,21 @@ useEffect(() => {
     return () => authListener.subscription.unsubscribe();
   }, []);
 
-  // 2. Estado de Usuario por defecto (Invitado, no Admin)
   const [user, setUser] = useState<any>({
     email: '',
     username: 'Invitado',
     teamName: 'MI EQUIPO',
     id: '',
   });
+  
   const isAdmin = user?.email === 'admin@mundial2026.com';
-  const [view, setView] = useState<
-    'rules' | 'squad' | 'quiniela' | 'calendar' | 'lineups' | 'scores' | 'admin'
-  >('rules');
-
-  // --- 2. ESTADOS DEL TUTORIAL (CADDY) ---
+  
+  const [view, setView] = useState<'rules' | 'squad' | 'quiniela' | 'calendar' | 'lineups' | 'scores' | 'admin'>('rules');
   const [isTutorialActive, setIsTutorialActive] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
 
   useEffect(() => {
-    // Si entra el administrador, fulminamos el tutorial para que no estorbe
-    if (isAdmin) {
-      setTutorialStep(0); // Usa 0, false, o el valor que tengas programado para que el tutorial desaparezca
-    }
+    if (isAdmin) setTutorialStep(0);
   }, [isAdmin]);
 
   // --- ESTADOS DE LA PLANTILLA (Carga desde Supabase) ---
@@ -3076,77 +3098,21 @@ useEffect(() => {
   const [captain, setCaptain] = useState<number | null>(null);
 
   const [isSquadLocked, setIsSquadLocked] = useState(() => {
-    // Comprobamos si estamos en el navegador antes de leer la memoria
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('ef24_isLocked');
       return saved ? JSON.parse(saved) : false;
     }
-    return false; // Valor por defecto seguro para el servidor de Vercel
+    return false;
   });
 
-  // --- 4. OTROS ESTADOS DE LA APP ---
-  const [results, setResults] = useState<Record<string, any>>({});
-  const [activeSlot, setActiveSlot] = useState<any>(null);
-  const [step, setStep] = useState(2); // Esta es la que necesita el componente Field
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCountry, setFilterCountry] = useState('SELECCIÓN');
-  const [filterPosition, setFilterPosition] = useState('TODAS');
-  const [sortOption, setSortOption] = useState<
-    'price-desc' | 'price-asc' | 'name-asc' | 'name-desc'
-  >('price-desc');
-  const [isMarketOpen, setIsMarketOpen] = useState(false);
-  const [marketWindow, setMarketWindow] = useState<'groups' | 'octavos' | null>(
-    'groups'
-  );
-
-  const [activeMatchday, setActiveMatchday] = useState('J1');
-  const [scores, setScores] = useState<Record<string, number | null>>({});
-  const [adminScoreCountry, setAdminScoreCountry] = useState('SELECCIÓN');
-
-  // 1. Añade este estado arriba con tus otros useState de Admin
-const [adminTab, setAdminTab] = useState<'partidos' | 'tesoreria' | 'puntos'>('partidos');
-const [allProfiles, setAllProfiles] = useState<any[]>([]);
-
-// 2. Función para cargar todos los usuarios (solo para el Admin)
-const fetchAllProfiles = async () => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, username, team_name, has_paid')
-    .order('team_name', { ascending: true });
-  if (data) setAllProfiles(data);
-};
-
-// Cargar perfiles cuando entres en Tesorería O en el Ranking de Puntos
-useEffect(() => {
-  if ((view === 'admin' && adminTab === 'tesoreria') || view === 'scores') {
-    fetchAllProfiles();
-  }
-}, [view, adminTab]);
-
-// 3. Función para cambiar el estado de pago
-// --- ÚLTIMA FUNCIÓN DE LÓGICA (Asegúrate de que termina así) ---
-const togglePayment = async (profileId: string, currentState: boolean) => {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ has_paid: !currentState })
-    .eq('id', profileId);
-
-  if (!error) {
-    setAllProfiles(prev => 
-      prev.map(p => p.id === profileId ? { ...p, has_paid: !currentState } : p)
-    );
-  }
-};
-
   // ==========================================
-  // CEREBRO MATEMÁTICO: Evaluador de Sustituciones y Puntos
+  // 🧠 AQUÍ VA EL CEREBRO MATEMÁTICO DE SUSTITUCIONES
   // ==========================================
   const evaluatedPlayers = useMemo(() => {
     const playerStats: any = {};
     const startersMissing: any[] = [];
     const benchAvailable: any[] = [];
 
-    // Función para validar la formación permitida (Fantasy standard)
     const isValidFormation = (counts: any) => {
        return counts.POR === 1 &&
               counts.DEF >= 3 && counts.DEF <= 5 &&
@@ -3156,65 +3122,95 @@ const togglePayment = async (profileId: string, currentState: boolean) => {
 
     let currentActivePositions = { POR: 0, DEF: 0, MED: 0, DEL: 0 };
 
-    // 1. Analizar Titulares (Quién ha jugado y quién nos ha dejado tirados)
     Object.entries(selected).forEach(([slotId, p]: any) => {
       if (!p) return;
-      
-      // Simulación: Determinamos si jugó o no basándonos en sus datos para que no parpadee
       const didNotPlay = (p.nombre.length + p.precio) % 4 === 0; 
       const pts = didNotPlay ? 'X' : (p.nombre.length % 6) + 2;
-
       playerStats[p.id] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: p.id, slotId };
-      
       if (didNotPlay) startersMissing.push(p.id);
       else currentActivePositions[p.posicion as keyof typeof currentActivePositions]++;
     });
 
-    // 2. Analizar Banquillo (Estricto orden S1 al S6)
     ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].forEach(slotId => {
        const p = bench[slotId];
        if (!p) return;
-       
        const didNotPlay = (p.nombre.length + p.precio) % 3 === 0; 
        const pts = didNotPlay ? 'X' : (p.nombre.length % 5) + 3;
-
        playerStats[p.id] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: p.id, slotId };
-       
        if (!didNotPlay) benchAvailable.push(p.id);
     });
 
-    // 3. Analizar Grada (No convocados)
     Object.values(extras).forEach((p: any) => {
         if (!p) return;
         playerStats[p.id] = { points: 'X', isSubbedOut: false, isSubbedIn: false, id: p.id };
     });
 
-    // 4. EJECUTAR ALGORITMO DE SUSTITUCIONES (Itera de S1 a S6 buscando encajar)
     for (const subId of benchAvailable) {
-       if (startersMissing.length === 0) break; // Ya no hay huecos que cubrir
-
+       if (startersMissing.length === 0) break; 
        const subPlayer = Object.values(bench).find((p: any) => p?.id === subId) as any;
        
        for (let i = 0; i < startersMissing.length; i++) {
           const missingId = startersMissing[i];
-          
           const testCounts = { ...currentActivePositions };
-          testCounts[subPlayer.posicion as keyof typeof testCounts]++; // Sumamos la posición del suplente
+          testCounts[subPlayer.posicion as keyof typeof testCounts]++; 
 
           if (isValidFormation(testCounts)) {
-             // SUSTITUCIÓN VÁLIDA: Actualizamos banderas
              playerStats[missingId].isSubbedOut = true;
              playerStats[subId].isSubbedIn = true;
-             
-             currentActivePositions = testCounts; // Consolidamos la nueva táctica
-             startersMissing.splice(i, 1); // Quitamos al hueco titular resuelto
-             break; // Rompemos el bucle interno y pasamos al siguiente suplente
+             currentActivePositions = testCounts; 
+             startersMissing.splice(i, 1); 
+             break; 
           }
        }
     }
 
     return playerStats;
   }, [selected, bench, extras]);
+
+  // --- 4. OTROS ESTADOS DE LA APP ---
+  const [results, setResults] = useState<Record<string, any>>({});
+  const [activeSlot, setActiveSlot] = useState<any>(null);
+  const [step, setStep] = useState(2); 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCountry, setFilterCountry] = useState('SELECCIÓN');
+  const [filterPosition, setFilterPosition] = useState('TODAS');
+  const [sortOption, setSortOption] = useState<'price-desc' | 'price-asc' | 'name-asc' | 'name-desc'>('price-desc');
+  const [isMarketOpen, setIsMarketOpen] = useState(false);
+  const [marketWindow, setMarketWindow] = useState<'groups' | 'octavos' | null>('groups');
+
+  const [activeMatchday, setActiveMatchday] = useState('J1');
+  const [scores, setScores] = useState<Record<string, number | null>>({});
+  const [adminScoreCountry, setAdminScoreCountry] = useState('SELECCIÓN');
+
+  const [adminTab, setAdminTab] = useState<'partidos' | 'tesoreria' | 'puntos'>('partidos');
+  const [allProfiles, setAllProfiles] = useState<any[]>([]);
+
+  const fetchAllProfiles = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username, team_name, has_paid')
+      .order('team_name', { ascending: true });
+    if (data) setAllProfiles(data);
+  };
+
+  useEffect(() => {
+    if ((view === 'admin' && adminTab === 'tesoreria') || view === 'scores') {
+      fetchAllProfiles();
+    }
+  }, [view, adminTab]);
+
+  const togglePayment = async (profileId: string, currentState: boolean) => {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ has_paid: !currentState })
+      .eq('id', profileId);
+
+    if (!error) {
+      setAllProfiles(prev => 
+        prev.map(p => p.id === profileId ? { ...p, has_paid: !currentState } : p)
+      );
+    }
+  };
 
   // ==========================================
   // NUEVA FUNCIÓN: GUARDADO EN SUPABASE
@@ -3715,6 +3711,96 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-[#05080f] text-white font-sans selection:bg-[#22c55e] selection:text-black pb-24">
+      
+      {/* ==========================================
+          1. PANTALLA DE BIENVENIDA ("PRESS START")
+          ========================================== */}
+      {showWelcome && (
+        <div className="fixed inset-0 z-[200] bg-[#0a101f] flex flex-col items-center justify-center p-6 animate-in fade-in duration-500">
+          
+          {/* NUEVO: LOGO MF 2026 REAL */}
+          <div className="w-64 h-64 sm:w-80 sm:h-80 mb-10 flex items-center justify-center transition-all">
+            <img
+              src="/img/logo_mf2026.png" // 👈 Asegúrate de que la ruta coincide con tu archivo en /public
+              alt="Mundial Fantástico 2026"
+              className="w-full h-full object-contain drop-shadow-[0_0_25px_rgba(34,197,94,0.4)] animate-pulse-slow"
+            />
+          </div>
+
+          <button 
+            onClick={startApp}
+            className="bg-[#22c55e] text-black text-xl font-black uppercase px-10 py-5 rounded-2xl shadow-[0_0_30px_rgba(34,197,94,0.5)] hover:scale-105 transition-transform active:scale-95"
+          >
+            Entrar al Mundial
+          </button>
+        </div>
+      )}
+
+      {/* ==========================================
+          2. VÍDEO DE INTRODUCCIÓN 
+          ========================================== */}
+      <div className={`fixed inset-0 z-[150] bg-black transition-opacity duration-1000 flex items-center justify-center ${isPlayingVideo ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <video 
+          ref={videoRef}
+          src="/video/intro.mp4" 
+          onEnded={handleVideoEnd}
+          playsInline
+          className="w-full h-full object-cover"
+        />
+        
+        {/* BOTÓN: OMITIR INTRO */}
+        {isPlayingVideo && (
+          <button 
+            onClick={handleVideoEnd} 
+            className="absolute top-8 right-8 bg-[#22c55e] text-black text-xs font-black uppercase px-4 py-2 rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.5)] hover:scale-105 transition-transform z-[160]"
+          >
+            Omitir Intro ⏭️
+          </button>
+        )}
+      </div>
+
+      {/* ==========================================
+          3. REPRODUCTOR DE MÚSICA Y CONTROLES
+          ========================================== */}
+      <audio 
+        ref={audioRef} 
+        src={playlist[currentTrack]} 
+        onEnded={nextTrack} 
+        loop={false}
+      />
+
+      {/* BOTÓN FLOTANTE DE MÚSICA (Visible en toda la app) */}
+      {!showWelcome && !isPlayingVideo && (
+        <div className="fixed bottom-6 left-4 z-[100] flex flex-col items-center gap-1.5 animate-in slide-in-from-bottom-5 duration-700">
+          
+          {/* ETIQUETA LLAMATIVA */}
+          <span className="text-[9px] font-black uppercase tracking-widest text-black bg-[#22c55e] px-2.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.6)]">
+            Música
+          </span>
+
+          {/* CONTROLES */}
+          <div className="flex items-center gap-2 bg-[#0a101f]/90 backdrop-blur-md border-2 border-[#22c55e]/40 p-1.5 rounded-full shadow-xl">
+            <button 
+              onClick={toggleMusic} 
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all text-lg border-2 ${
+                isMusicPlaying 
+                  ? 'bg-[#22c55e]/20 border-[#22c55e] shadow-[0_0_15px_rgba(34,197,94,0.5)] scale-105' 
+                  : 'bg-white/5 border-white/10 hover:bg-white/10'
+              }`}
+            >
+              {isMusicPlaying ? '🔊' : '🔇'}
+            </button>
+            <button 
+              onClick={nextTrack} 
+              className="w-8 h-8 rounded-full bg-white/5 border border-transparent flex items-center justify-center hover:bg-[#22c55e]/20 hover:border-[#22c55e]/50 transition-all text-xs" 
+              title="Siguiente canción"
+            >
+              ⏭️
+            </button>
+          </div>
+        </div>
+      )}
+      
       <header className="bg-[#0a101f] border-b border-white/10 p-4 sticky top-0 z-50 shadow-xl">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <div>
