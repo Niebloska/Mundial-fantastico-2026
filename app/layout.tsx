@@ -1,5 +1,5 @@
 import './globals.css';
-import type { Metadata, Viewport } from 'next';
+import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: 'Eurocopa Fantástica 2024',
   description: 'Tu fantasy de fútbol',
   manifest: '/manifest.json',
+  themeColor: '#22c55e',
   icons: {
     apple: '/icon-512x512.png',
   },
@@ -26,10 +27,6 @@ export const metadata: Metadata = {
       },
     ],
   },
-};
-
-export const viewport: Viewport = {
-  themeColor: '#22c55e',
 };
 
 export default function RootLayout({
