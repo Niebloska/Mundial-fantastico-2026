@@ -177,7 +177,7 @@ const TutorialCaddy = ({
               </div>
             ) : (
               <div className="flex items-center justify-between gap-3">
-                {/* BLOQUEO DE CAPITÁN: Validamos si estamos en el paso id:2 (Capitán) */}
+                {/* BLOQUEO DE CAPITÁN */}
                 {!current.auto || step === 9 || (step === 2 && captain) ? (
                   <button
                     onClick={() =>
@@ -212,6 +212,19 @@ const TutorialCaddy = ({
                 </label>
               </div>
             )}
+
+            {/* === NUEVO BOTÓN UNIVERSAL: SALTAR TUTORIAL === */}
+            {step < 9 && (
+              <div className="mt-4 pt-3 border-t border-white/10 flex justify-end">
+                <button
+                  onClick={() => onClose(true)}
+                  className="text-[9px] font-black uppercase text-white/40 hover:text-white underline decoration-white/20 transition-colors"
+                >
+                  Saltar Tutorial ⏭️
+                </button>
+              </div>
+            )}
+
           </div>
         </div>
       </div>
@@ -977,7 +990,7 @@ const Field = ({
   setActiveSlot,
   captain,
   setCaptain,
-  renderPointsBadge,
+  evaluatedPlayers, // 🧠 NUEVA PROP: Recibe los cálculos de la jornada
 }: any) => {
   return (
     <div className="mt-6 relative w-full aspect-[4/5] bg-gradient-to-b from-green-600 to-green-700 rounded-[2.5rem] border-[4px] border-white/20 overflow-hidden shadow-2xl">
@@ -1022,18 +1035,24 @@ const Field = ({
             const id = `${row.pos}-${i}`;
             const p = selected[id];
 
-            // LÓGICA DE ILUMINACIÓN FIJA
-            const isActive =
-              activeSlot?.id === id && activeSlot?.type === 'titular';
+            // 🧠 LEEMOS LOS STATS DEL JUGADOR
+            const stats = p && evaluatedPlayers ? evaluatedPlayers[p.id] : null;
+            const isSubbedOut = stats?.isSubbedOut; // ¿Se quedó sin jugar?
+
+            const isActive = activeSlot?.id === id && activeSlot?.type === 'titular';
+            
+            // 🎨 DISEÑO CONDICIONAL: Si no juega, lo ponemos gris y opaco
             const bgClass = p
-              ? 'bg-white border-[#22c55e]'
+              ? isSubbedOut 
+                ? 'bg-gray-400 border-gray-500 saturate-0 opacity-90' 
+                : 'bg-white border-[#22c55e]'
               : 'bg-black/40 border-white/20';
 
             const highlightClass = isActive
-              ? 'bg-white/30 border-white ring-4 ring-white/60 scale-110' // Estado seleccionado fijo
+              ? 'bg-white/30 border-white ring-4 ring-white/60 scale-110'
               : canInteractField && !p
               ? 'hover:bg-white/20 hover:border-white ring-4 ring-transparent hover:ring-white/30'
-              : ''; // Solo hover si no está seleccionado
+              : '';
 
             return (
               <div
@@ -1048,9 +1067,7 @@ const Field = ({
                   className={`w-12 h-12 rounded-full border-[3px] flex items-center justify-center shadow-xl transition-all relative z-30 ${bgClass} ${highlightClass}`}
                 >
                   {p ? (
-                    <span
-                      className={`text-[9px] font-black text-black text-center leading-none uppercase italic`}
-                    >
+                    <span className={`text-[9px] font-black ${isSubbedOut ? 'text-gray-700' : 'text-black'} text-center leading-none uppercase italic`}>
                       {p.nombre.split(' ').pop()}
                     </span>
                   ) : (
@@ -1059,6 +1076,26 @@ const Field = ({
                     </div>
                   )}
 
+                  {/* ⭐ GLOBO DE PUNTOS (Arriba Izquierda) */}
+                  {stats && stats.points !== undefined && (
+                    <div className={`absolute -top-2 -left-2 w-6 h-6 rounded-full border-2 font-black text-[10px] flex items-center justify-center z-50 shadow-lg ${
+                      stats.points === 'X' ? 'bg-red-500 text-white border-white' :
+                      stats.points > 0 ? 'bg-[#22c55e] text-black border-white' :
+                      stats.points < 0 ? 'bg-red-500 text-white border-white' :
+                      'bg-gray-500 text-white border-white'
+                    }`}>
+                      {stats.points}
+                    </div>
+                  )}
+
+                  {/* 🔄 ICONO DE SUSTITUIDO (Titular que no juega) */}
+                  {isSubbedOut && (
+                    <div className="absolute inset-0 flex items-center justify-center z-40 bg-black/40 rounded-full pointer-events-none">
+                      <span className="text-lg drop-shadow-[0_0_5px_rgba(239,68,68,1)] bg-red-500/20 rounded-full p-0.5">🔻</span>
+                    </div>
+                  )}
+
+                  {/* © CAPITÁN (Arriba Derecha) */}
                   {p && step >= 2 && (
                     <button
                       onClick={(e) => {
@@ -1075,20 +1112,21 @@ const Field = ({
                     </button>
                   )}
 
-                  {p && renderPointsBadge && renderPointsBadge(p, true)}
+                  {/* VALOR DEL JUGADOR */}
                   {p && (
                     <PlayerValueBadge
                       value={p.precio}
-                      className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 z-40"
+                      className={`absolute -bottom-2.5 left-1/2 -translate-x-1/2 z-40 ${isSubbedOut ? 'opacity-50' : ''}`}
                     />
                   )}
                 </div>
 
+                {/* BANDERA DEL PAÍS */}
                 {p && (
                   <img
                     src={getFlag(p.seleccion)}
                     alt={p.seleccion}
-                    className="mt-1 w-8 h-6 object-cover rounded shadow-black drop-shadow-lg z-20"
+                    className={`mt-1 w-8 h-6 object-cover rounded shadow-black drop-shadow-lg z-20 transition-all ${isSubbedOut ? 'saturate-0 opacity-50' : ''}`}
                   />
                 )}
               </div>
@@ -3101,6 +3139,84 @@ const togglePayment = async (profileId: string, currentState: boolean) => {
 };
 
   // ==========================================
+  // CEREBRO MATEMÁTICO: Evaluador de Sustituciones y Puntos
+  // ==========================================
+  const evaluatedPlayers = useMemo(() => {
+    const playerStats: any = {};
+    const startersMissing: any[] = [];
+    const benchAvailable: any[] = [];
+
+    // Función para validar la formación permitida (Fantasy standard)
+    const isValidFormation = (counts: any) => {
+       return counts.POR === 1 &&
+              counts.DEF >= 3 && counts.DEF <= 5 &&
+              counts.MED >= 3 && counts.MED <= 5 &&
+              counts.DEL >= 1 && counts.DEL <= 3;
+    };
+
+    let currentActivePositions = { POR: 0, DEF: 0, MED: 0, DEL: 0 };
+
+    // 1. Analizar Titulares (Quién ha jugado y quién nos ha dejado tirados)
+    Object.entries(selected).forEach(([slotId, p]: any) => {
+      if (!p) return;
+      
+      // Simulación: Determinamos si jugó o no basándonos en sus datos para que no parpadee
+      const didNotPlay = (p.nombre.length + p.precio) % 4 === 0; 
+      const pts = didNotPlay ? 'X' : (p.nombre.length % 6) + 2;
+
+      playerStats[p.id] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: p.id, slotId };
+      
+      if (didNotPlay) startersMissing.push(p.id);
+      else currentActivePositions[p.posicion as keyof typeof currentActivePositions]++;
+    });
+
+    // 2. Analizar Banquillo (Estricto orden S1 al S6)
+    ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].forEach(slotId => {
+       const p = bench[slotId];
+       if (!p) return;
+       
+       const didNotPlay = (p.nombre.length + p.precio) % 3 === 0; 
+       const pts = didNotPlay ? 'X' : (p.nombre.length % 5) + 3;
+
+       playerStats[p.id] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: p.id, slotId };
+       
+       if (!didNotPlay) benchAvailable.push(p.id);
+    });
+
+    // 3. Analizar Grada (No convocados)
+    Object.values(extras).forEach((p: any) => {
+        if (!p) return;
+        playerStats[p.id] = { points: 'X', isSubbedOut: false, isSubbedIn: false, id: p.id };
+    });
+
+    // 4. EJECUTAR ALGORITMO DE SUSTITUCIONES (Itera de S1 a S6 buscando encajar)
+    for (const subId of benchAvailable) {
+       if (startersMissing.length === 0) break; // Ya no hay huecos que cubrir
+
+       const subPlayer = Object.values(bench).find((p: any) => p?.id === subId) as any;
+       
+       for (let i = 0; i < startersMissing.length; i++) {
+          const missingId = startersMissing[i];
+          
+          const testCounts = { ...currentActivePositions };
+          testCounts[subPlayer.posicion as keyof typeof testCounts]++; // Sumamos la posición del suplente
+
+          if (isValidFormation(testCounts)) {
+             // SUSTITUCIÓN VÁLIDA: Actualizamos banderas
+             playerStats[missingId].isSubbedOut = true;
+             playerStats[subId].isSubbedIn = true;
+             
+             currentActivePositions = testCounts; // Consolidamos la nueva táctica
+             startersMissing.splice(i, 1); // Quitamos al hueco titular resuelto
+             break; // Rompemos el bucle interno y pasamos al siguiente suplente
+          }
+       }
+    }
+
+    return playerStats;
+  }, [selected, bench, extras]);
+
+  // ==========================================
   // NUEVA FUNCIÓN: GUARDADO EN SUPABASE
   // ==========================================
   const saveSquadToSupabase = async () => {
@@ -4072,6 +4188,7 @@ useEffect(() => {
                 <Field
                   selected={selected}
                   step={2}
+                  evaluatedPlayers={evaluatedPlayers}
                   canInteractField={countdown.targetId === lineupsMatchday}
                   activeSlot={activeSlot}
                   setActiveSlot={setActiveSlot}
@@ -4080,6 +4197,13 @@ useEffect(() => {
                     if (countdown.targetId === lineupsMatchday) setCaptain(id);
                   }}
                 />
+              </div>
+
+              {/* MENSAJE DE AVISO SUPLENTES */}
+              <div className="relative z-10 mt-2 mb-6 bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+                <p className="text-[10px] sm:text-xs font-black text-blue-400 uppercase text-center leading-relaxed">
+                  ⚠️ Los puntos de los suplentes, aunque se muestren aquí, no serán efectivos hasta cerrar la jornada.
+                </p>
               </div>
 
               {/* 3. BANQUILLO Y GRADA EN ALINEACIONES */}
@@ -4092,6 +4216,7 @@ useEffect(() => {
                         key={id}
                         id={id}
                         player={bench[id]}
+                        evaluatedPlayers={evaluatedPlayers}
                         isActive={activeSlot?.id === id}
                         onClick={() => {
                           if (countdown.targetId === lineupsMatchday) {
@@ -4110,6 +4235,7 @@ useEffect(() => {
                         key={id}
                         id={id}
                         player={extras[id]}
+                        evaluatedPlayers={evaluatedPlayers}
                         isActive={activeSlot?.id === id}
                         onClick={() => {
                           if (countdown.targetId === lineupsMatchday) {
@@ -4674,20 +4800,38 @@ useEffect(() => {
 // 9. TARJETAS DE BANQUILLO Y MERCADO
 // ==========================================
 
-const BenchCard = ({ player, id, onClick, isActive }: any) => {
+const BenchCard = ({ player, id, onClick, isActive, evaluatedPlayers }: any) => {
   const posColor = player
     ? posColors[player.posicion]
     : 'bg-white/10 text-white/30';
 
+  // 🧠 LEEMOS LOS DATOS DEL CEREBRO PARA ESTE JUGADOR
+  const stats = player && evaluatedPlayers ? evaluatedPlayers[player.id] : null;
+  const isSubbedIn = stats?.isSubbedIn; // ¿Entró al campo como salvador?
+
+  // 🎨 ESTILOS DINÁMICOS
+  let cardStyle = isActive
+    ? 'border-white bg-white/20 scale-105 shadow-lg shadow-white/20'
+    : 'border-white/10 bg-black/40 hover:bg-white/10';
+
+  if (isSubbedIn && !isActive) {
+    cardStyle = 'border-[#22c55e] bg-[#22c55e]/10 hover:bg-[#22c55e]/20 shadow-[0_0_10px_rgba(34,197,94,0.3)]';
+  }
+
+  if (!player) cardStyle += ' border-dashed';
+
   return (
     <div
       onClick={onClick}
-      className={`relative flex items-center justify-between p-2 rounded-xl border-2 transition-all cursor-pointer ${
-        isActive
-          ? 'border-white bg-white/20 scale-105 shadow-lg shadow-white/20'
-          : 'border-white/10 bg-black/40 hover:bg-white/10'
-      } ${!player ? 'border-dashed' : ''}`}
+      className={`relative flex items-center justify-between p-2 rounded-xl border-2 transition-all cursor-pointer ${cardStyle}`}
     >
+      {/* 🔄 ICONO DE SUSTITUCIÓN (Solo si entró a jugar) */}
+      {isSubbedIn && (
+        <div className="absolute -top-2 -right-2 bg-[#22c55e] rounded-full w-5 h-5 flex items-center justify-center border-2 border-black z-20 shadow-[0_0_8px_#22c55e] text-[10px]">
+          🔄
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         <div
           className={`w-6 h-6 rounded flex items-center justify-center text-[8px] font-black ${posColor}`}
@@ -4716,6 +4860,17 @@ const BenchCard = ({ player, id, onClick, isActive }: any) => {
           </span>
         )}
       </div>
+
+      {/* ⭐ PUNTUACIÓN OBTENIDA (O 'X' ROJA SI FALLÓ) */}
+      {stats && stats.points !== undefined && (
+        <div className={`text-[11px] font-black mr-1 ${
+          stats.points === 'X' ? 'text-red-500' : 
+          stats.points > 0 ? 'text-[#22c55e]' : 
+          'text-white/50'
+        }`}>
+           {stats.points} pts
+        </div>
+      )}
     </div>
   );
 };
