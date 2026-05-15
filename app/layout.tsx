@@ -5,7 +5,7 @@ import { Inter } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Eurocopa Fantástica 2024',
+  title: 'Mundial Fantástico 2026',
   description: 'Tu fantasy de fútbol',
   manifest: '/manifest.json',
   themeColor: '#22c55e',
