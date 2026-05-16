@@ -6,6 +6,8 @@ import { supabase } from '../lib/supabase';
 
 import { availableCountries } from '../lib/countries';
 
+import confetti from 'canvas-confetti';
+
 // ==========================================
 // 1. CONSTANTES GLOBALES Y CONFIGURACIÓN: MUNDIAL 2026
 // ==========================================
@@ -2272,12 +2274,22 @@ const QuinielaView = ({ user }: { user: any }) => {
 
   const handleSave = async () => {
     if (!user) return alert('Inicia sesión.');
+    
     await supabase.from('user_predictions').upsert({
       user_id: user.id,
       selections,
       updated_at: new Date().toISOString(),
     });
+    
     setIsSaved(true);
+
+    // 🎉 EXPLOSIÓN DE CONFETI PARA LA QUINIELA
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.7 },
+      colors: ['#06b6d4', '#ffffff'] // Azul cyan y blanco para diferenciar de la plantilla
+    });
   };
 
   const allPicks = Object.values(selections).flat();
@@ -3974,7 +3986,8 @@ useEffect(() => {
                     </button>
                   </div>
 
-                  {/* Botón Validar y Táctica */}
+                  
+{/* Botón Validar y Táctica */}
 <button
   onClick={() => {
     
@@ -3988,6 +4001,14 @@ useEffect(() => {
 
     if (nextLockState === true) {
       saveSquadToSupabase();
+      
+      // 🎉 EXPLOSIÓN DE CONFETI DE VICTORIA
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#22c55e', '#fbbf24', '#ffffff'] // Verde neón, dorado y blanco
+      });
     }
 
     setActiveSlot(null);
