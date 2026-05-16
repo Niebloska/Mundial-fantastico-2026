@@ -1056,18 +1056,19 @@ const Field = ({
               ? 'hover:bg-white/20 hover:border-white ring-4 ring-transparent hover:ring-white/30'
               : '';
 
-            return (
-              <div
-                key={i}
-                className="relative flex flex-col items-center group cursor-pointer"
-                onClick={() =>
-                  canInteractField &&
-                  setActiveSlot({ id, type: 'titular', pos: row.pos })
-                }
-              >
+              return (
                 <div
-                  className={`w-12 h-12 rounded-full border-[3px] flex items-center justify-center shadow-xl transition-all relative z-30 ${bgClass} ${highlightClass}`}
+                  key={i}
+                  // 👇 AQUÍ ESTÁ LA MAGIA 3D AÑADIDA A LOS TITULARES
+                  className="relative flex flex-col items-center group cursor-pointer transition-all duration-300 hover:z-50 hover:-translate-y-2 hover:scale-110 hover:[transform:perspective(800px)_rotateX(10deg)_rotateY(-10deg)] active:[transform:perspective(800px)_rotateX(-10deg)_rotateY(10deg)_scale(0.95)]"
+                  onClick={() =>
+                    canInteractField &&
+                    setActiveSlot({ id, type: 'titular', pos: row.pos })
+                  }
                 >
+                  <div
+                    className={`w-12 h-12 rounded-full border-[3px] flex items-center justify-center shadow-xl transition-all relative z-30 ${bgClass} ${highlightClass}`}
+                  >
                   {p ? (
                     <span className={`text-[9px] font-black ${isSubbedOut ? 'text-gray-700' : 'text-black'} text-center leading-none uppercase italic`}>
                       {p.nombre.split(' ').pop()}
@@ -2230,11 +2231,20 @@ const PRIZE_SCALE = [
   { hits: 10, prize: 10, color: '#4b5563' }, // Gris oscuro
 ];
 
-const QuinielaView = ({ user }: { user: any }) => {
+const QuinielaView = ({ user, setHasUnsavedQuiniela }: { user: any, setHasUnsavedQuiniela?: any }) => {
   const [selections, setSelections] = useState<Record<string, string[]>>({});
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 👇 2. NUEVO: Enviamos la señal por el cable en tiempo real al vigilante principal
+  useEffect(() => {
+    if (setHasUnsavedQuiniela) {
+      // Si la app ya ha cargado los datos y isSaved es false (está editando), bloqueamos las salidas.
+      setHasUnsavedQuiniela(!isLoading && !isSaved);
+    }
+  }, [isSaved, isLoading, setHasUnsavedQuiniela]);
+
+  
   // Equipos clasificados (esto se conectará al Modo Dios)
   const qualifiedTeams: string[] = [];
 
@@ -2977,6 +2987,8 @@ export default function MundialApp() {
 
   const playlist = ['/audio/tema1.mp3', '/audio/tema2.mp3'];
 
+  const [hasUnsavedQuiniela, setHasUnsavedQuiniela] = useState(false);
+
   // 🧠 NUEVO EFECTO: Simulador de carga inteligente
   // Da tiempo al navegador a cachear el vídeo (2-3 segundos) con una barra de progreso visual
   useEffect(() => {
@@ -3017,6 +3029,19 @@ export default function MundialApp() {
       audioRef.current.muted = false; 
       audioRef.current.play().catch(err => console.log("Audio play blocked:", err));
     }
+  };
+
+  // 🛡️ VIGILANTE DE SEGURIDAD INTERNO
+  const canNavigateAway = () => {
+    if (view === 'squad' && !isSquadLocked) {
+      alert('⚠️ ¡CUIDADO! Debes VALIDAR LA PLANTILLA antes de cambiar de apartado.');
+      return false;
+    }
+    if (view === 'quiniela' && hasUnsavedQuiniela) {
+      alert('⚠️ ¡CUIDADO! Debes GUARDAR LA QUINIELA antes de cambiar de apartado.');
+      return false;
+    }
+    return true;
   };
 
   // 💥 REPARADO: Aquí está la lógica real para pausar y reproducir
@@ -3372,33 +3397,50 @@ export default function MundialApp() {
     localStorage.setItem('ef24_isLocked', JSON.stringify(isSquadLocked));
   }, [selected, bench, extras, captain, isSquadLocked]);
 
-  // --- PROTECCIÓN CONTRA SALIDAS ACCIDENTALES EN MÓVILES ---
+  // --- PROTECCIÓN CONTRA SALIDAS ACCIDENTALES EN MÓVILES Y PC ---
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Metemos una "página fantasma" en el historial para interceptar el botón atrás
-    window.history.pushState(null, '', window.location.pathname);
+    // 1. BLINDAJE PARA PC Y RECARGAS
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if ((view === 'squad' && !isSquadLocked) || (view === 'quiniela' && hasUnsavedQuiniela)) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
+    // 2. BLINDAJE PARA MÓVILES
+    window.history.pushState(null, '', window.location.pathname);
+    
     const handlePopState = () => {
+      if (view === 'squad' && !isSquadLocked) {
+        alert('⚠️ ACCIÓN BLOQUEADA: Debes validar la plantilla antes de salir de la app.');
+        window.history.pushState(null, '', window.location.pathname);
+        return;
+      }
+      if (view === 'quiniela' && hasUnsavedQuiniela) {
+        alert('⚠️ ACCIÓN BLOQUEADA: Debes guardar la quiniela antes de salir de la app.');
+        window.history.pushState(null, '', window.location.pathname);
+        return;
+      }
+
       const confirmExit = window.confirm('¿Quieres salir de la aplicación Mundial Fantástico 2026?');
-      
       if (confirmExit) {
-        // 1. Quitamos el vigilante inmediatamente para que no vuelva a molestar
         window.removeEventListener('popstate', handlePopState);
-        
-        // 2. Le damos un micro-respiro de 50ms al navegador para cerrar el mensaje antes de salir
-        setTimeout(() => {
-          window.history.back();
-        }, 50);
+        setTimeout(() => window.history.back(), 50);
       } else {
-        // Si el usuario se arrepiente, volvemos a poner la página fantasma
         window.history.pushState(null, '', window.location.pathname);
       }
     };
 
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [view, isSquadLocked, hasUnsavedQuiniela]); // 👈 Añadido al array
 
   useEffect(() => {
     // Si entra el administrador, fulminamos el tutorial para que no estorbe
@@ -3935,7 +3977,12 @@ useEffect(() => {
           {visibleNavItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setView(item.id as any)}
+              onClick={() => {
+                // 👇 SOLO TE DEJA CAMBIAR SI EL VIGILANTE DA LUZ VERDE
+                if (canNavigateAway()) {
+                  setView(item.id as any);
+                }
+              }}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] font-black uppercase whitespace-nowrap transition-all ${
                 view === item.id
                   ? 'bg-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]'
@@ -3985,7 +4032,6 @@ useEffect(() => {
                       ✏️
                     </button>
                   </div>
-
                   
 {/* Botón Validar y Táctica */}
 <button
@@ -4305,7 +4351,12 @@ useEffect(() => {
         )}
 
         {view === 'rules' && <FixedRulesView />}
-        {view === 'quiniela' && <QuinielaView user={user} />}
+        {view === 'quiniela' && (
+  <QuinielaView 
+    user={user} 
+    setHasUnsavedQuiniela={setHasUnsavedQuiniela} // 👈 EL CABLE NUEVO
+  />
+)}
         {view === 'calendar' && <CalendarView />}
         {view === 'lineups' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
@@ -5000,7 +5051,8 @@ const BenchCard = ({ player, id, onClick, isActive, evaluatedPlayers }: any) => 
   return (
     <div
       onClick={onClick}
-      className={`relative flex items-center justify-between p-2 rounded-xl border-2 transition-all cursor-pointer ${cardStyle}`}
+      // 👇 AQUÍ ESTÁ LA MAGIA 3D AÑADIDA A TUS CLASES
+      className={`relative flex items-center justify-between p-2 rounded-xl border-2 transition-all duration-300 hover:z-50 hover:-translate-y-2 hover:scale-105 hover:[transform:perspective(800px)_rotateX(10deg)_rotateY(-10deg)] active:[transform:perspective(800px)_rotateX(-10deg)_rotateY(10deg)_scale(0.95)] hover:shadow-[0_20px_30px_rgba(34,197,94,0.4)] cursor-pointer ${cardStyle}`}
     >
       {/* 🔄 ICONO DE SUSTITUCIÓN (Solo si entró a jugar) */}
       {isSubbedIn && (
