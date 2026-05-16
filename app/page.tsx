@@ -1744,6 +1744,9 @@ const MatchAdminRow = ({ match, onSave, onDelete }: any) => {
   const [hScore, setHScore] = useState<number | ''>(match.home_score ?? '');
   const [aScore, setAScore] = useState<number | ''>(match.away_score ?? '');
 
+  // Comprobamos si hay algún marcador escrito (ya sea guardado o en el input)
+  const hasAnyScore = hScore !== '' || aScore !== '';
+
   return (
     <div className="bg-black/40 border border-white/5 p-4 rounded-xl flex items-center justify-between gap-4">
       <div className="flex flex-col items-center w-1/3">
@@ -1786,7 +1789,7 @@ const MatchAdminRow = ({ match, onSave, onDelete }: any) => {
         </span>
       </div>
 
-      {/* Agrupamos los botones de acción al final de la fila */}
+      {/* Botones de acción */}
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => onSave(match.id, hScore, aScore)}
@@ -1796,18 +1799,18 @@ const MatchAdminRow = ({ match, onSave, onDelete }: any) => {
           💾
         </button>
 
-        {/* 👇 BOTÓN DE RESETEO: Solo aparece si el partido tiene un resultado guardado en Supabase */}
-        {(match.home_score !== undefined && match.home_score !== null) && (
+        {/* 👇 LA PAPELERA: Ahora aparece siempre que haya números en el marcador 👇 */}
+        {hasAnyScore && (
           <button
-            onClick={() => {
-              if (confirm(`¿Seguro que quieres resetear el partido ${match.home} vs ${match.away}?`)) {
-                onDelete(match.id);
-                setHScore(''); // Limpia el input de goles local
-                setAScore(''); // Limpia el input de goles visitante
+            onClick={async () => {
+              if (confirm(`¿Seguro que quieres resetear el partido ${match.home} vs ${match.away} y dejarlo vacío?`)) {
+                if (onDelete) await onDelete(match.id);
+                setHScore(''); // Vacía el input local
+                setAScore(''); // Vacía el input local
               }
             }}
             className="bg-red-500/20 text-red-400 p-2 rounded hover:bg-red-500 hover:text-white transition-colors"
-            title="Borrar resultado"
+            title="Borrar resultado de la base de datos"
           >
             🗑️
           </button>
