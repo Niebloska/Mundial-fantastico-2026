@@ -3342,13 +3342,22 @@ export default function MundialApp() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    // Metemos una "página fantasma" en el historial para interceptar el botón atrás
     window.history.pushState(null, '', window.location.pathname);
 
     const handlePopState = () => {
       const confirmExit = window.confirm('¿Quieres salir de la aplicación Mundial Fantástico 2026?');
+      
       if (confirmExit) {
-        window.history.back();
+        // 1. Quitamos el vigilante inmediatamente para que no vuelva a molestar
+        window.removeEventListener('popstate', handlePopState);
+        
+        // 2. Le damos un micro-respiro de 50ms al navegador para cerrar el mensaje antes de salir
+        setTimeout(() => {
+          window.history.back();
+        }, 50);
       } else {
+        // Si el usuario se arrepiente, volvemos a poner la página fantasma
         window.history.pushState(null, '', window.location.pathname);
       }
     };
