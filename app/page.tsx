@@ -1841,6 +1841,8 @@ const PlayerAdminRow = ({
   const [dnp, setDnp] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
 
+  
+
   useEffect(() => {
     if (savedScore !== undefined) {
       setIsLocked(true);
@@ -3013,6 +3015,8 @@ export default function MundialApp() {
 
   const [hasUnsavedQuiniela, setHasUnsavedQuiniela] = useState(false);
 
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+
   // 💸 ESTADOS DEL MERCADO DE FICHAJES
   const [snapshotSquad, setSnapshotSquad] = useState<any>(null); // Aquí guardaremos la "Foto"
   const [transfersMade, setTransfersMade] = useState(0); // Contador de fichajes (Máx 6)
@@ -3377,6 +3381,94 @@ export default function MundialApp() {
 
     return () => authListener.subscription.unsubscribe();
   }, [activeMatchday]); // 👈 Añadimos activeMatchday aquí para que se recalcule si cambias de jornada en el panel
+
+  // =========================================================================
+  // 🏆 EFECTO NUEVO: Descarga las plantillas de TODOS los usuarios para la Clasificación
+  // =========================================================================
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      if (view !== 'scores') return;
+      
+      // 1. 🔍 Traemos también la columna has_paid de la base de datos
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, team_name, username, squad_data, has_paid');
+
+      if (data) {
+        const matchdays = ['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'];
+        
+        const formattedUsers = data.map((u: any) => {
+          const s = u.squad_data?.selected || {};
+          const b = u.squad_data?.bench || {};
+          const e = u.squad_data?.extras || {};
+          const captainId = u.squad_data?.captain || null;
+
+          // 1. Jugadores activos de este usuario específico
+          const activePlayers = [
+            ...Object.values(s),
+            ...Object.values(b),
+            ...Object.values(e)
+          ].filter(Boolean).map((p: any) => ({ 
+            ...p, 
+            isActive: true, 
+            isCaptain: p.id === captainId // Conectamos el capitán de este usuario
+          }));
+
+          // 2. Jugadores de su foto original (para detectar bajas de mercado)
+          const snapshotPlayers = u.squad_data?.snapshot ? [
+            ...Object.values(u.squad_data.snapshot.selected || {}),
+            ...Object.values(u.squad_data.snapshot.bench || {}),
+            ...Object.values(u.squad_data.snapshot.extras || {})
+          ].filter(Boolean) : [];
+
+          const soldPlayers = snapshotPlayers
+            .filter((sp: any) => !activePlayers.some((ap: any) => ap.id === sp.id))
+            .map((p: any) => ({ 
+              ...p, 
+              isActive: false, 
+              isCaptain: p.id === captainId 
+            }));
+
+          const allUserPlayers = [...activePlayers, ...soldPlayers];
+
+          // 3. Calculamos los puntos totales de este usuario duplicando su capitán si es titular
+          const totalPoints = allUserPlayers.reduce((sum, p) => {
+            let playerSum = 0;
+            matchdays.forEach(j => {
+              let pts = Number(p.puntos?.[j]) || 0;
+              // Comprobamos si el jugador está en el 11 titular (s) de este usuario concreto
+              const isInTitular = Object.values(s).some((ap: any) => ap && ap.id === p.id);
+              if (p.id === captainId && isInTitular) {
+                pts = pts * 2;
+              }
+              playerSum += pts;
+            });
+            return sum + playerSum;
+          }, 0);
+
+          return {
+            id: u.id,
+            name: u.team_name || 'SIN NOMBRE',
+            username: u.username || 'ANÓNIMO',
+            total: totalPoints,
+            isMe: u.id === session?.user?.id, // Detecta si la fila es tu cuenta actual
+            // 👇 2. 💸 Mapeamos el valor real de tesorería (si es null o no existe, ponemos false)
+            hasPaid: u.has_paid ?? false,
+            players: allUserPlayers.sort((a: any, b: any) => {
+              if (a.isActive && !b.isActive) return -1;
+              if (!a.isActive && b.isActive) return 1;
+              const positionOrder: any = { POR: 1, DEF: 2, MED: 3, DEL: 4 };
+              return (positionOrder[a.posicion] || 5) - (positionOrder[b.posicion] || 5);
+            })
+          };
+        });
+
+        setLeaderboard(formattedUsers);
+      }
+    };
+
+    fetchLeaderboard();
+  }, [view, session, selected, bench, extras, captain, snapshotSquad]);
 
   const fetchAllProfiles = async () => {
     const { data, error } = await supabase
@@ -4703,172 +4795,145 @@ useEffect(() => {
               🏆 CLASIFICACIÓN GENERAL
             </h2>
 
-            {/* 1. ACORDEÓN DE USUARIOS (Limpio para el torneo) */}
+            {/* 1. ACORDEÓN DE USUARIOS HUMANOS (Leídos en tiempo real de Supabase) */}
             <div className="space-y-3">
-              {(() => {
-                // 🧠 OBTENEMOS LAS PLANTILLAS DEL USUARIO (ACTIVOS + DESCARTES)
-                const activePlayers = [
-                  ...Object.values(selected || {}),
-                  ...Object.values(bench || {}),
-                  ...Object.values(extras || {})
-                ].filter(Boolean).map((p: any) => ({ ...p, isActive: true }));
+              {leaderboard
+                .sort((a, b) => b.total - a.total)
+                .map((u, idx) => ({ ...u, pos: idx + 1 }))
+                .map((u) => (
+                  <details 
+                    key={u.id} 
+                    className={`group border rounded-2xl overflow-hidden transition-all relative ${
+                      u.pos === 1 ? 'border-[#eab308] shadow-[0_0_15px_rgba(234,179,8,0.15)] bg-[#1a1c23]' :
+                      u.isMe ? 'border-[#22c55e] border-2 shadow-[0_0_15px_rgba(34,197,94,0.15)] bg-[#1a2b1a]' : 
+                      'border-white/10 hover:border-white/20 bg-[#0f172a]'
+                    }`}
+                    open={u.isMe}
+                  >
+                    <summary className={`flex justify-between items-center p-3 sm:p-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden ${u.pos === 1 ? 'bg-[#1a1c23]' : 'bg-[#0f172a]'}`}>
+                      
+                      <div className="flex items-center gap-4 sm:gap-6">
+                        {/* POSICIÓN ORO, PLATA, BRONCE */}
+                        <span className={`font-black italic text-3xl sm:text-4xl w-10 text-center ${
+                          u.pos === 1 ? 'text-[#eab308] drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]' :
+                          u.pos === 2 ? 'text-gray-300 drop-shadow-[0_0_8px_rgba(209,213,219,0.5)]' :
+                          u.pos === 3 ? 'text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.5)]' :
+                          'text-white/20'
+                        }`}>
+                          #{u.pos}
+                        </span>
 
-                const snapshotPlayers = snapshotSquad ? [
-                  ...Object.values(snapshotSquad.selected || {}),
-                  ...Object.values(snapshotSquad.bench || {}),
-                  ...Object.values(snapshotSquad.extras || {})
-                ].filter(Boolean) : [];
-
-                const soldPlayers = snapshotPlayers
-                  .filter((sp: any) => !activePlayers.some((ap: any) => ap.id === sp.id))
-                  .map((p: any) => ({ ...p, isActive: false }));
-
-                const allMyPlayers = [...activePlayers, ...soldPlayers].sort((a: any, b: any) => {
-                  if (a.isActive && !b.isActive) return -1;
-                  if (!a.isActive && b.isActive) return 1;
-                  const positionOrder: any = { POR: 1, DEF: 2, MED: 3, DEL: 4 };
-                  return (positionOrder[a.posicion] || 5) - (positionOrder[b.posicion] || 5);
-                });
-
-                // Calcular los puntos totales REALES del usuario sumando los de sus jugadores
-                const matchdays = ['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'];
-                const myTotalPoints = allMyPlayers.reduce((sum, p) => {
-                  const playerSum = matchdays.reduce((pSum, j) => pSum + (Number(p.puntos?.[j]) || 0), 0);
-                  return sum + playerSum;
-                }, 0);
-
-                return [
-                  {
-                    id: 'me',
-                    name: 'NIEBLOSKA TEAM',
-                    username: user?.username || 'SERGIO',
-                    total: myTotalPoints,
-                    isMe: true,
-                    hasPaid: true,
-                    players: allMyPlayers
-                  }
-                ];
-              })()
-              .map((u, idx) => ({ ...u, pos: idx + 1 }))
-              .map((u) => (
-                <details 
-                  key={u.id} 
-                  className="group border-2 border-[#22c55e] shadow-[0_0_15px_rgba(34,197,94,0.15)] bg-[#1a2b1a] rounded-2xl overflow-hidden transition-all relative"
-                  open={u.isMe}
-                >
-                  <summary className="flex justify-between items-center p-3 sm:p-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden bg-[#0f172a]">
-                    
-                    <div className="flex items-center gap-4 sm:gap-6">
-                      <span className="font-black italic text-3xl sm:text-4xl w-10 text-center text-[#eab308] drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]">
-                        #{u.pos}
-                      </span>
-
-                      <div className="flex flex-col">
-                        <h3 className="font-black italic uppercase text-base sm:text-lg tracking-wider text-[#22c55e]">
-                          {u.name}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <p className="text-[9px] sm:text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1">
-                            <span>👤</span> {u.username}
-                          </p>
-                          {u.hasPaid && (
-                            <span className="bg-[#eab308] text-black text-[9px] font-black rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
-                              5€
-                            </span>
-                          )}
+                        {/* DATOS DEL EQUIPO */}
+                        <div className="flex flex-col">
+                          <h3 className={`font-black italic uppercase text-base sm:text-lg tracking-wider ${
+                            u.pos === 1 ? 'text-[#eab308]' : u.isMe ? 'text-[#22c55e]' : 'text-white'
+                          }`}>
+                            {u.name}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-[9px] sm:text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1">
+                              <span>👤</span> {u.username}
+                            </p>
+                            {u.hasPaid && (
+                              <span className="bg-[#eab308] text-black text-[9px] font-black rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
+                                5€
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-3">
-                      <span className="font-black text-xl sm:text-2xl leading-none text-[#22c55e]">
-                        {u.total} <span className="text-sm">PTS</span>
-                      </span>
-                      <span className="text-sm group-open:rotate-180 transition-transform duration-300 text-white/40">▼</span>
-                    </div>
-                  </summary>
-                  
-                  {/* TABLA DE JUGADORES */}
-                  <div className="border-t border-white/5 bg-[#0a101f]">
-                    <div className="overflow-x-auto scrollbar-hide">
-                      <table className="w-full text-left text-xs whitespace-nowrap min-w-[700px]">
-                        <thead className="bg-[#111827] border-b border-white/10 uppercase font-black text-[#38bdf8] text-[10px] sm:text-xs tracking-wider">
-                          <tr>
-                            <th className="p-3 sticky left-0 z-10 bg-[#111827] shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5">
-                              <div className="flex gap-4"><span className="w-8">POS</span><span className="w-6">SEL</span><span>NOMBRE</span></div>
-                            </th>
-                            <th className="p-3 text-center text-white bg-[#3b82f6]/20 border-r border-white/5">TOTAL</th>
-                            {['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'].map(j => (
-                              <th key={j} className="p-3 text-center text-white/70">{j}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                          {u.players.length > 0 ? (
-                            u.players.map((p: any) => {
-                              const isCap = u.isMe ? captain === p.id : p.captain;
-                              const isSold = p.isActive === false;
-                              
-                              const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
-                              const flags: any = { 'España': '🇪🇸', 'Francia': '🇫🇷', 'Inglaterra': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Italia': '🇮🇹', 'Alemania': '🇩🇪', 'México': '🇲🇽', 'Sudáfrica': '🇿🇦' };
-                              const playerFlag = flags[p.seleccion] || '🏳️';
-                              
-                              // Calcular total real de este jugador concreto
-                              const matchdays = ['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'];
-                              const ptTot = matchdays.reduce((sum, j) => sum + (Number(p.puntos?.[j]) || 0), 0);
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-end">
+                          <span className={`font-black text-xl sm:text-2xl leading-none ${u.isMe ? 'text-[#22c55e]' : 'text-[#38bdf8]'}`}>
+                            {u.total} <span className="text-sm">PTS</span>
+                          </span>
+                        </div>
+                        <span className="text-sm group-open:rotate-180 transition-transform duration-300 text-white/40">▼</span>
+                      </div>
+                    </summary>
+                    
+                    {/* TABLA DE JUGADORES */}
+                    <div className="border-t border-white/5 bg-[#0a101f]">
+                      <div className="overflow-x-auto scrollbar-hide">
+                        <table className="w-full text-left text-xs whitespace-nowrap min-w-[700px]">
+                          <thead className="bg-[#111827] border-b border-white/10 uppercase font-black text-[#38bdf8] text-[10px] sm:text-xs tracking-wider">
+                            <tr>
+                              <th className="p-3 sticky left-0 z-10 bg-[#111827] shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5">
+                                <div className="flex gap-4"><span className="w-8">POS</span><span className="w-6">SEL</span><span>NOMBRE</span></div>
+                              </th>
+                              <th className="p-3 text-center text-white bg-[#3b82f6]/20 border-r border-white/5">TOTAL</th>
+                              {['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'].map(j => (
+                                <th key={j} className="p-3 text-center text-white/70">{j}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {u.players.length > 0 ? (
+                              u.players.map((p: any) => {
+                                const isCap = p.isCaptain;
+                                const isSold = p.isActive === false;
+                                
+                                const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
+                                const flags: any = { 'España': '🇪🇸', 'Francia': '🇫🇷', 'Inglaterra': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Italia': '🇮🇹', 'Alemania': '🇩🇪', 'México': '🇲🇽', 'Sudáfrica': '🇿🇦' };
+                                const playerFlag = flags[p.seleccion] || '🏳️';
+                                
+                                // Calcular total real de este jugador concreto
+                                const matchdays = ['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'];
+                                const ptTot = matchdays.reduce((sum, j) => sum + (Number(p.puntos?.[j]) || 0), 0);
 
-                              const renderScore = (val: any) => {
-                                if (val === undefined || val === null || val === '-') return <span className="text-white/20 font-bold">-</span>;
-                                if (val === 'X') return <span className="text-red-500 font-black">X</span>;
-                                const num = Number(val);
-                                if (!isNaN(num)) {
-                                  if (num < 0) return <span className="text-red-500 font-black">{num}</span>;
-                                  if (num > 0) return <span className={isSold ? "text-[#22c55e]/50 font-bold" : "text-[#22c55e] font-black"}>{num}</span>;
-                                  return <span className="text-white/50 font-bold">0</span>;
-                                }
-                                return val;
-                              };
+                                const renderScore = (val: any) => {
+                                  if (val === undefined || val === null || val === '-') return <span className="text-white/20 font-bold">-</span>;
+                                  if (val === 'X') return <span className="text-red-500 font-black">X</span>;
+                                  const num = Number(val);
+                                  if (!isNaN(num)) {
+                                    if (num < 0) return <span className="text-red-500 font-black">{num}</span>;
+                                    if (num > 0) return <span className={isSold ? "text-[#22c55e]/50 font-bold" : "text-[#22c55e] font-black"}>{num}</span>;
+                                    return <span className="text-white/50 font-bold">0</span>;
+                                  }
+                                  return val;
+                                };
 
-                              return (
-                                <tr 
-                                  key={p.id} 
-                                  className={`transition-colors ${
-                                    isSold 
-                                      ? 'bg-black/40 opacity-30 grayscale border-dashed border-white/5 text-white/40' 
-                                      : 'hover:bg-white/5 bg-[#0f172a]'
-                                  }`}
-                                >
-                                  <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/40' : 'bg-[#0f172a]'}`}>
-                                    <div className="flex items-center gap-4">
-                                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${isSold ? 'bg-white/10 text-white/40' : (posColors[p.posicion] || 'bg-gray-500 text-white')}`}>{p.posicion}</span>
-                                      <span className="text-sm w-6 text-center" title={p.seleccion}>{playerFlag}</span>
-                                      <span className={`font-bold truncate max-w-[120px] ${isSold ? 'line-through text-white/30' : 'text-white/90'}`}>
-                                        {p.nombre} 
-                                        {isCap && !isSold && <span className="text-[#eab308] ml-1 drop-shadow-[0_0_2px_rgba(234,179,8,0.8)] text-xs bg-black/50 px-1 rounded">C</span>}
-                                        {isSold && <span className="text-red-400/80 text-[8px] font-black bg-red-950/40 border border-red-500/20 px-1 rounded ml-1.5 uppercase tracking-tighter">Baja</span>}
-                                      </span>
-                                    </div>
-                                  </td>
-                                  
-                                  <td className={`p-3 text-center font-black border-r border-white/5 text-sm ${isSold ? 'text-white/30 bg-white/5' : 'text-white bg-[#3b82f6]/10'}`}>{ptTot}</td>
-                                  {matchdays.map(j => (
-                                    <td key={j} className="p-3 text-center">{renderScore(p.puntos?.[j] ?? '-')}</td>
-                                  ))}
-                                </tr>
-                              )
-                            })
-                          ) : (
-                            <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">No tienes jugadores en tu plantilla actualmente.</td></tr>
-                          )}
-                        </tbody>
-                      </table>
+                                return (
+                                  <tr 
+                                    key={p.id} 
+                                    className={`transition-colors ${
+                                      isSold 
+                                        ? 'bg-black/40 opacity-30 grayscale border-dashed border-white/5 text-white/40' 
+                                        : 'hover:bg-white/5 bg-[#0f172a]'
+                                    }`}
+                                  >
+                                    <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/40' : 'bg-[#0f172a]'}`}>
+                                      <div className="flex items-center gap-4">
+                                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${isSold ? 'bg-white/10 text-white/40' : (posColors[p.posicion] || 'bg-gray-500 text-white')}`}>{p.posicion}</span>
+                                        <span className="text-sm w-6 text-center" title={p.seleccion}>{playerFlag}</span>
+                                        <span className={`font-bold truncate max-w-[120px] ${isSold ? 'line-through text-white/30' : 'text-white/90'}`}>
+                                          {p.nombre} 
+                                          {isCap && !isSold && <span className="text-[#eab308] ml-1 drop-shadow-[0_0_2px_rgba(234,179,8,0.8)] text-xs bg-black/50 px-1 rounded">C</span>}
+                                          {isSold && <span className="text-red-400/80 text-[8px] font-black bg-red-950/40 border border-red-500/20 px-1 rounded ml-1.5 uppercase tracking-tighter">Baja</span>}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    
+                                    <td className={`p-3 text-center font-black border-r border-white/5 text-sm ${isSold ? 'text-white/30 bg-white/5' : 'text-white bg-[#3b82f6]/10'}`}>{ptTot}</td>
+                                    {matchdays.map(j => (
+                                      <td key={j} className="p-3 text-center">{renderScore(p.puntos?.[j] ?? '-')}</td>
+                                    ))}
+                                  </tr>
+                                )
+                              })
+                            ) : (
+                              <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">No tienes jugadores en tu plantilla actualmente.</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                </details>
-              ))}
+                  </details>
+                ))}
             </div>
 
-            {/* 2. EVOLUCIÓN DEL RANKING (Saneado) */}
+            {/* 2. EVOLUCIÓN DEL RANKING (Dinámico y Conectado) */}
             <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-8">
                <h3 className="text-lg font-black italic text-[#eab308] uppercase mb-6 flex items-center gap-2">
                  <span>📈</span> Evolución del Ranking
@@ -4876,23 +4941,39 @@ useEffect(() => {
                <div className="relative w-full h-48 sm:h-64 rounded-xl border border-white/5 bg-[#0a101f] p-4 flex items-end">
                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full absolute inset-0 py-6 px-4 opacity-80 overflow-visible">
                     {[10, 30, 50, 70, 90].map(y => <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />)}
-                    {/* Línea plana en el número 1 esperando el inicio del torneo */}
-                    <path d="M0,20 L20,20 L40,20 L60,20 L80,20 L100,20" fill="none" stroke="#22c55e" strokeWidth="1.5" className="drop-shadow-[0_0_3px_rgba(34,197,94,0.8)]" />
-                    <circle cx="0" cy="20" r="1.5" fill="#22c55e" /><circle cx="20" cy="20" r="1.5" fill="#22c55e" /><circle cx="40" cy="20" r="1.5" fill="#22c55e" />
+                    
+                    {/* 🧠 PINTAMOS UNA LÍNEA REAL POR CADA PARTICIPANTE */}
+                    {leaderboard.map((u, i) => {
+                      const strokeColor = u.isMe ? '#22c55e' : i === 0 ? '#eab308' : '#3b82f6';
+                      const shadowColor = u.isMe ? 'rgba(34,197,94,0.6)' : i === 0 ? 'rgba(234,179,8,0.6)' : 'rgba(59,130,246,0.6)';
+                      // Al estar a cero antes del torneo, las líneas se quedan planas en el medio esperando los puntos reales
+                      return (
+                        <g key={u.id}>
+                          <path d="M0,50 L20,50 L40,50 L60,50 L80,50 L100,50" fill="none" stroke={strokeColor} strokeWidth="1.5" className="transition-all" style={{ filter: `drop-shadow(0 0 2px ${shadowColor})` }} />
+                          <circle cx="0" cy="50" r="1" fill={strokeColor} />
+                          <circle cx = "20" cy="50" r="1" fill={strokeColor} />
+                          <circle cx="40" cy="50" r="1" fill={strokeColor} />
+                        </g>
+                      );
+                    })}
                  </svg>
                  <div className="absolute bottom-2 left-0 right-0 flex justify-between px-6 text-[8px] sm:text-[10px] text-white/40 font-bold tracking-widest uppercase">
                    <span>J1</span><span>J2</span><span>J3</span><span>OCT</span><span>CUA</span><span>SEM</span>
                  </div>
                </div>
                
+               {/* 👥 LEYENDA DINÁMICA: Muestra a todos los rivales reales de la BD */}
                <div className="flex flex-wrap gap-2 mt-6 justify-center">
-                 <span className="text-[9px] font-bold px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white flex items-center gap-1.5">
-                   <div className="w-2 h-2 rounded-full bg-[#22c55e] shadow-[0_0_5px_#22c55e]"></div> NIEBLOSKA TEAM
-                 </span>
+                 {leaderboard.map((u, i) => (
+                   <span key={u.id} className="text-[9px] font-bold px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white flex items-center gap-1.5">
+                     <div className={`w-2 h-2 rounded-full ${u.isMe ? 'bg-[#22c55e] shadow-[0_0_5px_#22c55e]' : i === 0 ? 'bg-[#eab308] shadow-[0_0_5px_#eab308]' : 'bg-[#3b82f6] shadow-[0_0_5px_#3b82f6]'}`}></div> 
+                     {u.name}
+                   </span>
+                 ))}
                </div>
             </div>
 
-            {/* 3. CLASIFICACIÓN POR JORNADA (Saneado) */}
+            {/* 3. CLASIFICACIÓN POR JORNADA (Dinámica y Conectada) */}
             <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-6">
               <h3 className="text-lg font-black italic text-[#22c55e] uppercase mb-4 flex items-center gap-2">
                  <span>🏆</span> Clasificación por Jornada
@@ -4908,17 +4989,28 @@ useEffect(() => {
                 ))}
               </div>
 
+              {/* 👥 LISTADO REAL: Muestra a todos los usuarios ordenados */}
               <div className="space-y-2">
-                <div className="flex justify-between items-center bg-[#111827] border border-white/5 p-3 sm:p-4 rounded-xl">
-                  <div className="flex items-center gap-4">
-                    <span className="font-black text-xl w-6 text-center text-[#eab308] drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]">1</span>
-                    <div className="flex flex-col">
-                      <span className="font-black text-white text-sm uppercase italic tracking-wide">NIEBLOSKA TEAM</span>
-                      <span className="text-[9px] text-white/40 font-bold uppercase">{user?.username || 'SERGIO'}</span>
+                {leaderboard
+                  .sort((a, b) => b.total - a.total)
+                  .map((r, idx) => (
+                    <div key={r.id} className="flex justify-between items-center bg-[#111827] border border-white/5 p-3 sm:p-4 rounded-xl hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <span className={`font-black text-xl w-6 text-center ${
+                          idx === 0 ? 'text-[#eab308] drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]' : 'text-white/40'
+                        }`}>
+                          {idx + 1}
+                        </span>
+                        <div className="flex flex-col">
+                          <span className={`font-black text-sm uppercase italic tracking-wide ${r.isMe ? 'text-[#22c55e]' : 'text-white'}`}>
+                            {r.name}
+                          </span>
+                          <span className="text-[9px] text-white/40 font-bold uppercase">{r.username}</span>
+                        </div>
+                      </div>
+                      <span className="font-black text-[#22c55e] text-base">{r.total} PTS</span>
                     </div>
-                  </div>
-                  <span className="font-black text-[#22c55e] text-base">0 PTS</span>
-                </div>
+                  ))}
               </div>
             </div>
 
