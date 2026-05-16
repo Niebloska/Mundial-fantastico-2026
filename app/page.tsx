@@ -2894,7 +2894,7 @@ const AuthScreen = ({
             MUNDIAL<span className="text-[#22c55e]">2026</span>
           </h1>
           <p className="text-white/50 text-xs font-bold uppercase tracking-widest">
-            Eurocopa Fantástica Edition
+            Mundial Fantástico Edition
           </p>
         </div>
 
@@ -3137,60 +3137,6 @@ export default function MundialApp() {
     
   const [showSectionHelp, setShowSectionHelp] = useState<string | null>(null);
   const [session, setSession] = useState<any>(null);
-
-  useEffect(() => {
-    const fetchUserProfile = async (sessionUser: any) => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('team_name, username, squad_data')
-        .eq('id', sessionUser.id)
-        .single();
-
-      if (data) {
-        setUser({
-          email: sessionUser.email,
-          teamName: data.team_name,
-          username: data.username,
-          id: sessionUser.id
-        });
-
-        if (data.squad_data) {
-          const { selected: s, bench: b, extras: e, captain: c } = data.squad_data;
-          if (s) setSelected(s);
-          if (b) setBench(b);
-          if (e) setExtras(e);
-          if (c) setCaptain(c);
-
-          // 📸 ¡CLICK! HACEMOS LA FOTO DE LA PLANTILLA OFICIAL
-          setSnapshotSquad({
-            selected: s || {},
-            bench: b || {},
-            extras: e || {}
-          });
-        }
-      }
-    };
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) fetchUserProfile(session.user);
-    });
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) {
-        fetchUserProfile(session.user);
-      } else {
-        setUser({ email: '', username: 'Invitado', teamName: 'MI EQUIPO', id: '' });
-        setSelected({});
-        setBench({});
-        setExtras({});
-        setCaptain(null);
-      }
-    });
-
-    return () => authListener.subscription.unsubscribe();
-  }, []);
   
   const [user, setUser] = useState<any>({
     email: '',
@@ -3348,6 +3294,90 @@ export default function MundialApp() {
   const [adminTab, setAdminTab] = useState<'partidos' | 'tesoreria' | 'puntos'>('partidos');
   const [allProfiles, setAllProfiles] = useState<any[]>([]);
 
+  useEffect(() => {
+    const fetchUserProfile = async (sessionUser: any) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('team_name, username, squad_data')
+        .eq('id', sessionUser.id)
+        .single();
+
+      if (data) {
+        setUser({
+          email: sessionUser.email,
+          teamName: data.team_name,
+          username: data.username,
+          id: sessionUser.id
+        });
+
+        if (data.squad_data) {
+          // Extraemos también "snapshot" y "snapshotMatchday" del JSON de la base de datos
+          const { 
+            selected: s, 
+            bench: b, 
+            extras: e, 
+            captain: c, 
+            snapshot: savedSnapshot, 
+            snapshotMatchday: savedMatchday 
+          } = data.squad_data;
+
+          if (s) setSelected(s);
+          if (b) setBench(b);
+          if (e) setExtras(e);
+          if (c) setCaptain(c);
+
+          // 🛡️ BÚNKER DE MERCADO: Comprobamos si la foto de la BD es de ESTA ventana
+          if (savedSnapshot && savedMatchday === activeMatchday) {
+            // Si ya existía una foto congelada para esta jornada, la respetamos (así no se resetean los cambios al pulsar F5)
+            setSnapshotSquad(savedSnapshot);
+          } else {
+            // 📸 Si no hay foto, o es de una jornada anterior (ej: era de la J3 y ahora estamos en Octavos)...
+            // ¡Hacemos una foto nueva oficial con el equipo actual!
+            const newSnapshot = {
+              selected: s || {},
+              bench: b || {},
+              extras: e || {}
+            };
+            setSnapshotSquad(newSnapshot);
+
+            // Guardamos inmediatamente esta foto en Supabase para que quede blindada en esta jornada
+            await supabase
+              .from('profiles')
+              .update({
+                squad_data: {
+                  ...data.squad_data,
+                  snapshot: newSnapshot,
+                  snapshotMatchday: activeMatchday // Vinculamos la foto a la jornada actual (ej: 'Octavos')
+                }
+              })
+              .eq('id', sessionUser.id);
+          }
+        }
+      }
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchUserProfile(session.user);
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) {
+        fetchUserProfile(session.user);
+      } else {
+        setUser({ email: '', username: 'Invitado', teamName: 'MI EQUIPO', id: '' });
+        setSelected({});
+        setBench({});
+        setExtras({});
+        setCaptain(null);
+        setSnapshotSquad(null);
+      }
+    });
+
+    return () => authListener.subscription.unsubscribe();
+  }, [activeMatchday]); // 👈 Añadimos activeMatchday aquí para que se recalcule si cambias de jornada en el panel
+
   const fetchAllProfiles = async () => {
     const { data, error } = await supabase
       .from('profiles')
@@ -3389,6 +3419,8 @@ export default function MundialApp() {
           bench,
           extras,
           captain,
+          snapshot: snapshotSquad,         // 📸 Guardamos la foto congelada para que no se borre al actualizar
+          snapshotMatchday: activeMatchday // 🏅 Dejamos grabada la jornada actual vinculada a esa foto
         },
       })
       .eq('id', session.user.id);
@@ -4140,42 +4172,66 @@ useEffect(() => {
                     </button>
                   </div>
                   
-{/* Botón Validar y Táctica */}
-<button
-  onClick={() => {
-    
-    // 2. SEGUNDA BARRERA: Validación de táctica (solo si estamos validando)
-    if (!isSquadLocked && !formationInfo.isValidTactic) {
-      return alert(formationInfo.message);
-    }
+{/* Contenedor horizontal para los botones de acción */}
+<div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => {
+                        // 2. SEGUNDA BARRERA: Validación de táctica (solo si estamos validando)
+                        if (!isSquadLocked && !formationInfo.isValidTactic) {
+                          return alert(formationInfo.message);
+                        }
 
-    const nextLockState = !isSquadLocked;
-    setIsSquadLocked(nextLockState);
+                        const nextLockState = !isSquadLocked;
+                        setIsSquadLocked(nextLockState);
 
-    if (nextLockState === true) {
-      saveSquadToSupabase();
-      
-      // 🎉 EXPLOSIÓN DE CONFETI DE VICTORIA
-      confetti({
-        particleCount: 150,
-        spread: 80,
-        origin: { y: 0.6 },
-        colors: ['#22c55e', '#fbbf24', '#ffffff'] // Verde neón, dorado y blanco
-      });
-    }
+                        if (nextLockState === true) {
+                          saveSquadToSupabase();
+                          
+                          // 🎉 EXPLOSIÓN DE CONFETI DE VICTORIA
+                          confetti({
+                            particleCount: 150,
+                            spread: 80,
+                            origin: { y: 0.6 },
+                            colors: ['#22c55e', '#fbbf24', '#ffffff'] // Verde neón, dorado y blanco
+                          });
+                        }
 
-    setActiveSlot(null);
-  }}
-  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg border-2 flex items-center justify-center gap-2 ${
-    isSquadLocked
-      ? 'bg-yellow-500 text-black border-yellow-400 hover:bg-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.3)]'
-      : formationInfo.isValidTactic
-      ? 'bg-[#22c55e] text-black border-[#22c55e] hover:brightness-110 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
-      : 'bg-gray-600 text-white/50 border-white/10 cursor-not-allowed'
-  }`}
->
-  {isSquadLocked ? '🔓 Editar Plantilla' : '🔒 Validar Plantilla'}
-</button>
+                        setActiveSlot(null);
+                      }}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg border-2 flex items-center justify-center gap-2 ${
+                        isSquadLocked
+                          ? 'bg-yellow-500 text-black border-yellow-400 hover:bg-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.3)]'
+                          : formationInfo.isValidTactic
+                          ? 'bg-[#22c55e] text-black border-[#22c55e] hover:brightness-110 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+                          : 'bg-gray-600 text-white/50 border-white/10 cursor-not-allowed'
+                      }`}
+                    >
+                      {isSquadLocked ? '🔓 Editar Plantilla' : '🔒 Validar Plantilla'}
+                    </button>
+
+                    {/* 👇 NUEVO BOTÓN: DESHACER FICHAJES (Solo visible si está editando y ha hecho algún cambio) */}
+                    {!isSquadLocked && transfersMade > 0 && (
+                      <button
+                        onClick={() => {
+                          if (!snapshotSquad) return;
+                          if (
+                            confirm(
+                              '🔄 ¿Seguro que quieres deshacer todos tus fichajes de esta ventana y recuperar tu alineación inicial?'
+                            )
+                          ) {
+                            setSelected(snapshotSquad.selected || {});
+                            setBench(snapshotSquad.bench || {});
+                            setExtras(snapshotSquad.extras || {});
+                            setActiveSlot(null);
+                          }
+                        }}
+                        className="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all bg-red-500/10 text-red-400 border-2 border-red-500/20 hover:bg-red-500 hover:text-white shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                        title="Resetear mercado"
+                      >
+                        ↩️ Deshacer Cambios
+                      </button>
+                    )}
+                  </div>
 
                   <div
                     className={`mt-2 text-[10px] font-black uppercase tracking-tighter flex items-center gap-2 ${formationInfo.statusColor}`}
@@ -4650,8 +4706,8 @@ useEffect(() => {
                   isMe: false,
                   hasPaid: true,
                   players: [
-                    { id: 'f3', nombre: 'Donnarumma', posicion: 'POR', seleccion: 'Italia', captain: false },
-                    { id: 'f1', nombre: 'Mbappé', posicion: 'DEL', seleccion: 'Francia', captain: false },
+                    { id: 'f3', nombre: 'Donnarumma', posicion: 'POR', seleccion: 'Italia', captain: false, isActive: true },
+                    { id: 'f1', nombre: 'Mbappé', posicion: 'DEL', seleccion: 'Francia', captain: false, isActive: true },
                   ].sort((a: any, b: any) => {
                     const order: any = { POR: 1, DEF: 2, MED: 3, DEL: 4 };
                     return (order[a.posicion] || 5) - (order[b.posicion] || 5);
@@ -4664,14 +4720,38 @@ useEffect(() => {
                   total: 608,
                   isMe: true,
                   hasPaid: true,
-                  players: [
-                    ...Object.values(selected).filter(Boolean),
-                    ...Object.values(bench).filter(Boolean),
-                    ...Object.values(extras).filter(Boolean)
-                  ].sort((a: any, b: any) => {
-                    const order: any = { POR: 1, DEF: 2, MED: 3, DEL: 4 };
-                    return (order[a.posicion] || 5) - (order[b.posicion] || 5);
-                  })
+                  // 🧠 CÁLCULO INTELIGENTE DE ACTIVOS Y DESCARTES (MERCADO)
+                  players: (() => {
+                    // 1. Conseguimos los jugadores que están en el equipo AHORA MISMO
+                    const activePlayers = [
+                      ...Object.values(selected || {}),
+                      ...Object.values(bench || {}),
+                      ...Object.values(extras || {})
+                    ].filter(Boolean).map((p: any) => ({ ...p, isActive: true }));
+
+                    // 2. Extraemos los jugadores que había en la FOTO ORIGINAL
+                    const snapshotPlayers = snapshotSquad ? [
+                      ...Object.values(snapshotSquad.selected || {}),
+                      ...Object.values(snapshotSquad.bench || {}),
+                      ...Object.values(snapshotSquad.extras || {})
+                    ].filter(Boolean) : [];
+
+                    // 3. CAZAMOS LOS FANTASMAS: ¿Qué jugador estaba en la foto pero ya no está en el equipo? -> VENDIDO
+                    const soldPlayers = snapshotPlayers
+                      .filter((sp: any) => !activePlayers.some((ap: any) => ap.id === sp.id))
+                      .map((p: any) => ({ ...p, isActive: false })); // Los marcamos como inactivos
+
+                    // 4. JUNTAMOS TODO Y ORDENAMOS (Primero activos, luego vendidos. Y dentro de cada grupo, por posición)
+                    return [...activePlayers, ...soldPlayers].sort((a: any, b: any) => {
+                      // Criterio 1: Activos arriba, descartes abajo
+                      if (a.isActive && !b.isActive) return -1;
+                      if (!a.isActive && b.isActive) return 1;
+
+                      // Criterio 2: Orden clásico por posición (POR -> DEF -> MED -> DEL)
+                      const positionOrder: any = { POR: 1, DEF: 2, MED: 3, DEL: 4 };
+                      return (positionOrder[a.posicion] || 5) - (positionOrder[b.posicion] || 5);
+                    });
+                  })()
                 }
               ]
               // LA MAGIA: ORDENAMOS POR PUNTOS Y ASIGNAMOS POSICIÓN
@@ -4750,6 +4830,7 @@ useEffect(() => {
                           {u.players.length > 0 ? (
                             u.players.map((p: any) => {
                               const isCap = u.isMe ? captain === p.id : p.captain;
+                              const isSold = p.isActive === false; // ¿Es un descarte?
                               
                               const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
                               const flags: any = { 'España': '🇪🇸', 'Francia': '🇫🇷', 'Inglaterra': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Italia': '🇮🇹', 'Alemania': '🇩🇪', 'Turquía': '🇹🇷', 'Eslovaquia': '🇸🇰', 'Rumanía': '🇷🇴'};
@@ -4768,25 +4849,34 @@ useEffect(() => {
                                 if (val === 'X') return <span className="text-red-500 font-black">X</span>;
                                 if (typeof val === 'number') {
                                   if (val < 0) return <span className="text-red-500 font-black">{val}</span>;
-                                  if (val > 0) return <span className="text-[#22c55e] font-black">{val}</span>;
+                                  if (val > 0) return <span className={isSold ? "text-[#22c55e]/50 font-bold" : "text-[#22c55e] font-black"}>{val}</span>;
                                   return <span className="text-white/50 font-bold">0</span>;
                                 }
                                 return val;
                               };
 
                               return (
-                                <tr key={p.id} className="hover:bg-white/5 transition-colors bg-[#0f172a]">
-                                  <td className="p-3 sticky left-0 z-10 bg-[#0f172a] shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5">
+                                <tr 
+                                  key={p.id} 
+                                  className={`transition-colors ${
+                                    isSold 
+                                      ? 'bg-black/40 opacity-30 grayscale border-dashed border-white/5 text-white/40' 
+                                      : 'hover:bg-white/5 bg-[#0f172a]'
+                                  }`}
+                                >
+                                  <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/40' : 'bg-[#0f172a]'}`}>
                                     <div className="flex items-center gap-4">
-                                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${posColors[p.posicion] || 'bg-gray-500 text-white'}`}>{p.posicion}</span>
+                                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${isSold ? 'bg-white/10 text-white/40' : (posColors[p.posicion] || 'bg-gray-500 text-white')}`}>{p.posicion}</span>
                                       <span className="text-sm w-6 text-center" title={p.seleccion}>{playerFlag}</span>
-                                      <span className="font-bold text-white/90 truncate max-w-[120px]">
-                                        {p.nombre} {isCap && <span className="text-[#eab308] ml-1 drop-shadow-[0_0_2px_rgba(234,179,8,0.8)] text-xs bg-black/50 px-1 rounded">C</span>}
+                                      <span className={`font-bold truncate max-w-[120px] ${isSold ? 'line-through text-white/30' : 'text-white/90'}`}>
+                                        {p.nombre} 
+                                        {isCap && !isSold && <span className="text-[#eab308] ml-1 drop-shadow-[0_0_2px_rgba(234,179,8,0.8)] text-xs bg-black/50 px-1 rounded">C</span>}
+                                        {isSold && <span className="text-red-400/80 text-[8px] font-black bg-red-950/40 border border-red-500/20 px-1 rounded ml-1.5 uppercase tracking-tighter">Baja</span>}
                                       </span>
                                     </div>
                                   </td>
                                   
-                                  <td className="p-3 text-center font-black text-white bg-[#3b82f6]/10 border-r border-white/5 text-sm">{ptTot}</td>
+                                  <td className={`p-3 text-center font-black border-r border-white/5 text-sm ${isSold ? 'text-white/30 bg-white/5' : 'text-white bg-[#3b82f6]/10'}`}>{ptTot}</td>
                                   <td className="p-3 text-center">{renderScore(ptJ1)}</td>
                                   <td className="p-3 text-center">{renderScore(ptJ2)}</td>
                                   <td className="p-3 text-center">{renderScore('-')}</td>
