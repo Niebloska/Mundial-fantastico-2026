@@ -4522,276 +4522,255 @@ useEffect(() => {
   )}
         {view === 'calendar' && <CalendarView />}
         {view === 'lineups' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
-            
-            {/* 1. SELECTOR DE JORNADA */}
-            <nav className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide justify-start sm:justify-center">
-              {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => {
-                const isEditable = countdown.targetId === j;
-                return (
-                  <button
-                    key={j}
-                    onClick={() => setLineupsMatchday(j)}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2 flex items-center gap-1.5 whitespace-nowrap ${
-                      lineupsMatchday === j 
-                      ? 'bg-[#22c55e] border-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
-                      : 'bg-white/5 border-transparent text-white/40 hover:bg-white/10'
-                    }`}
-                  >
-                    {j} {isEditable && <span className="text-xs animate-bounce">🔓</span>}
-                  </button>
-                );
-              })}
-            </nav>
+          (() => {
+            // 🧠 SANEAMIENTO DE ALINEACIONES: Construimos los puntos reales para la jornada seleccionada
+            // Ignoramos el objeto de pruebas global y creamos un mapa limpio en tiempo real
+            const currentLineupsPoints = (() => {
+              const map: any = {};
+              [
+                ...Object.values(selected || {}),
+                ...Object.values(bench || {}),
+                ...Object.values(extras || {})
+              ].filter(Boolean).forEach((p: any) => {
+                // Buscamos los puntos reales de la jornada seleccionada en el menú (ej: 'J1')
+                let pts = Number(p.puntos?.[lineupsMatchday]) || 0;
+                
+                // Si este jugador es el capitán y está en el 11 titular (campo), sus puntos valen doble
+                const isInTitular = Object.values(selected || {}).some((ap: any) => ap && ap.id === p.id);
+                if (p.id === captain && isInTitular) {
+                  pts = pts * 2;
+                }
+                map[p.id] = pts;
+              });
+              return map;
+            })();
 
-            {/* 2. EL TERRENO DE JUEGO */}
-            <div className="bg-[#1a2b1a] border-4 border-[#22c55e]/30 rounded-[2.5rem] p-4 sm:p-6 shadow-2xl relative overflow-hidden">
-              <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/grass.png')]"></div>
-              
-              <div className="relative z-10 flex justify-between items-center mb-6 bg-black/40 p-3 sm:p-4 rounded-2xl border border-white/10">
-                 <div>
-                   <h3 className="text-white font-black italic uppercase text-lg">Alineación {lineupsMatchday}</h3>
-                   <p className={`text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 mt-1 ${
-                     countdown.targetId === lineupsMatchday ? 'text-[#22c55e]' : 'text-red-500'
-                   }`}>
-                     <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
-                     {countdown.targetId === lineupsMatchday ? 'Edición Abierta' : 'Bloqueado (Solo lectura)'}
-                   </p>
-                 </div>
-                 
-                 {countdown.targetId === lineupsMatchday ? (
-                    <button 
-                      className="bg-[#22c55e] text-black px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:scale-105 transition-transform"
-                      onClick={() => {
-                        alert(`¡Alineación para la ${lineupsMatchday} guardada con éxito!`);
+            return (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
+                
+                {/* 1. SELECTOR DE JORNADA */}
+                <nav className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide justify-start sm:justify-center">
+                  {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => {
+                    const isEditable = countdown.targetId === j;
+                    return (
+                      <button
+                        key={j}
+                        onClick={() => setLineupsMatchday(j)}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2 flex items-center gap-1.5 whitespace-nowrap ${
+                          lineupsMatchday === j 
+                          ? 'bg-[#22c55e] border-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
+                          : 'bg-white/5 border-transparent text-white/40 hover:bg-white/10'
+                        }`}
+                      >
+                        {j} {isEditable && <span className="text-xs animate-bounce">🔓</span>}
+                      </button>
+                    );
+                  })}
+                </nav>
+
+                {/* 2. EL TERRENO DE JUEGO */}
+                <div className="bg-[#1a2b1a] border-4 border-[#22c55e]/30 rounded-[2.5rem] p-4 sm:p-6 shadow-2xl relative overflow-hidden">
+                  <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/grass.png')]"></div>
+                  
+                  <div className="relative z-10 flex justify-between items-center mb-6 bg-black/40 p-3 sm:p-4 rounded-2xl border border-white/10">
+                     <div>
+                       <h3 className="text-white font-black italic uppercase text-lg">Alineación {lineupsMatchday}</h3>
+                       <p className={`text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 mt-1 ${
+                         countdown.targetId === lineupsMatchday ? 'text-[#22c55e]' : 'text-red-500'
+                       }`}>
+                         <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+                         {countdown.targetId === lineupsMatchday ? 'Edición Abierta' : 'Bloqueado (Solo lectura)'}
+                       </p>
+                     </div>
+                     
+                     {countdown.targetId === lineupsMatchday ? (
+                        <button 
+                          className="bg-[#22c55e] text-black px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:scale-105 transition-transform"
+                          onClick={() => {
+                            alert(`¡Alineación para la ${lineupsMatchday} guardada con éxito!`);
+                          }}
+                        >
+                          Confirmar 11
+                        </button>
+                     ) : (
+                        <div className="bg-white/5 border border-white/10 text-white/40 px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase flex items-center gap-2 cursor-not-allowed">
+                          <span>🔒 Cerrado</span>
+                        </div>
+                     )}
+                  </div>
+
+                  <div className="relative z-10">
+                    <Field
+                      selected={selected}
+                      step={2}
+                      evaluatedPlayers={currentLineupsPoints} // 👈 Conectado al inyector real y limpio
+                      canInteractField={countdown.targetId === lineupsMatchday}
+                      activeSlot={activeSlot}
+                      setActiveSlot={setActiveSlot}
+                      captain={captain}
+                      setCaptain={(id: any) => {
+                        if (countdown.targetId === lineupsMatchday) setCaptain(id);
                       }}
-                    >
-                      Confirmar 11
-                    </button>
-                 ) : (
-                    <div className="bg-white/5 border border-white/10 text-white/40 px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase flex items-center gap-2 cursor-not-allowed">
-                      <span>🔒 Cerrado</span>
+                    />
+                  </div>
+
+                  {/* MENSAJE DE AVISO SUPLENTES */}
+                  <div className="relative z-10 mt-2 mb-6 bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+                    <p className="text-[10px] sm:text-xs font-black text-blue-400 uppercase text-center leading-relaxed">
+                      ⚠️ Los puntos de los suplentes, aunque se muestren aquí, no serán efectivos hasta cerrar la jornada.
+                    </p>
+                  </div>
+
+                  {/* 3. BANQUILLO Y GRADA EN ALINEACIONES */}
+                  <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                    <div className="bg-black/40 border border-white/10 rounded-3xl p-4">
+                      <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Banquillo Oficial</h3>
+                      <div className="grid grid-cols-2 gap-2">
+                        {['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].map((id) => (
+                          <BenchCard
+                            key={id}
+                            id={id}
+                            player={bench[id]}
+                            evaluatedPlayers={currentLineupsPoints} // 👈 Conectado al inyector real y limpio
+                            isActive={activeSlot?.id === id}
+                            onClick={() => {
+                              if (countdown.targetId === lineupsMatchday) {
+                                setActiveSlot({ id, type: 'bench', pos: bench[id]?.posicion });
+                              }
+                            }}
+                          />
+                        ))}
+                      </div>
                     </div>
-                 )}
-              </div>
-
-              <div className="relative z-10">
-                <Field
-                  selected={selected}
-                  step={2}
-                  evaluatedPlayers={evaluatedPlayers}
-                  canInteractField={countdown.targetId === lineupsMatchday}
-                  activeSlot={activeSlot}
-                  setActiveSlot={setActiveSlot}
-                  captain={captain}
-                  setCaptain={(id: any) => {
-                    if (countdown.targetId === lineupsMatchday) setCaptain(id);
-                  }}
-                />
-              </div>
-
-              {/* MENSAJE DE AVISO SUPLENTES */}
-              <div className="relative z-10 mt-2 mb-6 bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
-                <p className="text-[10px] sm:text-xs font-black text-blue-400 uppercase text-center leading-relaxed">
-                  ⚠️ Los puntos de los suplentes, aunque se muestren aquí, no serán efectivos hasta cerrar la jornada.
-                </p>
-              </div>
-
-              {/* 3. BANQUILLO Y GRADA EN ALINEACIONES */}
-              <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                <div className="bg-black/40 border border-white/10 rounded-3xl p-4">
-                  <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Banquillo Oficial</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].map((id) => (
-                      <BenchCard
-                        key={id}
-                        id={id}
-                        player={bench[id]}
-                        evaluatedPlayers={evaluatedPlayers}
-                        isActive={activeSlot?.id === id}
-                        onClick={() => {
-                          if (countdown.targetId === lineupsMatchday) {
-                            setActiveSlot({ id, type: 'bench', pos: bench[id]?.posicion });
-                          }
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <div className="bg-black/40 border border-white/10 rounded-3xl p-4">
-                  <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Grada (No Convocados)</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['NC1', 'NC2', 'NC3', 'NC4'].map((id) => (
-                      <BenchCard
-                        key={id}
-                        id={id}
-                        player={extras[id]}
-                        evaluatedPlayers={evaluatedPlayers}
-                        isActive={activeSlot?.id === id}
-                        onClick={() => {
-                          if (countdown.targetId === lineupsMatchday) {
-                            setActiveSlot({ id, type: 'extras', pos: extras[id]?.posicion });
-                          }
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="relative z-10 mt-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4">
-                <p className="text-[9px] sm:text-[10px] font-black text-yellow-500 uppercase text-center leading-relaxed">
-                  ⚠️ Toca a un jugador para sustituirlo por otro de su misma posición. El capitán (C) suma doble.
-                </p>
-              </div>
-            </div>
-
-            {/* 4. MODAL DE SUSTITUCIONES FLOTANTE (Exclusivo para Alineaciones) */}
-            {activeSlot && (
-              <div className="fixed inset-0 z-[80] bg-[#05080f]/95 backdrop-blur-md p-4 flex flex-col animate-in zoom-in-95 duration-200">
-                <div className="max-w-md w-full mx-auto flex flex-col h-full pt-16 pb-20">
-                  <div className="flex justify-between items-center mb-4 bg-[#1a0b0b] p-4 rounded-2xl border-2 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.15)]">
-                    <div>
-                      <h3 className="text-xl font-black italic text-blue-500 uppercase">Sustitución</h3>
-                      <p className="text-xs text-white/60 font-bold uppercase">
-                        Posición requerida: <span className="text-white">{activeSlot.pos || 'Cualquiera'}</span>
-                      </p>
+                    <div className="bg-black/40 border border-white/10 rounded-3xl p-4">
+                      <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Grada (No Convocados)</h3>
+                      <div className="grid grid-cols-2 gap-2">
+                        {['NC1', 'NC2', 'NC3', 'NC4'].map((id) => (
+                          <BenchCard
+                            key={id}
+                            id={id}
+                            player={extras[id]}
+                            evaluatedPlayers={currentLineupsPoints} // 👈 Conectado al inyector real y limpio
+                            isActive={activeSlot?.id === id}
+                            onClick={() => {
+                              if (countdown.targetId === lineupsMatchday) {
+                                setActiveSlot({ id, type: 'extras', pos: extras[id]?.posicion });
+                              }
+                            }}
+                          />
+                        ))}
+                      </div>
                     </div>
-                    <button onClick={() => setActiveSlot(null)} className="bg-white/10 text-white border border-white/20 w-10 h-10 rounded-xl flex items-center justify-center font-black text-xl hover:bg-white hover:text-black transition-all active:scale-95">✕</button>
                   </div>
-
-                  {/* LLAMADA A LA FUNCIÓN LIMPIA AQUÍ */}
-                  <div className="flex-1 overflow-y-auto space-y-2 pb-4 scrollbar-hide">
-                    {renderSubstitutionOptions()}
+                  
+                  <div className="relative z-10 mt-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4">
+                    <p className="text-[9px] sm:text-[10px] font-black text-yellow-500 uppercase text-center leading-relaxed">
+                      ⚠️ Toca a un jugador para sustituirlo por otro de su misma posición. El capitán (C) suma doble.
+                    </p>
                   </div>
                 </div>
+
+                {/* 4. MODAL DE SUSTITUCIONES FLOTANTE (Exclusivo para Alineaciones) */}
+                {activeSlot && (
+                  <div className="fixed inset-0 z-[80] bg-[#05080f]/95 backdrop-blur-md p-4 flex flex-col animate-in zoom-in-95 duration-200">
+                    <div className="max-w-md w-full mx-auto flex flex-col h-full pt-16 pb-20">
+                      <div className="flex justify-between items-center mb-4 bg-[#1a0b0b] p-4 rounded-2xl border-2 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.15)]">
+                        <div>
+                          <h3 className="text-xl font-black italic text-blue-500 uppercase">Sustitución</h3>
+                          <p className="text-xs text-white/60 font-bold uppercase">
+                            Posición requerida: <span className="text-white">{activeSlot.pos || 'Cualquiera'}</span>
+                          </p>
+                        </div>
+                        <button onClick={() => setActiveSlot(null)} className="bg-white/10 text-white border border-white/20 w-10 h-10 rounded-xl flex items-center justify-center font-black text-xl hover:bg-white hover:text-black transition-all active:scale-95">✕</button>
+                      </div>
+
+                      {/* LLAMADA A LA FUNCIÓN LIMPIA AQUÍ */}
+                      <div className="flex-1 overflow-y-auto space-y-2 pb-4 scrollbar-hide">
+                        {renderSubstitutionOptions()}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })()
         )}
         {view === 'scores' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto space-y-6">
             
-            {/* NUEVA CABECERA GENERAL */}
+            {/* CABECERA GENERAL */}
             <h2 className="text-2xl sm:text-3xl font-black italic text-[#eab308] uppercase flex items-center gap-2 mb-2">
               🏆 CLASIFICACIÓN GENERAL
             </h2>
 
-            {/* 1. ACORDEÓN DE USUARIOS HUMANOS (Ordenado por Puntos Automáticamente) */}
+            {/* 1. ACORDEÓN DE USUARIOS (Limpio para el torneo) */}
             <div className="space-y-3">
-              {[
-                {
-                  id: 'rival3',
-                  name: 'SHEARER IS BACK',
-                  username: 'KATDELO',
-                  total: 654,
-                  isMe: false,
-                  hasPaid: true,
-                  players: []
-                },
-                {
-                  id: 'rival2',
-                  name: 'MINABO DE KIEV',
-                  username: 'PITOCLES',
-                  total: 631,
-                  isMe: false,
-                  hasPaid: true,
-                  players: []
-                },
-                {
-                  id: 'rival1',
-                  name: 'ZICOTEAM',
-                  username: 'ZICO67',
-                  total: 612,
-                  isMe: false,
-                  hasPaid: true,
-                  players: [
-                    { id: 'f3', nombre: 'Donnarumma', posicion: 'POR', seleccion: 'Italia', captain: false, isActive: true },
-                    { id: 'f1', nombre: 'Mbappé', posicion: 'DEL', seleccion: 'Francia', captain: false, isActive: true },
-                  ].sort((a: any, b: any) => {
-                    const order: any = { POR: 1, DEF: 2, MED: 3, DEL: 4 };
-                    return (order[a.posicion] || 5) - (order[b.posicion] || 5);
-                  })
-                },
-                {
-                  id: 'me',
-                  name: 'NIEBLOSKA TEAM',
-                  username: user?.username || 'SERGIO',
-                  total: 608,
-                  isMe: true,
-                  hasPaid: true,
-                  // 🧠 CÁLCULO INTELIGENTE DE ACTIVOS Y DESCARTES (MERCADO)
-                  players: (() => {
-                    // 1. Conseguimos los jugadores que están en el equipo AHORA MISMO
-                    const activePlayers = [
-                      ...Object.values(selected || {}),
-                      ...Object.values(bench || {}),
-                      ...Object.values(extras || {})
-                    ].filter(Boolean).map((p: any) => ({ ...p, isActive: true }));
+              {(() => {
+                // 🧠 OBTENEMOS LAS PLANTILLAS DEL USUARIO (ACTIVOS + DESCARTES)
+                const activePlayers = [
+                  ...Object.values(selected || {}),
+                  ...Object.values(bench || {}),
+                  ...Object.values(extras || {})
+                ].filter(Boolean).map((p: any) => ({ ...p, isActive: true }));
 
-                    // 2. Extraemos los jugadores que había en la FOTO ORIGINAL
-                    const snapshotPlayers = snapshotSquad ? [
-                      ...Object.values(snapshotSquad.selected || {}),
-                      ...Object.values(snapshotSquad.bench || {}),
-                      ...Object.values(snapshotSquad.extras || {})
-                    ].filter(Boolean) : [];
+                const snapshotPlayers = snapshotSquad ? [
+                  ...Object.values(snapshotSquad.selected || {}),
+                  ...Object.values(snapshotSquad.bench || {}),
+                  ...Object.values(snapshotSquad.extras || {})
+                ].filter(Boolean) : [];
 
-                    // 3. CAZAMOS LOS FANTASMAS: ¿Qué jugador estaba en la foto pero ya no está en el equipo? -> VENDIDO
-                    const soldPlayers = snapshotPlayers
-                      .filter((sp: any) => !activePlayers.some((ap: any) => ap.id === sp.id))
-                      .map((p: any) => ({ ...p, isActive: false })); // Los marcamos como inactivos
+                const soldPlayers = snapshotPlayers
+                  .filter((sp: any) => !activePlayers.some((ap: any) => ap.id === sp.id))
+                  .map((p: any) => ({ ...p, isActive: false }));
 
-                    // 4. JUNTAMOS TODO Y ORDENAMOS (Primero activos, luego vendidos. Y dentro de cada grupo, por posición)
-                    return [...activePlayers, ...soldPlayers].sort((a: any, b: any) => {
-                      // Criterio 1: Activos arriba, descartes abajo
-                      if (a.isActive && !b.isActive) return -1;
-                      if (!a.isActive && b.isActive) return 1;
+                const allMyPlayers = [...activePlayers, ...soldPlayers].sort((a: any, b: any) => {
+                  if (a.isActive && !b.isActive) return -1;
+                  if (!a.isActive && b.isActive) return 1;
+                  const positionOrder: any = { POR: 1, DEF: 2, MED: 3, DEL: 4 };
+                  return (positionOrder[a.posicion] || 5) - (positionOrder[b.posicion] || 5);
+                });
 
-                      // Criterio 2: Orden clásico por posición (POR -> DEF -> MED -> DEL)
-                      const positionOrder: any = { POR: 1, DEF: 2, MED: 3, DEL: 4 };
-                      return (positionOrder[a.posicion] || 5) - (positionOrder[b.posicion] || 5);
-                    });
-                  })()
-                }
-              ]
-              // LA MAGIA: ORDENAMOS POR PUNTOS Y ASIGNAMOS POSICIÓN
-              .sort((a, b) => b.total - a.total)
+                // Calcular los puntos totales REALES del usuario sumando los de sus jugadores
+                const matchdays = ['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'];
+                const myTotalPoints = allMyPlayers.reduce((sum, p) => {
+                  const playerSum = matchdays.reduce((pSum, j) => pSum + (Number(p.puntos?.[j]) || 0), 0);
+                  return sum + playerSum;
+                }, 0);
+
+                return [
+                  {
+                    id: 'me',
+                    name: 'NIEBLOSKA TEAM',
+                    username: user?.username || 'SERGIO',
+                    total: myTotalPoints,
+                    isMe: true,
+                    hasPaid: true,
+                    players: allMyPlayers
+                  }
+                ];
+              })()
               .map((u, idx) => ({ ...u, pos: idx + 1 }))
               .map((u) => (
                 <details 
                   key={u.id} 
-                  className={`group border rounded-2xl overflow-hidden transition-all relative ${
-                    u.pos === 1 ? 'border-[#eab308] shadow-[0_0_15px_rgba(234,179,8,0.15)] bg-[#1a1c23]' :
-                    u.isMe ? 'border-[#22c55e] border-2 shadow-[0_0_15px_rgba(34,197,94,0.15)] bg-[#1a2b1a]' : 
-                    'border-white/10 hover:border-white/20 bg-[#0f172a]'
-                  }`}
+                  className="group border-2 border-[#22c55e] shadow-[0_0_15px_rgba(34,197,94,0.15)] bg-[#1a2b1a] rounded-2xl overflow-hidden transition-all relative"
                   open={u.isMe}
                 >
-                  <summary className={`flex justify-between items-center p-3 sm:p-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden ${u.pos === 1 ? 'bg-[#1a1c23]' : 'bg-[#0f172a]'}`}>
+                  <summary className="flex justify-between items-center p-3 sm:p-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden bg-[#0f172a]">
                     
                     <div className="flex items-center gap-4 sm:gap-6">
-                      {/* POSICIÓN ORO, PLATA, BRONCE */}
-                      <span className={`font-black italic text-3xl sm:text-4xl w-10 text-center ${
-                        u.pos === 1 ? 'text-[#eab308] drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]' :
-                        u.pos === 2 ? 'text-gray-300 drop-shadow-[0_0_8px_rgba(209,213,219,0.5)]' :
-                        u.pos === 3 ? 'text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.5)]' :
-                        'text-white/20'
-                      }`}>
+                      <span className="font-black italic text-3xl sm:text-4xl w-10 text-center text-[#eab308] drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]">
                         #{u.pos}
                       </span>
 
-                      {/* DATOS DEL EQUIPO */}
                       <div className="flex flex-col">
-                        <h3 className={`font-black italic uppercase text-base sm:text-lg tracking-wider ${
-                          u.pos === 1 ? 'text-[#eab308]' : u.isMe ? 'text-[#22c55e]' : 'text-white'
-                        }`}>
+                        <h3 className="font-black italic uppercase text-base sm:text-lg tracking-wider text-[#22c55e]">
                           {u.name}
                         </h3>
                         <div className="flex items-center gap-2 mt-0.5">
                           <p className="text-[9px] sm:text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1">
                             <span>👤</span> {u.username}
                           </p>
-                          {/* MONEDA DE 5€ */}
                           {u.hasPaid && (
                             <span className="bg-[#eab308] text-black text-[9px] font-black rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
                               5€
@@ -4802,16 +4781,14 @@ useEffect(() => {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <div className="flex flex-col items-end">
-                        <span className={`font-black text-xl sm:text-2xl leading-none ${u.isMe ? 'text-[#22c55e]' : 'text-[#38bdf8]'}`}>
-                          {u.total} <span className="text-sm">PTS</span>
-                        </span>
-                      </div>
+                      <span className="font-black text-xl sm:text-2xl leading-none text-[#22c55e]">
+                        {u.total} <span className="text-sm">PTS</span>
+                      </span>
                       <span className="text-sm group-open:rotate-180 transition-transform duration-300 text-white/40">▼</span>
                     </div>
                   </summary>
                   
-                  {/* TABLA DE JUGADORES Y JORNADAS */}
+                  {/* TABLA DE JUGADORES */}
                   <div className="border-t border-white/5 bg-[#0a101f]">
                     <div className="overflow-x-auto scrollbar-hide">
                       <table className="w-full text-left text-xs whitespace-nowrap min-w-[700px]">
@@ -4830,26 +4807,23 @@ useEffect(() => {
                           {u.players.length > 0 ? (
                             u.players.map((p: any) => {
                               const isCap = u.isMe ? captain === p.id : p.captain;
-                              const isSold = p.isActive === false; // ¿Es un descarte?
+                              const isSold = p.isActive === false;
                               
                               const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
-                              const flags: any = { 'España': '🇪🇸', 'Francia': '🇫🇷', 'Inglaterra': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Italia': '🇮🇹', 'Alemania': '🇩🇪', 'Turquía': '🇹🇷', 'Eslovaquia': '🇸🇰', 'Rumanía': '🇷🇴'};
+                              const flags: any = { 'España': '🇪🇸', 'Francia': '🇫🇷', 'Inglaterra': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Italia': '🇮🇹', 'Alemania': '🇩🇪', 'México': '🇲🇽', 'Sudáfrica': '🇿🇦' };
                               const playerFlag = flags[p.seleccion] || '🏳️';
                               
-                              const nameLen = p.nombre.length;
-                              const isNotCalled = Math.random() > 0.8; 
-                              const ptJ1 = isCap ? 22 : (isNotCalled ? 'X' : nameLen + 5); 
-                              const ptJ2 = isNotCalled ? 'X' : (nameLen % 2 === 0 ? '-' : nameLen); 
-                              
-                              const getNum = (val: any) => typeof val === 'number' ? val : 0;
-                              const ptTot = getNum(ptJ1) + getNum(ptJ2);
+                              // Calcular total real de este jugador concreto
+                              const matchdays = ['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'];
+                              const ptTot = matchdays.reduce((sum, j) => sum + (Number(p.puntos?.[j]) || 0), 0);
 
                               const renderScore = (val: any) => {
-                                if (val === '-') return <span className="text-white/20 font-bold">-</span>;
+                                if (val === undefined || val === null || val === '-') return <span className="text-white/20 font-bold">-</span>;
                                 if (val === 'X') return <span className="text-red-500 font-black">X</span>;
-                                if (typeof val === 'number') {
-                                  if (val < 0) return <span className="text-red-500 font-black">{val}</span>;
-                                  if (val > 0) return <span className={isSold ? "text-[#22c55e]/50 font-bold" : "text-[#22c55e] font-black"}>{val}</span>;
+                                const num = Number(val);
+                                if (!isNaN(num)) {
+                                  if (num < 0) return <span className="text-red-500 font-black">{num}</span>;
+                                  if (num > 0) return <span className={isSold ? "text-[#22c55e]/50 font-bold" : "text-[#22c55e] font-black"}>{num}</span>;
                                   return <span className="text-white/50 font-bold">0</span>;
                                 }
                                 return val;
@@ -4877,18 +4851,14 @@ useEffect(() => {
                                   </td>
                                   
                                   <td className={`p-3 text-center font-black border-r border-white/5 text-sm ${isSold ? 'text-white/30 bg-white/5' : 'text-white bg-[#3b82f6]/10'}`}>{ptTot}</td>
-                                  <td className="p-3 text-center">{renderScore(ptJ1)}</td>
-                                  <td className="p-3 text-center">{renderScore(ptJ2)}</td>
-                                  <td className="p-3 text-center">{renderScore('-')}</td>
-                                  <td className="p-3 text-center">{renderScore('-')}</td>
-                                  <td className="p-3 text-center">{renderScore('-')}</td>
-                                  <td className="p-3 text-center">{renderScore('-')}</td>
-                                  <td className="p-3 text-center">{renderScore('-')}</td>
+                                  {matchdays.map(j => (
+                                    <td key={j} className="p-3 text-center">{renderScore(p.puntos?.[j] ?? '-')}</td>
+                                  ))}
                                 </tr>
                               )
                             })
                           ) : (
-                            <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">Sin alineación revelada.</td></tr>
+                            <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">No tienes jugadores en tu plantilla actualmente.</td></tr>
                           )}
                         </tbody>
                       </table>
@@ -4898,7 +4868,7 @@ useEffect(() => {
               ))}
             </div>
 
-            {/* 2. EVOLUCIÓN DEL RANKING */}
+            {/* 2. EVOLUCIÓN DEL RANKING (Saneado) */}
             <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-8">
                <h3 className="text-lg font-black italic text-[#eab308] uppercase mb-6 flex items-center gap-2">
                  <span>📈</span> Evolución del Ranking
@@ -4906,11 +4876,9 @@ useEffect(() => {
                <div className="relative w-full h-48 sm:h-64 rounded-xl border border-white/5 bg-[#0a101f] p-4 flex items-end">
                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full absolute inset-0 py-6 px-4 opacity-80 overflow-visible">
                     {[10, 30, 50, 70, 90].map(y => <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />)}
-                    <path d="M0,20 L20,20 L40,40 L60,10 L80,30 L100,10" fill="none" stroke="#22c55e" strokeWidth="1.5" className="drop-shadow-[0_0_3px_rgba(34,197,94,0.8)]" />
-                    <circle cx="0" cy="20" r="1.5" fill="#22c55e" /><circle cx="20" cy="20" r="1.5" fill="#22c55e" /><circle cx="40" cy="40" r="1.5" fill="#22c55e" />
-                    
-                    <path d="M0,50 L20,40 L40,20 L60,50 L80,60 L100,50" fill="none" stroke="#3b82f6" strokeWidth="1.5" className="drop-shadow-[0_0_3px_rgba(59,130,246,0.8)]" />
-                    <circle cx="0" cy="50" r="1.5" fill="#3b82f6" /><circle cx="20" cy="40" r="1.5" fill="#3b82f6" /><circle cx="40" cy="20" r="1.5" fill="#3b82f6" />
+                    {/* Línea plana en el número 1 esperando el inicio del torneo */}
+                    <path d="M0,20 L20,20 L40,20 L60,20 L80,20 L100,20" fill="none" stroke="#22c55e" strokeWidth="1.5" className="drop-shadow-[0_0_3px_rgba(34,197,94,0.8)]" />
+                    <circle cx="0" cy="20" r="1.5" fill="#22c55e" /><circle cx="20" cy="20" r="1.5" fill="#22c55e" /><circle cx="40" cy="20" r="1.5" fill="#22c55e" />
                  </svg>
                  <div className="absolute bottom-2 left-0 right-0 flex justify-between px-6 text-[8px] sm:text-[10px] text-white/40 font-bold tracking-widest uppercase">
                    <span>J1</span><span>J2</span><span>J3</span><span>OCT</span><span>CUA</span><span>SEM</span>
@@ -4921,13 +4889,10 @@ useEffect(() => {
                  <span className="text-[9px] font-bold px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white flex items-center gap-1.5">
                    <div className="w-2 h-2 rounded-full bg-[#22c55e] shadow-[0_0_5px_#22c55e]"></div> NIEBLOSKA TEAM
                  </span>
-                 <span className="text-[9px] font-bold px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white flex items-center gap-1.5">
-                   <div className="w-2 h-2 rounded-full bg-[#3b82f6] shadow-[0_0_5px_#3b82f6]"></div> ZICOTEAM
-                 </span>
                </div>
             </div>
 
-            {/* 3. CLASIFICACIÓN POR JORNADA */}
+            {/* 3. CLASIFICACIÓN POR JORNADA (Saneado) */}
             <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-6">
               <h3 className="text-lg font-black italic text-[#22c55e] uppercase mb-4 flex items-center gap-2">
                  <span>🏆</span> Clasificación por Jornada
@@ -4944,27 +4909,16 @@ useEffect(() => {
               </div>
 
               <div className="space-y-2">
-                {[
-                  { name: 'ZICOTEAM', user: 'Zico67', pts: 159, pos: 1 },
-                  { name: 'NIEBLOSKA TEAM', user: 'Sergio', pts: 147, pos: 2 },
-                  { name: 'MINABO DE KIEV', user: 'Pitocles', pts: 134, pos: 3 },
-                  { name: 'JONIMON_LVE', user: 'Jonimon7', pts: 129, pos: 4 },
-                ].map((r) => (
-                  <div key={r.pos} className="flex justify-between items-center bg-[#111827] border border-white/5 p-3 sm:p-4 rounded-xl">
-                    <div className="flex items-center gap-4">
-                      <span className={`font-black text-xl w-6 text-center ${
-                        r.pos === 1 ? 'text-[#eab308] drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]' : 'text-white/40'
-                      }`}>
-                        {r.pos}
-                      </span>
-                      <div className="flex flex-col">
-                        <span className="font-black text-white text-sm uppercase italic tracking-wide">{r.name}</span>
-                        <span className="text-[9px] text-white/40 font-bold uppercase">{r.user}</span>
-                      </div>
+                <div className="flex justify-between items-center bg-[#111827] border border-white/5 p-3 sm:p-4 rounded-xl">
+                  <div className="flex items-center gap-4">
+                    <span className="font-black text-xl w-6 text-center text-[#eab308] drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]">1</span>
+                    <div className="flex flex-col">
+                      <span className="font-black text-white text-sm uppercase italic tracking-wide">NIEBLOSKA TEAM</span>
+                      <span className="text-[9px] text-white/40 font-bold uppercase">{user?.username || 'SERGIO'}</span>
                     </div>
-                    <span className="font-black text-[#22c55e] text-base">{r.pts} PTS</span>
                   </div>
-                ))}
+                  <span className="font-black text-[#22c55e] text-base">0 PTS</span>
+                </div>
               </div>
             </div>
 
