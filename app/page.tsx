@@ -2959,7 +2959,29 @@ export default function MundialApp() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
+  // 🧠 NUEVOS ESTADOS: Control de la precarga
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
+
   const playlist = ['/audio/tema1.mp3', '/audio/tema2.mp3'];
+
+  // 🧠 NUEVO EFECTO: Simulador de carga inteligente
+  // Da tiempo al navegador a cachear el vídeo (2-3 segundos) con una barra de progreso visual
+  useEffect(() => {
+    let progress = 0;
+    const interval = setInterval(() => {
+      // Sube de forma aleatoria entre 5% y 15% cada cuarto de segundo (Efecto "carga real")
+      progress += Math.floor(Math.random() * 15) + 5;
+      if (progress >= 100) {
+        progress = 100;
+        setIsVideoLoaded(true);
+        clearInterval(interval);
+      }
+      setLoadProgress(progress);
+    }, 250);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const startApp = () => {
     setShowWelcome(false);
@@ -3749,7 +3771,6 @@ useEffect(() => {
       {showWelcome && (
         <div className="fixed inset-0 z-[200] bg-[#0a101f] flex flex-col items-center justify-center p-6 animate-in fade-in duration-500">
           
-          {/* NUEVO: LOGO MF 2026 REAL */}
           <div className="w-64 h-64 sm:w-80 sm:h-80 mb-10 flex items-center justify-center transition-all">
             <img
               src="/img/logo_mf2026.png" 
@@ -3758,13 +3779,29 @@ useEffect(() => {
             />
           </div>
 
-          <button 
-            onClick={startApp}
-            className="bg-[#22c55e] text-black text-xl font-black uppercase px-10 py-5 rounded-2xl shadow-[0_0_30px_rgba(34,197,94,0.5)] hover:scale-105 transition-transform active:scale-95"
-          >
-            {/* NUEVO TEXTO DE PORTADA */}
-            ¡VAMOS A JUGAR!
-          </button>
+          {/* LÓGICA DE PRECARGA: Barra vs Botón */}
+          {!isVideoLoaded ? (
+            <div className="flex flex-col items-center gap-3 w-64 animate-in fade-in duration-300">
+              {/* Barra base */}
+              <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden shadow-inner">
+                {/* Barra de progreso verde brillante */}
+                <div 
+                  className="h-full bg-[#22c55e] shadow-[0_0_10px_rgba(34,197,94,0.8)] transition-all duration-200 ease-out" 
+                  style={{ width: `${loadProgress}%` }}
+                ></div>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#22c55e] animate-pulse">
+                Cargando recursos... {loadProgress}%
+              </span>
+            </div>
+          ) : (
+            <button 
+              onClick={startApp}
+              className="bg-[#22c55e] text-black text-xl font-black uppercase px-10 py-5 rounded-2xl shadow-[0_0_30px_rgba(34,197,94,0.5)] hover:scale-105 transition-transform active:scale-95 animate-in zoom-in duration-300"
+            >
+              ¡VAMOS A JUGAR!
+            </button>
+          )}
         </div>
       )}
 
@@ -3777,6 +3814,7 @@ useEffect(() => {
           src="/video/intro.mp4" 
           onEnded={handleVideoEnd}
           playsInline
+          preload="auto" // 👈 CRUCIAL: Esta etiqueta fuerza al navegador a descargar el vídeo invisiblemente mientras la barra avanza
           className="w-full h-full object-cover"
         />
         
