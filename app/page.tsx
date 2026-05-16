@@ -2298,9 +2298,40 @@ const QuinielaView = ({ user }: { user: any }) => {
       </div>
     );
 
-  return (
-    <div className="pb-32 animate-in fade-in duration-500 max-w-6xl mx-auto px-4">
-      {/* LÍNEA DE RECUENTO COMPACTA */}
+    return (
+      <div className="pb-32 animate-in fade-in duration-500 max-w-6xl mx-auto px-4">
+        
+        {/* === NUEVO ENCABEZADO Y BOTÓN REUBICADO === */}
+        <div className="flex items-center justify-between gap-4 mb-6 max-w-3xl mx-auto">
+          <h1 className="text-3xl font-black italic text-[#22c55e] uppercase tracking-tighter leading-none">
+            🏆 QUINIELA
+          </h1>
+  
+          <div>
+            {isSaved ? (
+              <button
+                onClick={() => setIsSaved(false)}
+                className="px-4 py-2 bg-yellow-500 text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(234,179,8,0.4)] hover:scale-105 transition-transform border-2 border-black"
+              >
+                Editar Pronóstico
+              </button>
+            ) : (
+              <button
+                onClick={handleSave}
+                disabled={!isComplete}
+                className={`px-4 py-2 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg transition-all border-2 border-black ${
+                  isComplete
+                    ? 'bg-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:scale-105'
+                    : 'bg-gray-800 text-white/20'
+                }`}
+              >
+                {isComplete ? 'Guardar' : `Faltan ${24 - totalSelected}`}
+              </button>
+            )}
+          </div>
+        </div>
+  
+        {/* LÍNEA DE RECUENTO COMPACTA */}
       <div className="grid grid-cols-3 gap-3 mb-6 max-w-3xl mx-auto">
         <div className="bg-[#1a0b0b] border border-green-500/20 rounded-xl p-3 text-center shadow-md">
           <span className="block text-[9px] font-black text-green-500 uppercase tracking-widest mb-0.5">
@@ -2408,30 +2439,6 @@ const QuinielaView = ({ user }: { user: any }) => {
             );
           })}
         </div>
-      </div>
-
-      {/* BOTÓN DE ACCIÓN FLOTANTE (Alineado a la derecha) */}
-      <div className="fixed bottom-24 right-6 z-50 flex gap-4">
-        {isSaved ? (
-          <button
-            onClick={() => setIsSaved(false)}
-            className="px-6 py-3.5 bg-yellow-500 text-black rounded-full font-black uppercase text-xs tracking-widest shadow-[0_0_20px_rgba(234,179,8,0.4)] hover:scale-105 transition-transform border-2 border-black"
-          >
-            Editar Pronóstico
-          </button>
-        ) : (
-          <button
-            onClick={handleSave}
-            disabled={!isComplete}
-            className={`px-6 py-3.5 rounded-full font-black uppercase text-xs tracking-widest shadow-2xl transition-all border-2 border-black ${
-              isComplete
-                ? 'bg-[#22c55e] text-black shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:scale-105'
-                : 'bg-gray-800 text-white/20'
-            }`}
-          >
-            {isComplete ? 'Guardar Selección' : `Faltan ${24 - totalSelected}`}
-          </button>
-        )}
       </div>
     </div>
   );
@@ -2963,18 +2970,29 @@ export default function MundialApp() {
   };
 
   const handleVideoEnd = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+      videoRef.current.muted = true;
+    }
+    
     setIsPlayingVideo(false);
     setIsMusicPlaying(true);
+    
     if (audioRef.current) {
-      audioRef.current.play();
+      audioRef.current.muted = false; 
+      audioRef.current.play().catch(err => console.log("Audio play blocked:", err));
     }
   };
 
+  // 💥 REPARADO: Aquí está la lógica real para pausar y reproducir
   const toggleMusic = () => {
+    if (!audioRef.current) return;
+
     if (isMusicPlaying) {
-      audioRef.current?.pause();
+      audioRef.current.pause();
     } else {
-      audioRef.current?.play();
+      audioRef.current.play().catch(err => console.log("Audio play blocked:", err));
     }
     setIsMusicPlaying(!isMusicPlaying);
   };
@@ -2983,7 +3001,11 @@ export default function MundialApp() {
     const next = (currentTrack + 1) % playlist.length;
     setCurrentTrack(next);
     if (isMusicPlaying && audioRef.current) {
-      setTimeout(() => audioRef.current?.play(), 50);
+      setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.play().catch(err => console.log("Audio play blocked:", err));
+        }
+      }, 50);
     }
   };
 
@@ -3721,7 +3743,7 @@ useEffect(() => {
           {/* NUEVO: LOGO MF 2026 REAL */}
           <div className="w-64 h-64 sm:w-80 sm:h-80 mb-10 flex items-center justify-center transition-all">
             <img
-              src="/img/logo_mf2026.png" // 👈 Asegúrate de que la ruta coincide con tu archivo en /public
+              src="/img/logo_mf2026.png" 
               alt="Mundial Fantástico 2026"
               className="w-full h-full object-contain drop-shadow-[0_0_25px_rgba(34,197,94,0.4)] animate-pulse-slow"
             />
@@ -3731,7 +3753,8 @@ useEffect(() => {
             onClick={startApp}
             className="bg-[#22c55e] text-black text-xl font-black uppercase px-10 py-5 rounded-2xl shadow-[0_0_30px_rgba(34,197,94,0.5)] hover:scale-105 transition-transform active:scale-95"
           >
-            Entrar al Mundial
+            {/* NUEVO TEXTO DE PORTADA */}
+            ¡VAMOS A JUGAR!
           </button>
         </div>
       )}
