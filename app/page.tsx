@@ -1740,7 +1740,7 @@ const FixedRulesView = () => {
 // 7. COMPONENTE DE PUNTUACIÓN (MODO DIOS)
 // ==========================================
 
-const MatchAdminRow = ({ match, onSave }: any) => {
+const MatchAdminRow = ({ match, onSave, onDelete }: any) => {
   const [hScore, setHScore] = useState<number | ''>(match.home_score ?? '');
   const [aScore, setAScore] = useState<number | ''>(match.away_score ?? '');
 
@@ -1786,12 +1786,33 @@ const MatchAdminRow = ({ match, onSave }: any) => {
         </span>
       </div>
 
-      <button
-        onClick={() => onSave(match.id, hScore, aScore)}
-        className="bg-[#22c55e]/20 text-[#22c55e] p-2 rounded hover:bg-[#22c55e]/40 transition-colors"
-      >
-        💾
-      </button>
+      {/* Agrupamos los botones de acción al final de la fila */}
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => onSave(match.id, hScore, aScore)}
+          className="bg-[#22c55e]/20 text-[#22c55e] p-2 rounded hover:bg-[#22c55e]/40 transition-colors"
+          title="Guardar resultado"
+        >
+          💾
+        </button>
+
+        {/* 👇 BOTÓN DE RESETEO: Solo aparece si el partido tiene un resultado guardado en Supabase */}
+        {(match.home_score !== undefined && match.home_score !== null) && (
+          <button
+            onClick={() => {
+              if (confirm(`¿Seguro que quieres resetear el partido ${match.home} vs ${match.away}?`)) {
+                onDelete(match.id);
+                setHScore(''); // Limpia el input de goles local
+                setAScore(''); // Limpia el input de goles visitante
+              }
+            }}
+            className="bg-red-500/20 text-red-400 p-2 rounded hover:bg-red-500 hover:text-white transition-colors"
+            title="Borrar resultado"
+          >
+            🗑️
+          </button>
+        )}
+      </div>
     </div>
   );
 };
@@ -2989,6 +3010,12 @@ export default function MundialApp() {
 
   const [hasUnsavedQuiniela, setHasUnsavedQuiniela] = useState(false);
 
+  // 💸 ESTADOS DEL MERCADO DE FICHAJES
+  const [snapshotSquad, setSnapshotSquad] = useState<any>(null); // Aquí guardaremos la "Foto"
+  const [transfersMade, setTransfersMade] = useState(0); // Contador de fichajes (Máx 6)
+  const [currentBudget, setCurrentBudget] = useState(0); // Dinero disponible
+  const [quinielaPrize, setQuinielaPrize] = useState(0); // El premio obtenido en la quiniela
+
   // 🧠 NUEVO EFECTO: Simulador de carga inteligente
   // Da tiempo al navegador a cachear el vídeo (2-3 segundos) con una barra de progreso visual
   useEffect(() => {
@@ -3130,6 +3157,13 @@ export default function MundialApp() {
           if (b) setBench(b);
           if (e) setExtras(e);
           if (c) setCaptain(c);
+
+          // 📸 ¡CLICK! HACEMOS LA FOTO DE LA PLANTILLA OFICIAL
+          setSnapshotSquad({
+            selected: s || {},
+            bench: b || {},
+            extras: e || {}
+          });
         }
       }
     };
@@ -3154,7 +3188,7 @@ export default function MundialApp() {
 
     return () => authListener.subscription.unsubscribe();
   }, []);
-
+  
   const [user, setUser] = useState<any>({
     email: '',
     username: 'Invitado',
@@ -3185,6 +3219,51 @@ export default function MundialApp() {
     }
     return false;
   });
+
+  // 🧠 CEREBRO DEL MERCADO: Calcula los cambios y el presupuesto en tiempo real
+  useEffect(() => {
+    // Si aún no hay foto, la app todavía está cargando, así que no calculamos nada
+    if (!snapshotSquad) return;
+
+    // 1. Juntar todos los jugadores ACTUALES en una sola lista
+    const currentAllPlayers = [
+      ...Object.values(selected || {}),
+      ...Object.values(bench || {}),
+      ...Object.values(extras || {})
+    ].filter(Boolean) as any[];
+
+    // 2. Juntar todos los jugadores de la FOTO ORIGINAL en otra lista
+    const snapshotAllPlayers = [
+      ...Object.values(snapshotSquad.selected || {}),
+      ...Object.values(snapshotSquad.bench || {}),
+      ...Object.values(snapshotSquad.extras || {})
+    ].filter(Boolean) as any[];
+
+    // 3. CONTAR LOS FICHAJES
+    let changesCount = 0;
+    currentAllPlayers.forEach((player: any) => {
+      // Si un jugador que está ahora NO estaba en la foto, cuenta como 1 cambio
+      const wasInSnapshot = snapshotAllPlayers.find((p: any) => p.id === player.id);
+      if (!wasInSnapshot) {
+        changesCount++;
+      }
+    });
+    setTransfersMade(changesCount);
+
+    // 4. CALCULAR EL PRESUPUESTO
+    const INITIAL_BUDGET = 450; // ⚠️ Ajusta esto a los millones que dais al empezar (ej: 200)
+    
+    // Sumamos lo que cuestan todos los jugadores que tiene en plantilla AHORA MISMO
+    const totalSquadValue = currentAllPlayers.reduce((sum, player) => sum + (player.precio || 0), 0);
+    
+    // Fórmula mágica: (Presupuesto Base + Premio Quiniela) - Valor de la plantilla actual.
+    // Al restar el valor actual, el sistema automáticamente "cobra" los fichajes nuevos y "devuelve" el dinero de los jugadores que ha quitado.
+    const moneyAvailable = INITIAL_BUDGET + quinielaPrize - totalSquadValue;
+    
+    // Redondeamos a un decimal para evitar que salgan números raros como 15.300000004M
+    setCurrentBudget(Math.round(moneyAvailable * 10) / 10);
+
+  }, [selected, bench, extras, snapshotSquad, quinielaPrize]);
 
   // ==========================================
   // 🧠 AQUÍ VA EL CEREBRO MATEMÁTICO DE SUSTITUCIONES
@@ -3573,6 +3652,11 @@ useEffect(() => {
   }, [searchTerm, filterCountry, sortOption, activeSlot, filterPosition]);
 
   const handleBuyPlayer = (player: any) => {
+    // 🛡️ CONTROL CORONAVIRUS: ¿El mercado está abierto?
+    if (!isMarketOpen) {
+      return alert('❌ MERCADO CERRADO:\nNo se permiten realizar fichajes en este momento.');
+    }
+
     if (!activeSlot) return alert('⚠️ Selecciona primero un hueco vacío.');
 
     // Identificar si estamos reemplazando a alguien y cuánto vale
@@ -3603,33 +3687,53 @@ useEffect(() => {
     )
       return alert('⚠️ Este jugador ya está en tu equipo.');
 
-    // 3. VALIDACIÓN: Límite de 7 jugadores de la misma selección
-    // Excluimos al jugador actual del conteo por si lo estamos sustituyendo
+    // 3. VALIDACIÓN: Límite inteligente de jugadores de la misma selección
+    const isGroupStage = ['J1', 'J2', 'J3'].includes(activeMatchday);
+    const maxPlayersPerCountry = isGroupStage ? 7 : 8;
+
     const otherPlayers = allSquadPlayers.filter(
       (p) => p.id !== currentPlayerInSlot?.id
     );
     const playersFromSameCountry = otherPlayers.filter(
       (p) => p.seleccion === player.seleccion
     ).length;
-    if (playersFromSameCountry >= 7) {
+
+    if (playersFromSameCountry >= maxPlayersPerCountry) {
       return alert(
-        `❌ LÍMITE ALCANZADO:\nNo puedes tener más de 7 jugadores de ${player.seleccion}.`
+        `❌ LÍMITE ALCANZADO:\nNo puedes tener más de ${maxPlayersPerCountry} jugadores de ${player.seleccion} en esta fase del torneo.`
       );
     }
 
-    // 4. VALIDACIÓN: Presupuesto EFECTIVO
-    const effectiveBudget = availableBudget + currentSlotValue;
-    const newBudgetSpent = budgetSpent - currentSlotValue + player.precio;
+    // 🔄 CONTROL INTELIGENTE DE LOS 6 CAMBIOS
+    // Averiguamos si el jugador que entra es NUEVO (no estaba en la foto inicial)
+    const isIncomingPlayerNew = !snapshotSquad || ![
+      ...Object.values(snapshotSquad.selected || {}),
+      ...Object.values(snapshotSquad.bench || {}),
+      ...Object.values(snapshotSquad.extras || {})
+    ].some((p: any) => p && p.id === player.id);
 
-    if (effectiveBudget < player.precio) {
-      if (newBudgetSpent > MAX_BUDGET) {
-        alert(
-          `🚨 AVISO DE PRESUPUESTO:\nHas excedido el límite de ${MAX_BUDGET}M. Debes vender a algún jugador para poder Validar la Plantilla.`
-        );
-        // No ponemos 'return' aquí para dejarle fichar y que vea la barra roja
-      } else {
-        return alert('⚠️ Presupuesto insuficiente.');
-      }
+    // Averiguamos si el jugador que sale de ese hueco TAMBIÉN era un fichaje nuevo de esta ventana
+    const isCurrentPlayerNew = !snapshotSquad || (currentPlayerInSlot && ![
+      ...Object.values(snapshotSquad.selected || {}),
+      ...Object.values(snapshotSquad.bench || {}),
+      ...Object.values(snapshotSquad.extras || {})
+    ].some((p: any) => p && p.id === currentPlayerInSlot.id));
+
+    // Si el jugador que entra es nuevo, ya llevas 6 cambios, Y NO estás sustituyendo a otro jugador nuevo... ¡BLOQUEO!
+    if (isIncomingPlayerNew && transfersMade >= 6 && !isCurrentPlayerNew) {
+      return alert(
+        `❌ LÍMITE DE CAMBIOS:\nHas agotado tus 6 cambios permitidos para esta ventana de mercado.\nSi quieres a este jugador, primero debes deshacer algún cambio anterior.`
+      );
+    }
+
+    // 4. VALIDACIÓN: Presupuesto EFECTIVO (Usando tu nuevo currentBudget)
+    // El dinero tras la operación será: lo que tienes + lo que recuperas del vendido - lo que cuesta el nuevo
+    const futureBudget = currentBudget + currentSlotValue - player.precio;
+
+    if (futureBudget < 0) {
+      return alert(
+        `⚠️ PRESUPUESTO INSUFICIENTE:\nNo tienes dinero suficiente. Te faltarían ${Math.abs(futureBudget).toFixed(1)}M para realizar esta operación.`
+      );
     }
 
     // 5. VALIDACIÓN: Posición (Solo para titulares)
@@ -4356,7 +4460,7 @@ useEffect(() => {
     user={user} 
     setHasUnsavedQuiniela={setHasUnsavedQuiniela} // 👈 EL CABLE NUEVO
   />
-)}
+  )}
         {view === 'calendar' && <CalendarView />}
         {view === 'lineups' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
@@ -4832,7 +4936,7 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* INYECTAR MARCADORES (Tu código original) */}
+        {/* INYECTAR MARCADORES (Con función de reseteo) */}
         <div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden text-left">
           <h2 className="text-xl font-black italic text-red-500 uppercase tracking-tighter mb-4">Inyectar Marcadores</h2>
           <select value={adminScoreCountry.length > 1 ? 'A' : adminScoreCountry} onChange={(e) => setAdminScoreCountry(e.target.value)} className="w-full bg-black/50 border border-red-500/30 rounded-xl px-4 py-3 text-sm font-bold text-white mb-6 focus:border-red-500 outline-none">
@@ -4847,7 +4951,9 @@ useEffect(() => {
               const away = group.teams[order[num - 1][1]];
               const mId = `G_${group.id}_${num}`;
               return (
-                <MatchAdminRow key={mId} match={{id: mId, home, away, home_score: results[mId]?.home_score, away_score: results[mId]?.away_score}}
+                <MatchAdminRow 
+                  key={mId} 
+                  match={{id: mId, home, away, home_score: results[mId]?.home_score, away_score: results[mId]?.away_score}}
                   onSave={async (id: string, hs: number, as: number) => {
                     const { error } = await supabase.from('match_results').upsert({ match_id: id, group_id: group.id, home_score: hs, away_score: as });
                     if (!error) {
@@ -4857,12 +4963,29 @@ useEffect(() => {
                       setResults(map);
                     }
                   }}
+                  // 👇 NUEVA PROP: FUNCIÓN PARA BORRAR EL PARTIDO EN SUPABASE
+                  onDelete={async (id: string) => {
+                    const { error } = await supabase
+                      .from('match_results')
+                      .delete()
+                      .eq('match_id', id);
+
+                    if (!error) {
+                      // Volvemos a pedir los datos actualizados a la nube para limpiar la interfaz
+                      const { data } = await supabase.from('match_results').select('*');
+                      const map: any = {};
+                      data?.forEach((r) => (map[r.match_id] = r));
+                      setResults(map);
+                    } else {
+                      alert('Error al eliminar el marcador: ' + error.message);
+                    }
+                  }}
                 />
               );
             })}
           </div>
         </div>
-      </div>
+        </div>
     )}
 
     {/* ==========================================
@@ -4929,7 +5052,7 @@ useEffect(() => {
     )}
   </div>
 )}
-      </main>
+</main>
 
       {/* WIDGET RELOJ MAESTRO / CUENTA ATRÁS */}
       {!countdown.expired && (
