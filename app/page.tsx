@@ -3175,8 +3175,9 @@ export default function MundialApp() {
 
   // 🧠 CEREBRO DEL MERCADO: Calcula los cambios y el presupuesto en tiempo real
   useEffect(() => {
-    // Si aún no hay foto, la app todavía está cargando, así que no calculamos nada
-    if (!snapshotSquad) return;
+    // 🛡️ CONTROL DE USUARIOS NUEVOS: Si no hay foto (porque es un usuario limpio sin datos), 
+    // asumimos una estructura vacía en lugar de congelar la ejecución.
+    const currentSnapshot = snapshotSquad || { selected: {}, bench: {}, extras: {} };
 
     // 1. Juntar todos los jugadores ACTUALES en una sola lista
     const currentAllPlayers = [
@@ -3187,9 +3188,9 @@ export default function MundialApp() {
 
     // 2. Juntar todos los jugadores de la FOTO ORIGINAL en otra lista
     const snapshotAllPlayers = [
-      ...Object.values(snapshotSquad.selected || {}),
-      ...Object.values(snapshotSquad.bench || {}),
-      ...Object.values(snapshotSquad.extras || {})
+      ...Object.values(currentSnapshot.selected || {}),
+      ...Object.values(currentSnapshot.bench || {}),
+      ...Object.values(currentSnapshot.extras || {})
     ].filter(Boolean) as any[];
 
     // 3. CONTAR LOS FICHAJES
@@ -3204,16 +3205,15 @@ export default function MundialApp() {
     setTransfersMade(changesCount);
 
     // 4. CALCULAR EL PRESUPUESTO
-    const INITIAL_BUDGET = 450; // ⚠️ Ajusta esto a los millones que dais al empezar (ej: 200)
+    const INITIAL_BUDGET = 450; 
     
     // Sumamos lo que cuestan todos los jugadores que tiene en plantilla AHORA MISMO
     const totalSquadValue = currentAllPlayers.reduce((sum, player) => sum + (player.precio || 0), 0);
     
     // Fórmula mágica: (Presupuesto Base + Premio Quiniela) - Valor de la plantilla actual.
-    // Al restar el valor actual, el sistema automáticamente "cobra" los fichajes nuevos y "devuelve" el dinero de los jugadores que ha quitado.
     const moneyAvailable = INITIAL_BUDGET + quinielaPrize - totalSquadValue;
     
-    // Redondeamos a un decimal para evitar que salgan números raros como 15.300000004M
+    // Redondeamos a un decimal para evitar que salgan números raros
     setCurrentBudget(Math.round(moneyAvailable * 10) / 10);
 
   }, [selected, bench, extras, snapshotSquad, quinielaPrize]);
