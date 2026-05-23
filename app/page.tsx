@@ -4856,7 +4856,14 @@ if (!isInitialSetup) {
           {adminScoreCountry !== 'SELECCIÓN' && (
             <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 scrollbar-hide">
               {ALL_PLAYERS.filter(p => p.equipo === adminScoreCountry).map((p) => (
-                <PlayerAdminRow key={p.id} p={p} savedScore={scores[p.id]} onScoreSaved={handleScoreSaved} adminMatchday={activeMatchday} isMatchdayClosed={false} />
+                <PlayerAdminRow 
+                key={`${p.nombre}_${p.equipo}`} 
+                p={p} 
+                savedScore={scores[`${p.nombre}_${p.equipo}`]} 
+                onScoreSaved={handleScoreSaved} 
+                adminMatchday={activeMatchday} 
+                isMatchdayClosed={false} 
+              />
               ))}
             </div>
           )}
