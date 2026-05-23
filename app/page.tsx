@@ -2492,9 +2492,142 @@ const QuinielaView = ({ user, setHasUnsavedQuiniela }: { user: any, setHasUnsave
   );
 };
 
+export const ALL_MATCHES = [
+  // 🟢 FASE DE GRUPOS - JORNADA 1
+  { id: 1, date: '2026-06-11T21:00:00', team1: 'México', team2: 'Sudáfrica', venue: 'Mexico City' },
+  { id: 2, date: '2026-06-12T04:00:00', team1: 'Rep. de Corea', team2: 'Checa', venue: 'Guadalajara' },
+  { id: 3, date: '2026-06-12T21:00:00', team1: 'Canadá', team2: 'Bosnia/Herzeg.', venue: 'Toronto' },
+  { id: 4, date: '2026-06-13T03:00:00', team1: 'EE.UU.', team2: 'Paraguay', venue: 'Los Angeles' },
+  { id: 8, date: '2026-06-13T21:00:00', team1: 'Qatar', team2: 'Suiza', venue: 'San Francisco Bay Area' },
+  { id: 7, date: '2026-06-14T00:00:00', team1: 'Brasil', team2: 'Marruecos', venue: 'New York/New Jersey' },
+  { id: 5, date: '2026-06-14T03:00:00', team1: 'Haiti', team2: 'Escocia', venue: 'Boston' },
+  { id: 6, date: '2026-06-14T06:00:00', team1: 'Australia', team2: 'Turquía', venue: 'Vancouver' },
+  { id: 10, date: '2026-06-14T19:00:00', team1: 'Alemania', team2: 'Curazao', venue: 'Houston' },
+  { id: 11, date: '2026-06-14T22:00:00', team1: 'Países Bajos', team2: 'Japón', venue: 'Dallas' },
+  { id: 9, date: '2026-06-15T01:00:00', team1: 'Costa de Marfil', team2: 'Ecuador', venue: 'Philadelphia' },
+  { id: 12, date: '2026-06-15T04:00:00', team1: 'Suecia', team2: 'Túnez', venue: 'Monterrey' },
+  { id: 14, date: '2026-06-15T18:00:00', team1: 'España', team2: 'Cabo Verde', venue: 'Atlanta' },
+  { id: 16, date: '2026-06-15T21:00:00', team1: 'Bélgica', team2: 'Egipto', venue: 'Seattle' },
+  { id: 13, date: '2026-06-16T00:00:00', team1: 'Arabia Saudita', team2: 'Uruguay', venue: 'Miami' },
+  { id: 15, date: '2026-06-16T03:00:00', team1: 'IR Irán', team2: 'Nueva Zelanda', venue: 'Los Angeles' },
+  { id: 17, date: '2026-06-16T21:00:00', team1: 'Francia', team2: 'Senegal', venue: 'New York/New Jersey' },
+  { id: 18, date: '2026-06-17T00:00:00', team1: 'Iraq', team2: 'Noruega', venue: 'Boston' },
+  { id: 19, date: '2026-06-17T03:00:00', team1: 'Argentina', team2: 'Argelia', venue: 'Kansas City' },
+  { id: 20, date: '2026-06-17T06:00:00', team1: 'Austria', team2: 'Jordán', venue: 'San Francisco Bay Area' },
+  { id: 23, date: '2026-06-17T19:00:00', team1: 'Portugal', team2: 'RD Congo', venue: 'Houston' },
+  { id: 22, date: '2026-06-17T22:00:00', team1: 'Inglaterra', team2: 'Croacia', venue: 'Dallas' },
+  { id: 21, date: '2026-06-18T01:00:00', team1: 'Ghana', team2: 'Panamá', venue: 'Toronto' },
+  { id: 24, date: '2026-06-18T04:00:00', team1: 'Uzbekistán', team2: 'Colombia', venue: 'Mexico City' },
+
+  // 🟡 FASE DE GRUPOS - JORNADA 2
+  { id: 25, date: '2026-06-18T18:00:00', team1: 'Checa', team2: 'Sudáfrica', venue: 'Atlanta' },
+  { id: 26, date: '2026-06-18T21:00:00', team1: 'Suiza', team2: 'Bosnia/Herzeg.', venue: 'Los Angeles' },
+  { id: 27, date: '2026-06-19T00:00:00', team1: 'Canadá', team2: 'Qatar', venue: 'Vancouver' },
+  { id: 28, date: '2026-06-19T03:00:00', team1: 'México', team2: 'Rep. de Corea', venue: 'Guadalajara' },
+  { id: 32, date: '2026-06-19T21:00:00', team1: 'EE.UU.', team2: 'Australia', venue: 'Seattle' },
+  { id: 30, date: '2026-06-20T00:00:00', team1: 'Escocia', team2: 'Marruecos', venue: 'Boston' },
+  { id: 29, date: '2026-06-20T02:30:00', team1: 'Brasil', team2: 'Haiti', venue: 'Philadelphia' },
+  { id: 31, date: '2026-06-20T05:00:00', team1: 'Turquía', team2: 'Paraguay', venue: 'San Francisco Bay Area' },
+  { id: 35, date: '2026-06-20T19:00:00', team1: 'Países Bajos', team2: 'Suecia', venue: 'Houston' },
+  { id: 33, date: '2026-06-20T22:00:00', team1: 'Alemania', team2: 'Costa de Marfil', venue: 'Toronto' },
+  { id: 34, date: '2026-06-21T02:00:00', team1: 'Ecuador', team2: 'Curazao', venue: 'Kansas City' },
+  { id: 36, date: '2026-06-21T06:00:00', team1: 'Túnez', team2: 'Japón', venue: 'Monterrey' },
+  { id: 38, date: '2026-06-21T18:00:00', team1: 'España', team2: 'Arabia Saudita', venue: 'Atlanta' },
+  { id: 39, date: '2026-06-21T21:00:00', team1: 'Bélgica', team2: 'IR Irán', venue: 'Los Angeles' },
+  { id: 37, date: '2026-06-22T00:00:00', team1: 'Uruguay', team2: 'Cabo Verde', venue: 'Miami' },
+  { id: 40, date: '2026-06-22T03:00:00', team1: 'Nueva Zelanda', team2: 'Egipto', venue: 'Vancouver' },
+  { id: 43, date: '2026-06-22T19:00:00', team1: 'Argentina', team2: 'Austria', venue: 'Dallas' },
+  { id: 42, date: '2026-06-22T23:00:00', team1: 'Francia', team2: 'Iraq', venue: 'Philadelphia' },
+  { id: 41, date: '2026-06-23T02:00:00', team1: 'Noruega', team2: 'Senegal', venue: 'New York/New Jersey' },
+  { id: 44, date: '2026-06-23T05:00:00', team1: 'Jordán', team2: 'Argelia', venue: 'San Francisco Bay Area' },
+  { id: 47, date: '2026-06-23T19:00:00', team1: 'Portugal', team2: 'Uzbekistán', venue: 'Houston' },
+  { id: 45, date: '2026-06-23T22:00:00', team1: 'Inglaterra', team2: 'Ghana', venue: 'Boston' },
+  { id: 46, date: '2026-06-24T01:00:00', team1: 'Panamá', team2: 'Croacia', venue: 'Toronto' },
+  { id: 48, date: '2026-06-24T04:00:00', team1: 'Colombia', team2: 'RD Congo', venue: 'Guadalajara' },
+
+  // 🟠 FASE DE GRUPOS - JORNADA 3
+  { id: 51, date: '2026-06-24T21:00:00', team1: 'Suiza', team2: 'Canadá', venue: 'Vancouver' },
+  { id: 52, date: '2026-06-24T21:00:00', team1: 'Bosnia/Herzeg.', team2: 'Qatar', venue: 'Seattle' },
+  { id: 49, date: '2026-06-25T00:00:00', team1: 'Escocia', team2: 'Brasil', venue: 'Miami' },
+  { id: 50, date: '2026-06-25T00:00:00', team1: 'Marruecos', team2: 'Haiti', venue: 'Atlanta' },
+  { id: 53, date: '2026-06-25T03:00:00', team1: 'Checa', team2: 'México', venue: 'Mexico City' },
+  { id: 54, date: '2026-06-25T03:00:00', team1: 'Sudáfrica', team2: 'Rep. de Corea', venue: 'Monterrey' },
+  { id: 55, date: '2026-06-25T22:00:00', team1: 'Curazao', team2: 'Costa de Marfil', venue: 'Philadelphia' },
+  { id: 56, date: '2026-06-25T22:00:00', team1: 'Ecuador', team2: 'Alemania', venue: 'New York/New Jersey' },
+  { id: 57, date: '2026-06-26T01:00:00', team1: 'Japón', team2: 'Suecia', venue: 'Dallas' },
+  { id: 58, date: '2026-06-26T01:00:00', team1: 'Túnez', team2: 'Países Bajos', venue: 'Kansas City' },
+  { id: 59, date: '2026-06-26T04:00:00', team1: 'Turquía', team2: 'EE.UU.', venue: 'Los Angeles' },
+  { id: 60, date: '2026-06-26T04:00:00', team1: 'Paraguay', team2: 'Australia', venue: 'San Francisco Bay Area' },
+  { id: 61, date: '2026-06-26T21:00:00', team1: 'Noruega', team2: 'Francia', venue: 'Boston' },
+  { id: 62, date: '2026-06-26T21:00:00', team1: 'Senegal', team2: 'Iraq', venue: 'Toronto' },
+  { id: 65, date: '2026-06-27T02:00:00', team1: 'Cabo Verde', team2: 'Arabia Saudita', venue: 'Houston' },
+  { id: 66, date: '2026-06-27T02:00:00', team1: 'Uruguay', team2: 'España', venue: 'Guadalajara' },
+  { id: 63, date: '2026-06-27T05:00:00', team1: 'Egipto', team2: 'IR Irán', venue: 'Seattle' },
+  { id: 64, date: '2026-06-27T05:00:00', team1: 'Nueva Zelanda', team2: 'Bélgica', venue: 'Vancouver' },
+  { id: 67, date: '2026-06-27T23:00:00', team1: 'Panamá', team2: 'Inglaterra', venue: 'New York/New Jersey' },
+  { id: 68, date: '2026-06-27T23:00:00', team1: 'Croacia', team2: 'Ghana', venue: 'Philadelphia' },
+  { id: 71, date: '2026-06-28T01:30:00', team1: 'Colombia', team2: 'Portugal', venue: 'Miami' },
+  { id: 72, date: '2026-06-28T01:30:00', team1: 'RD Congo', team2: 'Uzbekistán', venue: 'Atlanta' },
+  { id: 69, date: '2026-06-28T04:00:00', team1: 'Argelia', team2: 'Austria', venue: 'Kansas City' },
+  { id: 70, date: '2026-06-28T04:00:00', team1: 'Jordán', team2: 'Argentina', venue: 'Dallas' },
+
+  // 🔥 DIECISEISAVOS DE FINAL (1/16)
+  { id: 73, date: '2026-06-28T21:00:00', team1: '2A', team2: '2B', venue: 'Los Angeles' },
+  { id: 76, date: '2026-06-29T19:00:00', team1: '1C', team2: '2F', venue: 'Houston' },
+  { id: 74, date: '2026-06-29T22:30:00', team1: '1E', team2: '3-ABCDF', venue: 'Boston' },
+  { id: 75, date: '2026-06-30T03:00:00', team1: '1F', team2: '2C', venue: 'Monterrey' },
+  { id: 78, date: '2026-06-30T19:00:00', team1: '2E', team2: '2I', venue: 'Dallas' },
+  { id: 77, date: '2026-06-30T23:00:00', team1: '1I', team2: '3-CDFGH', venue: 'New York/New Jersey' },
+  { id: 79, date: '2026-07-01T03:00:00', team1: '1A', team2: '3-CEFHI', venue: 'Mexico City' },
+  { id: 80, date: '2026-07-01T18:00:00', team1: '1L', team2: '3-EHIJK', venue: 'Atlanta' },
+  { id: 82, date: '2026-07-01T22:00:00', team1: '1G', team2: '3-AEHIJ', venue: 'Seattle' },
+  { id: 81, date: '2026-07-02T02:00:00', team1: '1D', team2: '3-BEFIJ', venue: 'San Francisco Bay Area' },
+  { id: 84, date: '2026-07-02T21:00:00', team1: '1H', team2: '2J', venue: 'Los Angeles' },
+  { id: 83, date: '2026-07-03T01:00:00', team1: '2K', team2: '2L', venue: 'Toronto' },
+  { id: 85, date: '2026-07-03T05:00:00', team1: '1B', team2: '3-EFGIJ', venue: 'Vancouver' },
+  { id: 88, date: '2026-07-03T20:00:00', team1: '2D', team2: '2G', venue: 'Dallas' },
+  { id: 86, date: '2026-07-04T00:00:00', team1: '1J', team2: '2H', venue: 'Miami' },
+  { id: 87, date: '2026-07-04T03:30:00', team1: '1K', team2: '3-DEIJL', venue: 'Kansas City' },
+
+  // 🌪️ OCTAVOS DE FINAL (1/8)
+  { id: 90, date: '2026-07-04T19:00:00', team1: 'W73', team2: 'W75', venue: 'Houston' },
+  { id: 89, date: '2026-07-04T23:00:00', team1: 'W74', team2: 'W77', venue: 'Philadelphia' },
+  { id: 91, date: '2026-07-05T22:00:00', team1: 'W76', team2: 'W78', venue: 'New York/New Jersey' },
+  { id: 92, date: '2026-07-06T02:00:00', team1: 'W79', team2: 'W80', venue: 'Mexico City' },
+  { id: 93, date: '2026-07-06T21:00:00', team1: 'W83', team2: 'W84', venue: 'Dallas' },
+  { id: 94, date: '2026-07-07T02:00:00', team1: 'W81', team2: 'W82', venue: 'Seattle' },
+  { id: 95, date: '2026-07-07T18:00:00', team1: 'W86', team2: 'W88', venue: 'Atlanta' },
+  { id: 96, date: '2026-07-07T22:00:00', team1: 'W85', team2: 'W87', venue: 'Vancouver' },
+
+  // ⚔️ CUARTOS DE FINAL (1/4)
+  { id: 97, date: '2026-07-09T22:00:00', team1: 'W89', team2: 'W90', venue: 'Boston' },
+  { id: 98, date: '2026-07-10T21:00:00', team1: 'W93', team2: 'W94', venue: 'Los Angeles' },
+  { id: 99, date: '2026-07-11T23:00:00', team1: 'W91', team2: 'W92', venue: 'Miami' },
+  { id: 100, date: '2026-07-12T03:00:00', team1: 'W95', team2: 'W96', venue: 'Kansas City' },
+
+  // 🏆 SEMIFINALES
+  { id: 101, date: '2026-07-14T21:00:00', team1: 'W97', team2: 'W98', venue: 'Dallas' },
+  { id: 102, date: '2026-07-15T21:00:00', team1: 'W99', team2: 'W100', venue: 'Atlanta' },
+
+  // 🥉 TERCER PUESTO
+  { id: 103, date: '2026-07-18T23:00:00', team1: 'RU101', team2: 'RU102', venue: 'Miami' },
+
+  // 👑 GRAN FINAL
+  { id: 104, date: '2026-07-19T21:00:00', team1: 'W101', team2: 'W102', venue: 'New York/New Jersey' },
+];
+
 // ==========================================
-// 9. VISTA DE CALENDARIO, GRUPOS Y ELIMINATORIAS
+// 9. VISTA DE CALENDARIO, GRUPOS Y ELIMINATORIAS (FECHA VERDE / HORA AMARILLA)
 // ==========================================
+
+// Helper para evitar problemas con las zonas horarias del navegador
+const formatMatchDate = (isoString: string) => {
+  const [datePart, timePart] = isoString.split('T');
+  const [, month, day] = datePart.split('-');
+  const time = timePart.substring(0, 5); 
+  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  return { day: `${day} ${months[parseInt(month, 10) - 1]}`, time };
+};
 
 const CalendarView = () => {
   const [activeTab, setActiveTab] = useState<'groups' | 'knockout'>('groups');
@@ -2515,6 +2648,19 @@ const CalendarView = () => {
 
   const activeGroupData = GROUPS_2026.find((g) => g.id === activeGroup);
 
+  // Filtramos los partidos exactos de este grupo
+  const groupMatches = useMemo(() => {
+    if (!activeGroupData) return [];
+    
+    return ALL_MATCHES.filter(
+      (m) => activeGroupData.teams.includes(m.team1) && activeGroupData.teams.includes(m.team2)
+    ).map(m => {
+      const { day, time } = formatMatchDate(m.date);
+      return { ...m, day, time };
+    });
+  }, [activeGroupData]);
+
+  // Calculamos la clasificación con los partidos reales
   const standings = useMemo(() => {
     if (!activeGroupData) return [];
     let table: any = {};
@@ -2522,20 +2668,11 @@ const CalendarView = () => {
       (t) => (table[t] = { name: t, pts: 0, pj: 0, gf: 0, gc: 0, dif: 0 })
     );
 
-    [1, 2, 3, 4, 5, 6].forEach((num) => {
-      const mId = `G_${activeGroup}_${num}`;
-      const res = results[mId];
+    groupMatches.forEach((match) => {
+      const res = results[match.id];
       if (res && res.home_score !== null && res.away_score !== null) {
-        const order = [
-          [0, 1],
-          [2, 3],
-          [0, 2],
-          [3, 1],
-          [3, 0],
-          [1, 2],
-        ];
-        const homeTeam = activeGroupData.teams[order[num - 1][0]];
-        const awayTeam = activeGroupData.teams[order[num - 1][1]];
+        const homeTeam = match.team1;
+        const awayTeam = match.team2;
 
         table[homeTeam].pj++;
         table[awayTeam].pj++;
@@ -2559,69 +2696,16 @@ const CalendarView = () => {
     return Object.values(table).sort(
       (a: any, b: any) => b.pts - a.pts || b.dif - a.dif || b.gf - a.gf
     );
-  }, [activeGroup, results]);
+  }, [activeGroupData, groupMatches, results]);
 
-  const groupMatches = useMemo(() => {
-    if (!activeGroupData) return [];
-    const order = [
-      [0, 1],
-      [2, 3],
-      [0, 2],
-      [3, 1],
-      [3, 0],
-      [1, 2],
-    ];
-    // Horarios aproximados basados en el orden de partidos (+1h horario de verano aplicado)
-    const schedule = [
-      { d: '11/12 Jun', t: '21:00/04:00' },
-      { d: '12/13 Jun', t: '21:00/03:00' },
-      { d: '17/18 Jun', t: '22:00/04:00' },
-      { d: '18/19 Jun', t: '22:00/04:00' },
-      { d: '24 Jun', t: '04:00' },
-      { d: '24 Jun', t: '04:00' },
-    ];
-    return order.map((idx, i) => ({
-      id: `G_${activeGroup}_${i + 1}`,
-      home: activeGroupData.teams[idx[0]],
-      away: activeGroupData.teams[idx[1]],
-      day: schedule[i].d,
-      time: schedule[i].t,
-      label: `Jornada ${i < 2 ? 1 : i < 4 ? 2 : 3}`,
-    }));
-  }, [activeGroup]);
-
+  // Mapeo dinámico de eliminatorias con sus ID oficiales
   const knockoutRounds = [
-    {
-      title: 'Dieciseisavos',
-      pairs: [
-        ['2A', '2B'],
-        ['1A', '3º C/E/F/H/I'],
-        ['1B', '3º A/C/D/F/G'],
-        ['1C', '3º A/B/F/I/J'],
-        ['1F', '2C'],
-        ['2E', '2F'],
-        ['1D', '3º B/E/F/I/J'],
-        ['1G', '3º A/E/H/I/J'],
-      ],
-    },
-    {
-      title: 'Octavos',
-      pairs: [
-        ['W73', 'W74'],
-        ['W75', 'W76'],
-        ['W77', 'W78'],
-        ['W79', 'W80'],
-      ],
-    },
-    {
-      title: 'Cuartos',
-      pairs: [
-        ['W89', 'W90'],
-        ['W91', 'W92'],
-      ],
-    },
-    { title: 'Semis', pairs: [['W97', 'W98']] },
-    { title: 'Final', pairs: [['W101', 'W102']] },
+    { title: 'Dieciseisavos', matches: ALL_MATCHES.filter(m => m.id >= 73 && m.id <= 88) },
+    { title: 'Octavos', matches: ALL_MATCHES.filter(m => m.id >= 89 && m.id <= 96) },
+    { title: 'Cuartos', matches: ALL_MATCHES.filter(m => m.id >= 97 && m.id <= 100) },
+    { title: 'Semifinales', matches: ALL_MATCHES.filter(m => m.id >= 101 && m.id <= 102) },
+    { title: 'Tercer Puesto', matches: ALL_MATCHES.filter(m => m.id === 103) },
+    { title: 'Final', matches: ALL_MATCHES.filter(m => m.id === 104) },
   ];
 
   return (
@@ -2726,15 +2810,18 @@ const CalendarView = () => {
             {groupMatches.map((m) => (
               <div
                 key={m.id}
-                className="bg-[#0a101f] border border-white/5 rounded-xl p-4 flex items-center justify-between group hover:border-white/10 transition-all shadow-md"
+                className="bg-[#0a101f] border border-white/5 rounded-xl p-4 flex items-center justify-between group hover:border-white/10 transition-all shadow-md relative"
               >
+                <div className="absolute top-2 left-3 text-[7px] font-black text-white/20 uppercase tracking-widest">
+                  P{m.id}
+                </div>
                 <div className="flex flex-col items-center gap-1 w-1/3">
                   <img
-                    src={getFlag(m.home)}
+                    src={getFlag(m.team1)}
                     className="w-8 h-5 object-cover rounded-sm"
                   />
                   <span className="text-[10px] font-black uppercase text-center text-white/90">
-                    {m.home}
+                    {m.team1}
                   </span>
                 </div>
                 <div className="flex flex-col items-center justify-center w-1/3">
@@ -2742,22 +2829,23 @@ const CalendarView = () => {
                     {results[m.id]?.home_score ?? '-'} :{' '}
                     {results[m.id]?.away_score ?? '-'}
                   </div>
-                  <div className="flex flex-col items-center mt-1">
-                    <span className="text-[8px] text-[#22c55e] font-black uppercase">
+                  {/* 👇 CAMBIO: Día en verde, hora en amarillo */}
+                  <div className="flex flex-col items-center mt-1.5 space-y-0.5">
+                    <span className="text-[10px] text-[#22c55e] font-black uppercase tracking-wide drop-shadow-[0_0_2px_rgba(34,197,94,0.3)]">
                       {m.day}
                     </span>
-                    <span className="text-[9px] text-white/20 font-bold uppercase tracking-tighter">
+                    <span className="text-[11px] text-[#eab308] font-black uppercase tracking-tight drop-shadow-[0_0_2px_rgba(234,179,8,0.3)]">
                       {m.time} h
                     </span>
                   </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 w-1/3">
                   <img
-                    src={getFlag(m.away)}
+                    src={getFlag(m.team2)}
                     className="w-8 h-5 object-cover rounded-sm"
                   />
                   <span className="text-[10px] font-black uppercase text-center text-white/90">
-                    {m.away}
+                    {m.team2}
                   </span>
                 </div>
               </div>
@@ -2767,30 +2855,45 @@ const CalendarView = () => {
       ) : (
         <div className="flex flex-col gap-10 py-4">
           {knockoutRounds.map((round, rIdx) => (
-            <div key={rIdx} className="space-y-4">
+            <div key={rIdx} className="space-y-6">
               <h3 className="text-center text-[10px] font-black uppercase tracking-[0.4em] text-[#22c55e] opacity-60 flex items-center justify-center gap-4">
                 <span className="h-[1px] w-12 bg-gradient-to-r from-transparent to-[#22c55e]/30"></span>
                 {round.title}
                 <span className="h-[1px] w-12 bg-gradient-to-l from-transparent to-[#22c55e]/30"></span>
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {round.pairs.map((pair, pIdx) => (
-                  <div
-                    key={pIdx}
-                    className="bg-[#0a101f] border border-white/5 p-4 rounded-2xl flex items-center justify-around relative shadow-xl hover:border-white/10 transition-all"
-                  >
-                    <div className="text-[11px] font-black text-white uppercase tracking-tighter w-24 text-center">
-                      {pair[0]}
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-4">
+                {round.matches.map((match) => {
+                  const { day, time } = formatMatchDate(match.date);
+                  
+                  return (
+                    <div
+                      key={match.id}
+                      className="bg-[#0a101f] border border-white/5 p-4 rounded-2xl flex flex-col items-center justify-center relative shadow-xl hover:border-white/10 transition-all pt-5"
+                    >
+                      <div className="flex w-full justify-around items-center">
+                        <div className="text-[10px] sm:text-[11px] font-black text-white uppercase tracking-tighter w-24 text-center truncate">
+                          {match.team1}
+                        </div>
+                        <div className="flex flex-col items-center justify-center mx-2">
+                          <span className={`text-base sm:text-lg font-black ${results[match.id] ? 'text-[#22c55e]' : 'text-white/20'}`}>
+                            {results[match.id] ? `${results[match.id].home_score} - ${results[match.id].away_score}` : 'VS'}
+                          </span>
+                        </div>
+                        <div className="text-[10px] sm:text-[11px] font-black text-white uppercase tracking-tighter w-24 text-center truncate">
+                          {match.team2}
+                        </div>
+                      </div>
+                      {/* 👇 CAMBIO: Cápsula con P(ID) en gris, Día en verde, Hora en amarillo */}
+                      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-black px-4 py-1.5 rounded-full border border-white/10 text-[9px] font-black text-white/40 uppercase tracking-widest shadow-lg whitespace-nowrap flex items-center gap-1.5">
+                        <span>P{match.id}</span> 
+                        <span className="text-white/20">•</span> 
+                        <span className="text-[#22c55e] text-[10px] font-black tracking-normal">{day}</span> 
+                        <span className="text-[#eab308] text-[11px] font-black tracking-normal">{time} h</span>
+                      </div>
                     </div>
-                    <div className="h-8 w-[1px] bg-white/5"></div>
-                    <div className="text-[11px] font-black text-white uppercase tracking-tighter w-24 text-center">
-                      {pair[1]}
-                    </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-black px-3 py-0.5 rounded-full border border-white/10 text-[7px] font-black text-white/30 uppercase tracking-widest shadow-lg">
-                      PARTIDO {pIdx + 1 + rIdx * 8}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
