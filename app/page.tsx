@@ -10,6 +10,9 @@ import confetti from 'canvas-confetti';
 
 import { ALL_MATCHES } from './data/matches';
 
+// app/page.tsx (arriba, junto a los otros imports)
+import { ALL_PLAYERS } from './data/players';
+
 // ==========================================
 // 1. CONSTANTES GLOBALES Y CONFIGURACIÓN: MUNDIAL 2026
 // ==========================================
@@ -34,6 +37,17 @@ const VALID_FORMATIONS = [
   '5-3-2',
   '5-4-1',
 ];
+
+const getPlayerUniqueId = (player: any) => {
+  return `${player.nombre.trim().toLowerCase()}_${player.equipo.trim().toLowerCase()}`;
+};
+
+// Esta función ahora solo hace de "puente" porque tus datos ya están limpios
+const getPosCode = (pos: string) => {
+  return pos; 
+};
+
+
 
 // ==========================================
 // 10. COMPONENTE TUTORIAL (ONBOARDING)
@@ -280,300 +294,6 @@ const generateFixture = () => {
     ],
   }));
 };
-
-// ==========================================
-// 3. BASE DE DATOS DE JUGADORES (TEST DE MERCADO)
-// ==========================================
-
-export interface Player {
-  id: string;
-  nombre: string;
-  posicion: 'POR' | 'DEF' | 'MED' | 'DEL';
-  precio: number;
-  seleccion: string;
-}
-
-const PLAYERS_DB = [
-  // ESTRELLAS (Muy caros)
-  {
-    id: '1',
-    nombre: 'Kylian Mbappé',
-    seleccion: 'Francia',
-    posicion: 'DEL',
-    precio: 50,
-    puntos: 0,
-  },
-  {
-    id: '2',
-    nombre: 'Jude Bellingham',
-    seleccion: 'Inglaterra',
-    posicion: 'MED',
-    precio: 45,
-    puntos: 0,
-  },
-  {
-    id: '3',
-    nombre: 'Rodri',
-    seleccion: 'España',
-    posicion: 'MED',
-    precio: 42,
-    puntos: 0,
-  },
-  {
-    id: '4',
-    nombre: 'Harry Kane',
-    seleccion: 'Inglaterra',
-    posicion: 'DEL',
-    precio: 45,
-    puntos: 0,
-  },
-  {
-    id: '32',
-    nombre: 'Jamal Musiala',
-    seleccion: 'Alemania',
-    posicion: 'MED',
-    precio: 40,
-    puntos: 0,
-  },
-
-  // TITULARES BUENOS (20M - 30M)
-  {
-    id: '5',
-    nombre: 'Rüdiger',
-    seleccion: 'Alemania',
-    posicion: 'DEF',
-    precio: 28,
-    puntos: 0,
-  },
-  {
-    id: '11',
-    nombre: 'Lamine Yamal',
-    seleccion: 'España',
-    posicion: 'DEL',
-    precio: 25,
-    puntos: 0,
-  },
-  {
-    id: '12',
-    nombre: 'Nico Williams',
-    seleccion: 'España',
-    posicion: 'DEL',
-    precio: 24,
-    puntos: 0,
-  },
-  {
-    id: '18',
-    nombre: 'Bukayo Saka',
-    seleccion: 'Inglaterra',
-    posicion: 'DEL',
-    precio: 30,
-    puntos: 0,
-  },
-  {
-    id: '24',
-    nombre: 'Tchouaméni',
-    seleccion: 'Francia',
-    posicion: 'MED',
-    precio: 25,
-    puntos: 0,
-  },
-  {
-    id: '26',
-    nombre: 'Griezmann',
-    seleccion: 'Francia',
-    posicion: 'DEL',
-    precio: 30,
-    puntos: 0,
-  },
-  {
-    id: '29',
-    nombre: 'Kimmich',
-    seleccion: 'Alemania',
-    posicion: 'DEF',
-    precio: 25,
-    puntos: 0,
-  },
-  {
-    id: '16',
-    nombre: 'Kyle Walker',
-    seleccion: 'Inglaterra',
-    posicion: 'DEF',
-    precio: 22,
-    puntos: 0,
-  },
-  {
-    id: '7',
-    nombre: 'Carvajal',
-    seleccion: 'España',
-    posicion: 'DEF',
-    precio: 22,
-    puntos: 0,
-  },
-
-  // CLASE MEDIA (15M - 19M)
-  {
-    id: '6',
-    nombre: 'Unai Simón',
-    seleccion: 'España',
-    posicion: 'POR',
-    precio: 18,
-    puntos: 0,
-  },
-  {
-    id: '14',
-    nombre: 'Pickford',
-    seleccion: 'Inglaterra',
-    posicion: 'POR',
-    precio: 18,
-    puntos: 0,
-  },
-  {
-    id: '20',
-    nombre: 'Maignan',
-    seleccion: 'Francia',
-    posicion: 'POR',
-    precio: 19,
-    puntos: 0,
-  },
-  {
-    id: '27',
-    nombre: 'Neuer',
-    seleccion: 'Alemania',
-    posicion: 'POR',
-    precio: 17,
-    puntos: 0,
-  },
-  {
-    id: '10',
-    nombre: 'Fabián Ruiz',
-    seleccion: 'España',
-    posicion: 'MED',
-    precio: 18,
-    puntos: 0,
-  },
-  {
-    id: '13',
-    nombre: 'Morata',
-    seleccion: 'España',
-    posicion: 'DEL',
-    precio: 18,
-    puntos: 0,
-  },
-  {
-    id: '25',
-    nombre: 'Kanté',
-    seleccion: 'Francia',
-    posicion: 'MED',
-    precio: 16,
-    puntos: 0,
-  },
-  {
-    id: '8',
-    nombre: 'Le Normand',
-    seleccion: 'España',
-    posicion: 'DEF',
-    precio: 16,
-    puntos: 0,
-  },
-  {
-    id: '9',
-    nombre: 'Cucurella',
-    seleccion: 'España',
-    posicion: 'DEF',
-    precio: 15,
-    puntos: 0,
-  },
-  {
-    id: '28',
-    nombre: 'Tah',
-    seleccion: 'Alemania',
-    posicion: 'DEF',
-    precio: 15,
-    puntos: 0,
-  },
-
-  // GANGAS PARA EL BANQUILLO (8M - 14M)
-  {
-    id: '35',
-    nombre: 'Joselu',
-    seleccion: 'España',
-    posicion: 'DEL',
-    precio: 10,
-    puntos: 0,
-  },
-  {
-    id: '36',
-    nombre: 'Zubimendi',
-    seleccion: 'España',
-    posicion: 'MED',
-    precio: 12,
-    puntos: 0,
-  },
-  {
-    id: '37',
-    nombre: 'David Raya',
-    seleccion: 'España',
-    posicion: 'POR',
-    precio: 8,
-    puntos: 0,
-  },
-  {
-    id: '38',
-    nombre: 'Giroud',
-    seleccion: 'Francia',
-    posicion: 'DEL',
-    precio: 12,
-    puntos: 0,
-  },
-  {
-    id: '39',
-    nombre: 'Füllkrug',
-    seleccion: 'Alemania',
-    posicion: 'DEL',
-    precio: 10,
-    puntos: 0,
-  },
-  {
-    id: '40',
-    nombre: 'Mainoo',
-    seleccion: 'Inglaterra',
-    posicion: 'MED',
-    precio: 10,
-    puntos: 0,
-  },
-  {
-    id: '41',
-    nombre: 'Guehi',
-    seleccion: 'Inglaterra',
-    posicion: 'DEF',
-    precio: 12,
-    puntos: 0,
-  },
-  {
-    id: '42',
-    nombre: 'Clauss',
-    seleccion: 'Francia',
-    posicion: 'DEF',
-    precio: 11,
-    puntos: 0,
-  },
-  {
-    id: '43',
-    nombre: 'Anton',
-    seleccion: 'Alemania',
-    posicion: 'DEF',
-    precio: 9,
-    puntos: 0,
-  },
-  {
-    id: '44',
-    nombre: 'Baumann',
-    seleccion: 'Alemania',
-    posicion: 'POR',
-    precio: 8,
-    puntos: 0,
-  },
-];
 
 const posColors: Record<string, string> = {
   POR: 'bg-[#facc15] text-black',
@@ -1039,6 +759,10 @@ const Field = ({
             const id = `${row.pos}-${i}`;
             const p = selected[id];
 
+            // 🛡️ PARCHE DE SEGURIDAD: Inyectamos el ID si falta
+const playerWithId = p ? { ...p, id: p.id || `${p.nombre}_${p.equipo}` } : null;
+const pFinal = playerWithId; // Usaremos esto para todo ahora
+
             // 🧠 LEEMOS LOS STATS DEL JUGADOR
             const stats = p && evaluatedPlayers ? evaluatedPlayers[p.id] : null;
             const isSubbedOut = stats?.isSubbedOut; // ¿Se quedó sin jugar?
@@ -1101,21 +825,24 @@ const Field = ({
                   )}
 
                   {/* © CAPITÁN (Arriba Derecha) */}
-                  {p && step >= 2 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (canInteractField) setCaptain(p.id);
-                      }}
-                      className={`absolute -top-2 -right-2 w-5 h-5 rounded-full border-2 font-black text-[9px] flex items-center justify-center transition-all z-50 ${
-                        captain === p.id
-                          ? 'bg-[#facc15] text-black border-white scale-110 shadow-lg'
-                          : 'bg-black/60 text-white/30 border-white/10 hover:bg-black/80 hover:text-white'
-                      }`}
-                    >
-                      {captain === p.id ? <IconCheck /> : 'C'}
-                    </button>
-                  )}
+{p && step >= 2 && (
+  <button
+  onClick={(e) => {
+    e.stopPropagation();
+    if (canInteractField) setCaptain(pFinal.id); // 👈 Usamos pFinal
+  }}
+    className={`absolute -top-2 -right-2 w-5 h-5 rounded-full border-2 font-black text-[9px] flex items-center justify-center transition-all z-50 ${
+      // 🛡️ AHORA SOLO SE PINTA SI captain ES IGUAL AL ID DEL JUGADOR
+      // Añadimos una comprobación extra: captain debe tener valor para pintarse
+      (captain && captain === pFinal.id)
+        ? 'bg-[#facc15] text-black border-white scale-110 shadow-lg'
+        : 'bg-black/60 text-white/30 border-white/10 hover:bg-black/80 hover:text-white'
+    }`}
+  >
+    {/* 🛡️ LO MISMO AQUÍ: La lógica debe ser idéntica */}
+    {(captain && captain === pFinal.id) ? <IconCheck /> : 'C'}
+  </button>
+)}
 
                   {/* VALOR DEL JUGADOR */}
                   {p && (
@@ -1129,8 +856,8 @@ const Field = ({
                 {/* BANDERA DEL PAÍS */}
                 {p && (
                   <img
-                    src={getFlag(p.seleccion)}
-                    alt={p.seleccion}
+                    src={getFlag(p.equipo)}
+                    alt={p.equipo}
                     className={`mt-1 w-8 h-6 object-cover rounded shadow-black drop-shadow-lg z-20 transition-all ${isSubbedOut ? 'saturate-0 opacity-50' : ''}`}
                   />
                 )}
@@ -1972,8 +1699,8 @@ const PlayerAdminRow = ({
       <div className="flex justify-between items-center border-b border-white/5 pb-2">
         <div className="flex items-center gap-2">
           <img
-            src={getFlag(p.seleccion)}
-            alt={p.seleccion}
+            src={getFlag(p.equipo)}
+            alt={p.equipo}
             className={`w-7 h-5 object-cover rounded shadow-sm ${
               dnp ? 'grayscale opacity-50' : ''
             }`}
@@ -2964,6 +2691,17 @@ const AuthScreen = ({
   );
 };
 
+const JORNADAS_DEADLINES = [
+  { id: 'J1', label: 'EL MUNDIAL', date: new Date('2026-06-11T21:00:00+02:00').getTime() },
+  { id: 'J2', label: 'ALINEACIÓN J2', date: new Date('2026-06-18T16:00:00+02:00').getTime() },
+  { id: 'J3', label: 'ALINEACIÓN J3', date: new Date('2026-06-24T16:00:00+02:00').getTime() },
+  { id: 'D16', label: 'DIECISEISAVOS', date: new Date('2026-06-28T19:00:00+02:00').getTime() },
+  { id: 'OCT', label: 'OCTAVOS', date: new Date('2026-07-04T19:00:00+02:00').getTime() },
+  { id: 'CUA', label: 'CUARTOS', date: new Date('2026-07-09T19:00:00+02:00').getTime() },
+  { id: 'SEM', label: 'SEMIFINALES', date: new Date('2026-07-14T21:00:00+02:00').getTime() },
+  { id: 'FIN', label: 'LA FINAL', date: new Date('2026-07-18T23:00:00+02:00').getTime() }
+];
+
 // ==========================================
 // 9. APP PRINCIPAL: INTERFAZ Y ESTADOS GLOBALES
 // ==========================================
@@ -3084,17 +2822,7 @@ export default function MundialApp() {
   };
 
   useEffect(() => {
-    const JORNADAS_DEADLINES = [
-      { id: 'J1', label: 'EL MUNDIAL', date: new Date('2026-06-11T21:00:00+02:00').getTime() },
-      { id: 'J2', label: 'ALINEACIÓN J2', date: new Date('2026-06-18T16:00:00+02:00').getTime() },
-      { id: 'J3', label: 'ALINEACIÓN J3', date: new Date('2026-06-24T16:00:00+02:00').getTime() },
-      { id: 'D16', label: 'DIECISEISAVOS', date: new Date('2026-06-28T19:00:00+02:00').getTime() },
-      { id: 'OCT', label: 'OCTAVOS', date: new Date('2026-07-04T19:00:00+02:00').getTime() },
-      { id: 'CUA', label: 'CUARTOS', date: new Date('2026-07-09T19:00:00+02:00').getTime() },
-      { id: 'SEM', label: 'SEMIFINALES', date: new Date('2026-07-14T21:00:00+02:00').getTime() },
-      { id: 'FIN', label: 'LA FINAL', date: new Date('2026-07-18T23:00:00+02:00').getTime() }
-    ];
-
+    
     const timer = setInterval(() => {
       const now = new Date().getTime();
       const nextDeadline = JORNADAS_DEADLINES.find(j => j.date > now);
@@ -3144,7 +2872,8 @@ export default function MundialApp() {
   const [selected, setSelected] = useState<any>({});
   const [bench, setBench] = useState<any>({});
   const [extras, setExtras] = useState<any>({});
-  const [captain, setCaptain] = useState<number | null>(null);
+  // Cambia number por string
+const [captain, setCaptain] = useState<string | null>(null);
 
   const [isSquadLocked, setIsSquadLocked] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -3272,7 +3001,7 @@ export default function MundialApp() {
   const [isMarketOpen, setIsMarketOpen] = useState(false);
   const [marketWindow, setMarketWindow] = useState<'groups' | 'octavos' | null>('groups');
 
-  const [activeMatchday, setActiveMatchday] = useState('J1');
+  const [activeMatchday, setActiveMatchday] = useState('PRE'); // PRE = Fase de preparación
   const [scores, setScores] = useState<Record<string, number | null>>({});
   const [adminScoreCountry, setAdminScoreCountry] = useState('SELECCIÓN');
 
@@ -3714,24 +3443,27 @@ useEffect(() => {
   const isBudgetLow = budgetSpent >= 435;
 
   // Calculamos las selecciones y añadimos el contador dinámico (X/7)
-  const availableCountriesWithCount = useMemo(() => {
-    const countries = new Set(PLAYERS_DB.map((p) => p.seleccion));
-    const sortedCountries = Array.from(countries).sort();
+const availableCountriesWithCount = useMemo(() => {
+  // 1. Obtenemos los países desde ALL_PLAYERS usando .equipo
+  const countries = new Set(ALL_PLAYERS.map((p) => p.equipo));
+  const sortedCountries = Array.from(countries).sort();
 
-    return [
-      'SELECCIÓN',
-      ...sortedCountries.map((c) => {
-        const count = allSquadPlayers.filter((p) => p.seleccion === c).length;
-        return `${c} (${count}/7)`;
-      }),
-    ];
-  }, [allSquadPlayers]);
+  return [
+    'SELECCIÓN',
+    ...sortedCountries.map((c) => {
+      // 2. Filtramos allSquadPlayers usando .equipo (¡Ojo! Asegúrate de que 
+      // tus jugadores fichados también usen la propiedad .equipo)
+      const count = allSquadPlayers.filter((p) => p.equipo === c).length;
+      return `${c} (${count}/7)`;
+    }),
+  ];
+}, [allSquadPlayers]);
 
   const filteredAndSortedPlayers = useMemo(() => {
-    return PLAYERS_DB.filter((p) => {
+    return ALL_PLAYERS.filter((p) => {
       const matchesSearch =
         p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.seleccion.toLowerCase().includes(searchTerm.toLowerCase());
+        p.equipo.toLowerCase().includes(searchTerm.toLowerCase());
 
       // Limpiamos el nombre de la selección quitando el " (X/7)" para filtrar correctamente
       const cleanFilterCountry =
@@ -3740,7 +3472,7 @@ useEffect(() => {
           : filterCountry.split(' (')[0];
       const matchesCountry =
         cleanFilterCountry === 'SELECCIÓN' ||
-        p.seleccion === cleanFilterCountry;
+        p.equipo === cleanFilterCountry;
 
       let matchesPosition = true;
       if (activeSlot && activeSlot.type === 'titular')
@@ -3767,99 +3499,93 @@ useEffect(() => {
 
     if (!activeSlot) return alert('⚠️ Selecciona primero un hueco vacío.');
 
+    // --- HUELLA DIGITAL (Para evitar duplicados) ---
+    const playerUniqueId = `${player.nombre.trim().toLowerCase()}_${player.equipo.trim().toLowerCase()}`;
+
     // Identificar si estamos reemplazando a alguien y cuánto vale
     const currentPlayerInSlot =
-      activeSlot.type === 'titular'
-        ? selected[activeSlot.id]
-        : activeSlot.type === 'bench'
-        ? bench[activeSlot.id]
-        : extras[activeSlot.id];
-    const currentSlotValue = currentPlayerInSlot
-      ? currentPlayerInSlot.precio
-      : 0;
+      activeSlot.type === 'titular' ? selected[activeSlot.id] : 
+      activeSlot.type === 'bench' ? bench[activeSlot.id] : 
+      extras[activeSlot.id];
+      
+    const currentSlotValue = currentPlayerInSlot ? currentPlayerInSlot.precio : 0;
 
-    // 1. BLOQUEO DE 12º JUGADOR (Límite de 11 Titulares)
+    // 1. BLOQUEO DE 12º JUGADOR
     if (activeSlot.type === 'titular') {
       const currentTitulars = Object.values(selected).filter(Boolean).length;
       if (currentTitulars >= 11 && !currentPlayerInSlot) {
-        return alert(
-          '❌ Ya tienes 11 titulares en el campo.\nPara meter a este jugador, primero debes vender a uno de los actuales o moverlo al banquillo.'
-        );
+        return alert('❌ Ya tienes 11 titulares. Primero debes vender a uno.');
       }
     }
 
-    // 2. Comprobar si ya está fichado (en OTRO hueco)
-    if (
-      allSquadPlayers.find((p) => p.id === player.id) &&
-      currentPlayerInSlot?.id !== player.id
-    )
-      return alert('⚠️ Este jugador ya está en tu equipo.');
+    // 2. Comprobar si ya está fichado (en OTRO hueco) - USANDO HUELLA DIGITAL
+    const isAlreadyInTeam = allSquadPlayers.some(p => `${p.nombre}_${p.equipo}` === `${player.nombre}_${player.equipo}`);
+    const isReplacingSamePlayer = currentPlayerInSlot && 
+                                 currentPlayerInSlot.nombre === player.nombre && 
+                                 currentPlayerInSlot.equipo === player.equipo;
 
-    // 3. VALIDACIÓN: Límite inteligente de jugadores de la misma selección
+    if (isAlreadyInTeam && !isReplacingSamePlayer) {
+      return alert('⚠️ Este jugador ya está en tu equipo.');
+    }
+
+    // 3. VALIDACIÓN: Límite de jugadores misma selección
     const isGroupStage = ['J1', 'J2', 'J3'].includes(activeMatchday);
     const maxPlayersPerCountry = isGroupStage ? 7 : 8;
 
-    const otherPlayers = allSquadPlayers.filter(
-      (p) => p.id !== currentPlayerInSlot?.id
-    );
-    const playersFromSameCountry = otherPlayers.filter(
-      (p) => p.seleccion === player.seleccion
-    ).length;
+    const otherPlayers = allSquadPlayers.filter((p) => p.nombre !== currentPlayerInSlot?.nombre);
+    const playersFromSameCountry = otherPlayers.filter((p) => p.equipo === player.equipo).length;
 
     if (playersFromSameCountry >= maxPlayersPerCountry) {
-      return alert(
-        `❌ LÍMITE ALCANZADO:\nNo puedes tener más de ${maxPlayersPerCountry} jugadores de ${player.seleccion} en esta fase del torneo.`
-      );
+      return alert(`❌ LÍMITE ALCANZADO: Max ${maxPlayersPerCountry} jugadores de ${player.equipo}.`);
     }
 
     // 🔄 CONTROL INTELIGENTE DE LOS 6 CAMBIOS
-    // Averiguamos si el jugador que entra es NUEVO (no estaba en la foto inicial)
+
+// Calculamos si estamos en fase de configuración (PRE) comparando con la primera deadline
+// Asumimos que JORNADAS_DEADLINES[0] es el inicio del torneo
+const isInitialSetup = Date.now() < JORNADAS_DEADLINES[0].date;
+
+// Solo bloqueamos los 6 cambios si NO es la fase inicial
+if (!isInitialSetup) {
     const isIncomingPlayerNew = !snapshotSquad || ![
       ...Object.values(snapshotSquad.selected || {}),
       ...Object.values(snapshotSquad.bench || {}),
       ...Object.values(snapshotSquad.extras || {})
-    ].some((p: any) => p && p.id === player.id);
+    ].some((p: any) => p && p.nombre === player.nombre && p.equipo === player.equipo);
 
-    // Averiguamos si el jugador que sale de ese hueco TAMBIÉN era un fichaje nuevo de esta ventana
     const isCurrentPlayerNew = !snapshotSquad || (currentPlayerInSlot && ![
       ...Object.values(snapshotSquad.selected || {}),
       ...Object.values(snapshotSquad.bench || {}),
       ...Object.values(snapshotSquad.extras || {})
-    ].some((p: any) => p && p.id === currentPlayerInSlot.id));
+    ].some((p: any) => p && p.nombre === currentPlayerInSlot.nombre && p.equipo === currentPlayerInSlot.equipo));
 
     // Si el jugador que entra es nuevo, ya llevas 6 cambios, Y NO estás sustituyendo a otro jugador nuevo... ¡BLOQUEO!
     if (isIncomingPlayerNew && transfersMade >= 6 && !isCurrentPlayerNew) {
       return alert(
-        `❌ LÍMITE DE CAMBIOS:\nHas agotado tus 6 cambios permitidos para esta ventana de mercado.\nSi quieres a este jugador, primero debes deshacer algún cambio anterior.`
+        `❌ LÍMITE DE CAMBIOS:\nHas agotado tus 6 cambios permitidos para esta ventana de mercado.`
       );
     }
+}
 
-    // 4. VALIDACIÓN: Presupuesto EFECTIVO (Usando tu nuevo currentBudget)
-    // El dinero tras la operación será: lo que tienes + lo que recuperas del vendido - lo que cuesta el nuevo
+    // 4. VALIDACIÓN: Presupuesto
     const futureBudget = currentBudget + currentSlotValue - player.precio;
-
     if (futureBudget < 0) {
-      return alert(
-        `⚠️ PRESUPUESTO INSUFICIENTE:\nNo tienes dinero suficiente. Te faltarían ${Math.abs(futureBudget).toFixed(1)}M para realizar esta operación.`
-      );
+      return alert(`⚠️ PRESUPUESTO INSUFICIENTE.`);
     }
 
-    // 5. VALIDACIÓN: Posición (Solo para titulares)
-    if (activeSlot.type === 'titular' && activeSlot.pos !== player.posicion)
-      return alert(
-        `⚠️ Posición incorrecta. Este hueco requiere un ${activeSlot.pos}.`
-      );
+    // 5. VALIDACIÓN: Posición
+    if (activeSlot.type === 'titular' && activeSlot.pos !== player.posicion) {
+      return alert(`⚠️ Posición incorrecta.`);
+    }
 
     // ASIGNACIÓN DEL JUGADOR
     const newPlayer = { ...player };
-    if (activeSlot.type === 'titular')
-      setSelected({ ...selected, [activeSlot.id]: newPlayer });
-    else if (activeSlot.type === 'bench')
-      setBench({ ...bench, [activeSlot.id]: newPlayer });
+    if (activeSlot.type === 'titular') setSelected({ ...selected, [activeSlot.id]: newPlayer });
+    else if (activeSlot.type === 'bench') setBench({ ...bench, [activeSlot.id]: newPlayer });
     else setExtras({ ...extras, [activeSlot.id]: newPlayer });
 
     setActiveSlot(null);
-  };
+};
 
   // --- LÓGICA DE TÁCTICA Y VALIDACIÓN ---
   const formationInfo = useMemo(() => {
@@ -3986,7 +3712,7 @@ useEffect(() => {
           <span className="font-black text-sm uppercase">{opt.player.nombre}</span>
           <div className="flex items-center gap-2 mt-1">
             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded bg-gray-500 text-white`}>{opt.player.posicion}</span>
-            <span className="text-[10px] text-white/50">{opt.player.seleccion} | En: {opt.type === 'titular' ? 'Campo 11' : opt.type === 'bench' ? 'Banquillo' : 'Grada'}</span>
+            <span className="text-[10px] text-white/50">{opt.player.equipo} | En: {opt.type === 'titular' ? 'Campo 11' : opt.type === 'bench' ? 'Banquillo' : 'Grada'}</span>
           </div>
         </div>
         <button
@@ -4527,40 +4253,46 @@ useEffect(() => {
                         return (
                           <div
                             key={p.id}
-                            className={`flex items-center justify-between bg-black/40 border p-3 rounded-xl transition-colors ${
-                              isAlreadyOwned && !isCurrentPlayer
-                                ? 'opacity-50 border-white/5'
-                                : 'border-white/10 hover:border-[#22c55e]'
-                            }`}
+                            className={`flex items-center justify-between p-3 rounded-xl transition-all duration-300 border 
+                              ${isAlreadyOwned && !isCurrentPlayer 
+                                ? 'bg-black/20 border-white/5 grayscale opacity-50 cursor-not-allowed' 
+                                : 'bg-black/40 border-white/10 hover:border-[#22c55e]'}
+                            `}
                           >
                             <div className="flex flex-col">
-                              <span className="font-black text-sm uppercase">
+                              <span className={`font-black text-sm uppercase ${isAlreadyOwned && !isCurrentPlayer ? 'text-white/40' : 'text-white'}`}>
                                 {p.nombre}
                               </span>
                               <div className="flex items-center gap-2 mt-1">
                                 <span
                                   className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
-                                    posColors[p.posicion] ||
-                                    'bg-gray-500 text-white'
+                                    isAlreadyOwned && !isCurrentPlayer
+                                      ? 'bg-white/10 text-white/30'
+                                      : posColors[p.posicion] || 'bg-gray-500 text-white'
                                   }`}
                                 >
                                   {p.posicion}
                                 </span>
-                                <span className="text-[10px] text-white/50">
-                                  {p.seleccion}
+                                <span className={`text-[10px] ${isAlreadyOwned && !isCurrentPlayer ? 'text-white/20' : 'text-white/50'}`}>
+                                  {p.equipo}
                                 </span>
                               </div>
                             </div>
+                            
                             <div className="flex items-center gap-3">
-                              <span className="text-white font-black text-sm">
+                              <span className={`font-black text-sm ${isAlreadyOwned && !isCurrentPlayer ? 'text-white/30' : 'text-white'}`}>
                                 {p.precio}M
                               </span>
                               <button
-                                onClick={() => handleBuyPlayer(p)}
+                                onClick={() => {
+                                  const playerToBuy = { ...p, posicion: getPosCode(p.posicion) };
+                                  handleBuyPlayer(playerToBuy);
+                                }}
+                                // Si ya está fichado, deshabilitamos el botón para que no se pueda ni pulsar
                                 disabled={!!isAlreadyOwned && !isCurrentPlayer}
-                                className={`px-4 py-2 rounded-lg font-black text-xs uppercase transition-transform ${
+                                className={`px-4 py-2 rounded-lg font-black text-xs uppercase transition-all ${
                                   isAlreadyOwned && !isCurrentPlayer
-                                    ? 'bg-white/10 text-white/30 cursor-not-allowed'
+                                    ? 'bg-white/5 text-white/20 cursor-not-allowed'
                                     : 'bg-[#22c55e] text-black hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
                                 }`}
                               >
@@ -4857,7 +4589,7 @@ useEffect(() => {
                                 
                                 const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
                                 const flags: any = { 'España': '🇪🇸', 'Francia': '🇫🇷', 'Inglaterra': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Italia': '🇮🇹', 'Alemania': '🇩🇪', 'México': '🇲🇽', 'Sudáfrica': '🇿🇦' };
-                                const playerFlag = flags[p.seleccion] || '🏳️';
+                                const playerFlag = flags[p.equipo] || '🏳️';
                                 
                                 // Calcular total real de este jugador concreto
                                 const matchdays = ['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'];
@@ -4887,7 +4619,7 @@ useEffect(() => {
                                     <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/40' : 'bg-[#0f172a]'}`}>
                                       <div className="flex items-center gap-4">
                                         <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${isSold ? 'bg-white/10 text-white/40' : (posColors[p.posicion] || 'bg-gray-500 text-white')}`}>{p.posicion}</span>
-                                        <span className="text-sm w-6 text-center" title={p.seleccion}>{playerFlag}</span>
+                                        <span className="text-sm w-6 text-center" title={p.equipo}>{playerFlag}</span>
                                         <span className={`font-bold truncate max-w-[120px] ${isSold ? 'line-through text-white/30' : 'text-white/90'}`}>
                                           {p.nombre} 
                                           {isCap && !isSold && <span className="text-[#eab308] ml-1 drop-shadow-[0_0_2px_rgba(234,179,8,0.8)] text-xs bg-black/50 px-1 rounded">C</span>}
@@ -5123,7 +4855,7 @@ useEffect(() => {
           </div>
           {adminScoreCountry !== 'SELECCIÓN' && (
             <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 scrollbar-hide">
-              {PLAYERS_DB.filter(p => p.seleccion === adminScoreCountry).map((p) => (
+              {ALL_PLAYERS.filter(p => p.equipo === adminScoreCountry).map((p) => (
                 <PlayerAdminRow key={p.id} p={p} savedScore={scores[p.id]} onScoreSaved={handleScoreSaved} adminMatchday={activeMatchday} isMatchdayClosed={false} />
               ))}
             </div>
@@ -5317,8 +5049,8 @@ const BenchCard = ({ player, id, onClick, isActive, evaluatedPlayers }: any) => 
             </span>
             <div className="flex items-center gap-1 mt-0.5">
               <img
-                src={getFlag(player.seleccion)}
-                alt={player.seleccion}
+                src={getFlag(player.equipo)}
+                alt={player.equipo}
                 className="w-3 h-2.5 object-cover rounded shadow-sm"
               />
               <span className="text-[8px] text-[#22c55e] font-black">
