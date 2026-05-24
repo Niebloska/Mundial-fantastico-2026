@@ -2079,34 +2079,37 @@ const QuinielaView = ({ user, setHasUnsavedQuiniela }: { user: any, setHasUnsave
       <div className="pb-32 animate-in fade-in duration-500 max-w-6xl mx-auto px-4">
         
         {/* === NUEVO ENCABEZADO Y BOTÓN REUBICADO === */}
-        <div className="flex items-center justify-between gap-4 mb-6 max-w-3xl mx-auto">
-          <h1 className="text-3xl font-black italic text-[#22c55e] uppercase tracking-tighter leading-none">
-            🏆 QUINIELA
-          </h1>
-  
-          <div>
-            {isSaved ? (
-              <button
-                onClick={() => setIsSaved(false)}
-                className="px-4 py-2 bg-yellow-500 text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(234,179,8,0.4)] hover:scale-105 transition-transform border-2 border-black"
-              >
-                Editar Pronóstico
-              </button>
-            ) : (
-              <button
-                onClick={handleSave}
-                disabled={!isComplete}
-                className={`px-4 py-2 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg transition-all border-2 border-black ${
-                  isComplete
-                    ? 'bg-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:scale-105'
-                    : 'bg-gray-800 text-white/20'
-                }`}
-              >
-                {isComplete ? 'Guardar' : `Faltan ${24 - totalSelected}`}
-              </button>
-            )}
-          </div>
-        </div>
+<div className="flex items-center justify-between gap-4 mb-6 max-w-3xl mx-auto">
+  <h1 className="text-3xl font-black italic text-[#22c55e] uppercase tracking-tighter leading-none">
+    🏆 QUINIELA
+  </h1>
+  {/* El botón ya no está aquí dentro */}
+</div>
+
+{/* === BOTÓN FLOTANTE (Posicionado arriba a la derecha) === */}
+<div className="fixed top-40 right-4 z-[9999]">
+  {isSaved ? (
+    <button
+      onClick={() => setIsSaved(false)}
+      className="px-4 py-2 bg-yellow-500 text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(234,179,8,0.4)] hover:scale-105 transition-transform border-2 border-black"
+    >
+      Editar Pronóstico
+    </button>
+  ) : (
+    <button
+      onClick={handleSave}
+      disabled={!isComplete}
+      className={`px-4 py-2 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg transition-all border-2 border-black ${
+        isComplete
+          ? 'bg-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:scale-105'
+          : 'bg-gray-800 text-white/20'
+      }`}
+    >
+      {isComplete ? 'Guardar' : `Faltan ${24 - totalSelected}`}
+    </button>
+  )}
+</div>
+        
   
         {/* LÍNEA DE RECUENTO COMPACTA */}
       <div className="grid grid-cols-3 gap-3 mb-6 max-w-3xl mx-auto">
