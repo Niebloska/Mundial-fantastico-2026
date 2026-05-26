@@ -20,7 +20,7 @@ import { ALL_PLAYERS } from './data/players';
 const ADMIN_EMAIL = 'admin@mundial2026.com';
 const GAME_START_DATE = '2026-06-11T21:00:00'; // Fecha del partido inaugural (Ajustado +1h verano)
 const SIMULATED_GAME_START = '2026-06-11T21:00:00';
-const MAX_BUDGET = 500;
+const MAX_BUDGET = 800;
 
 const LINEUP_MATCHDAYS = ['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'];
 
@@ -945,7 +945,7 @@ const FixedRulesView = () => {
               <span className="text-2xl">💰</span>
               <p className="text-sm">
                 El presupuesto inicial de{' '}
-                <strong className="text-yellow-400 text-lg">500M</strong>{' '}
+                <strong className="text-yellow-400 text-lg">800M</strong>{' '}
                 aumentará con los premios de la{' '}
                 <strong className="text-[#22c55e] uppercase">
                   QUINIELA MUNDIAL
@@ -1091,7 +1091,7 @@ const FixedRulesView = () => {
               <div className="flex items-center gap-2">
                 <span className="text-[#22c55e]">✔️</span>
                 <span>
-                  Presupuesto inicial de <strong>500M</strong> aumentará con los
+                  Presupuesto inicial de <strong>800M</strong> aumentará con los
                   premios de la:
                 </span>
               </div>
@@ -1377,38 +1377,38 @@ const FixedRulesView = () => {
           </p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs font-black text-center uppercase tracking-wide">
             <div className="bg-[#ea580c] text-white p-3 rounded-lg shadow-md border border-white/5">
-              24 aciertos <span className="block text-lg">50 M</span>
+              24 aciertos <span className="block text-lg">200 M</span>
             </div>
             <div className="bg-[#06b6d4] text-black p-3 rounded-lg shadow-md border border-white/5">
-              18 aciertos <span className="block text-lg">28 M</span>
+              18 aciertos <span className="block text-lg">60 M</span>
             </div>
 
             <div className="bg-[#f59e0b] text-black p-3 rounded-lg shadow-md border border-white/5">
-              23 aciertos <span className="block text-lg">45 M</span>
+              23 aciertos <span className="block text-lg">150 M</span>
             </div>
             <div className="bg-[#3b82f6] text-white p-3 rounded-lg shadow-md border border-white/5">
-              16 aciertos <span className="block text-lg">22 M</span>
+              16 aciertos <span className="block text-lg">50 M</span>
             </div>
 
             <div className="bg-[#eab308] text-black p-3 rounded-lg shadow-md border border-white/5">
-              22 aciertos <span className="block text-lg">41 M</span>
+              22 aciertos <span className="block text-lg">120 M</span>
             </div>
             <div className="bg-[#84cc16] text-black p-3 rounded-lg shadow-md border border-white/5">
-              14 aciertos <span className="block text-lg">18 M</span>
+              14 aciertos <span className="block text-lg">40 M</span>
             </div>
 
             <div className="bg-[#10b981] text-white p-3 rounded-lg shadow-md border border-white/5">
-              21 aciertos <span className="block text-lg">37 M</span>
+              21 aciertos <span className="block text-lg">90 M</span>
             </div>
             <div className="bg-gray-500 text-white p-3 rounded-lg shadow-md border border-white/5">
-              12 aciertos <span className="block text-lg">14 M</span>
+              12 aciertos <span className="block text-lg">30 M</span>
             </div>
 
             <div className="bg-[#059669] text-white p-3 rounded-lg shadow-md border border-white/5">
-              20 aciertos <span className="block text-lg">34 M</span>
+              20 aciertos <span className="block text-lg">70 M</span>
             </div>
             <div className="bg-gray-700 text-white/70 p-3 rounded-lg shadow-md border border-white/5">
-              10 aciertos <span className="block text-lg">10 M</span>
+              10 aciertos <span className="block text-lg">20 M</span>
             </div>
           </div>
         </RuleCard>
@@ -1974,16 +1974,16 @@ const GROUPS_2026 = [
 ];
 
 const PRIZE_SCALE = [
-  { hits: 24, prize: 50, color: '#ea580c' }, // Naranja fuerte
-  { hits: 23, prize: 45, color: '#f59e0b' }, // Naranja claro/Ámbar
-  { hits: 22, prize: 41, color: '#eab308' }, // Amarillo
-  { hits: 21, prize: 37, color: '#10b981' }, // Verde esmeralda
-  { hits: 20, prize: 34, color: '#059669' }, // Verde oscuro
-  { hits: 18, prize: 28, color: '#06b6d4' }, // Cian
-  { hits: 16, prize: 22, color: '#3b82f6' }, // Azul
-  { hits: 14, prize: 18, color: '#84cc16' }, // Verde lima
-  { hits: 12, prize: 14, color: '#6b7280' }, // Gris medio
-  { hits: 10, prize: 10, color: '#4b5563' }, // Gris oscuro
+  { hits: 24, prize: 200, color: '#ea580c' }, // Naranja fuerte
+  { hits: 23, prize: 150, color: '#f59e0b' }, // Naranja claro/Ámbar
+  { hits: 22, prize: 120, color: '#eab308' }, // Amarillo
+  { hits: 21, prize: 90, color: '#10b981' }, // Verde esmeralda
+  { hits: 20, prize: 70, color: '#059669' }, // Verde oscuro
+  { hits: 18, prize: 60, color: '#06b6d4' }, // Cian
+  { hits: 16, prize: 50, color: '#3b82f6' }, // Azul
+  { hits: 14, prize: 40, color: '#84cc16' }, // Verde lima
+  { hits: 12, prize: 30, color: '#6b7280' }, // Gris medio
+  { hits: 10, prize: 20, color: '#4b5563' }, // Gris oscuro
 ];
 
 const QuinielaView = ({ user, setHasUnsavedQuiniela }: { user: any, setHasUnsavedQuiniela?: any }) => {
@@ -2918,7 +2918,7 @@ const [captain, setCaptain] = useState<string | null>(null);
     setTransfersMade(changesCount);
 
     // 4. CALCULAR EL PRESUPUESTO
-    const INITIAL_BUDGET = 500; 
+    const INITIAL_BUDGET = 800; 
     
     // Sumamos lo que cuestan todos los jugadores que tiene en plantilla AHORA MISMO
     const totalSquadValue = currentAllPlayers.reduce((sum, player) => sum + (player.precio || 0), 0);
@@ -3433,17 +3433,17 @@ useEffect(() => {
 
   // Función para determinar el color de la barra de progreso
   const getBudgetColorClass = () => {
-    if (budgetSpent > 500)
+    if (budgetSpent > 800)
       return 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]';
-    if (budgetSpent >= 475)
+    if (budgetSpent >= 750)
       return 'bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]';
-    if (budgetSpent >= 450)
+    if (budgetSpent >= 700)
       return 'bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]';
     return 'bg-[#22c55e] shadow-[0_0_10px_rgba(34,197,94,0.8)]';
   };
 
   // Para mantener compatibilidad con otras partes de tu código (como el texto)
-  const isBudgetLow = budgetSpent >= 475;
+  const isBudgetLow = budgetSpent >= 750;
 
   // Calculamos las selecciones y añadimos el contador dinámico (X/7)
 const availableCountriesWithCount = useMemo(() => {
