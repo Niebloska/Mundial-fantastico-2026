@@ -20,7 +20,7 @@ import { ALL_PLAYERS } from './data/players';
 const ADMIN_EMAIL = 'admin@mundial2026.com';
 const GAME_START_DATE = '2026-06-11T21:00:00'; // Fecha del partido inaugural (Ajustado +1h verano)
 const SIMULATED_GAME_START = '2026-06-11T21:00:00';
-const MAX_BUDGET = 450;
+const MAX_BUDGET = 500;
 
 const LINEUP_MATCHDAYS = ['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'];
 
@@ -945,7 +945,7 @@ const FixedRulesView = () => {
               <span className="text-2xl">💰</span>
               <p className="text-sm">
                 El presupuesto inicial de{' '}
-                <strong className="text-yellow-400 text-lg">450M</strong>{' '}
+                <strong className="text-yellow-400 text-lg">500M</strong>{' '}
                 aumentará con los premios de la{' '}
                 <strong className="text-[#22c55e] uppercase">
                   QUINIELA MUNDIAL
@@ -1091,7 +1091,7 @@ const FixedRulesView = () => {
               <div className="flex items-center gap-2">
                 <span className="text-[#22c55e]">✔️</span>
                 <span>
-                  Presupuesto inicial de <strong>450M</strong> aumentará con los
+                  Presupuesto inicial de <strong>500M</strong> aumentará con los
                   premios de la:
                 </span>
               </div>
@@ -2918,7 +2918,7 @@ const [captain, setCaptain] = useState<string | null>(null);
     setTransfersMade(changesCount);
 
     // 4. CALCULAR EL PRESUPUESTO
-    const INITIAL_BUDGET = 450; 
+    const INITIAL_BUDGET = 500; 
     
     // Sumamos lo que cuestan todos los jugadores que tiene en plantilla AHORA MISMO
     const totalSquadValue = currentAllPlayers.reduce((sum, player) => sum + (player.precio || 0), 0);
@@ -3433,17 +3433,17 @@ useEffect(() => {
 
   // Función para determinar el color de la barra de progreso
   const getBudgetColorClass = () => {
-    if (budgetSpent > 450)
+    if (budgetSpent > 500)
       return 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]';
-    if (budgetSpent >= 435)
+    if (budgetSpent >= 475)
       return 'bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]';
-    if (budgetSpent >= 400)
+    if (budgetSpent >= 450)
       return 'bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]';
     return 'bg-[#22c55e] shadow-[0_0_10px_rgba(34,197,94,0.8)]';
   };
 
   // Para mantener compatibilidad con otras partes de tu código (como el texto)
-  const isBudgetLow = budgetSpent >= 435;
+  const isBudgetLow = budgetSpent >= 475;
 
   // Calculamos las selecciones y añadimos el contador dinámico (X/7)
 const availableCountriesWithCount = useMemo(() => {
