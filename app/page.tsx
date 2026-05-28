@@ -3976,40 +3976,61 @@ if (!isInitialSetup) {
                   
 {/* Contenedor horizontal para los botones de acción */}
 <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={() => {
-                        // 2. SEGUNDA BARRERA: Validación de táctica (solo si estamos validando)
-                        if (!isSquadLocked && !formationInfo.isValidTactic) {
-                          return alert(formationInfo.message);
-                        }
+<button
+  onClick={() => {
+    // 2. SEGUNDA BARRERA: Validación de táctica (solo si estamos validando)
+    if (!isSquadLocked && !formationInfo.isValidTactic) {
+      return alert(formationInfo.message);
+    }
 
-                        const nextLockState = !isSquadLocked;
-                        setIsSquadLocked(nextLockState);
+    // 👇 === 3. NUEVAS BARRERAS DE SEGURIDAD === 👇
+    if (!isSquadLocked) {
+      // Validar Capitán
+      if (!captain) {
+        return alert('©️ ¡Falta el líder! Es obligatorio seleccionar un Capitán antes de validar.');
+      }
 
-                        if (nextLockState === true) {
-                          saveSquadToSupabase();
-                          
-                          // 🎉 EXPLOSIÓN DE CONFETI DE VICTORIA
-                          confetti({
-                            particleCount: 150,
-                            spread: 80,
-                            origin: { y: 0.6 },
-                            colors: ['#22c55e', '#fbbf24', '#ffffff'] // Verde neón, dorado y blanco
-                          });
-                        }
+      // Validar 11 Titulares
+      const startersCount = Object.values(selected).filter(Boolean).length;
+      if (startersCount < 11) {
+        return alert('🏟️ Plantilla incompleta: Necesitas 11 jugadores titulares.');
+      }
 
-                        setActiveSlot(null);
-                      }}
-                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg border-2 flex items-center justify-center gap-2 ${
-                        isSquadLocked
-                          ? 'bg-yellow-500 text-black border-yellow-400 hover:bg-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.3)]'
-                          : formationInfo.isValidTactic
-                          ? 'bg-[#22c55e] text-black border-[#22c55e] hover:brightness-110 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
-                          : 'bg-gray-600 text-white/50 border-white/10 cursor-not-allowed'
-                      }`}
-                    >
-                      {isSquadLocked ? '🔓 Editar Plantilla' : '🔒 Validar Plantilla'}
-                    </button>
+      // Validar 6 Suplentes en el banquillo
+      const benchCount = Object.values(bench).filter(Boolean).length;
+      if (benchCount < 6) {
+        return alert('⚠️ Plantilla incompleta: Debes fichar exactamente 6 jugadores para el Banquillo Oficial.');
+      }
+    }
+    // 👆 === FIN DE LAS BARRERAS === 👆
+
+    const nextLockState = !isSquadLocked;
+    setIsSquadLocked(nextLockState);
+
+    if (nextLockState === true) {
+      saveSquadToSupabase();
+      
+      // 🎉 EXPLOSIÓN DE CONFETI DE VICTORIA
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#22c55e', '#fbbf24', '#ffffff'] // Verde neón, dorado y blanco
+      });
+    }
+
+    setActiveSlot(null);
+  }}
+  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg border-2 flex items-center justify-center gap-2 ${
+    isSquadLocked
+      ? 'bg-yellow-500 text-black border-yellow-400 hover:bg-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.3)]'
+      : formationInfo.isValidTactic
+      ? 'bg-[#22c55e] text-black border-[#22c55e] hover:brightness-110 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+      : 'bg-gray-600 text-white/50 border-white/10 cursor-not-allowed'
+  }`}
+>
+  {isSquadLocked ? '🔓 Editar Plantilla' : '🔒 Validar Plantilla'}
+</button>
 
                     {/* 👇 NUEVO BOTÓN: DESHACER FICHAJES (Solo visible si está editando y ha hecho algún cambio) */}
                     {!isSquadLocked && transfersMade > 0 && (
