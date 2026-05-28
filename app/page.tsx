@@ -257,11 +257,11 @@ const TutorialCaddy = ({
 const WORLD_CUP_GROUPS_DATA = [
   {
     name: 'GRUPO A',
-    teams: ['México', 'Sudáfrica', 'Rep. de Corea', 'Chequia'],
+    teams: ['México', 'Sudáfrica', 'Rep. de Corea', 'República Checa'],
   },
   { name: 'GRUPO B', teams: ['Canadá', 'Bosnia/Herzeg.', 'Qatar', 'Suiza'] },
   { name: 'GRUPO C', teams: ['Brasil', 'Marruecos', 'Haiti', 'Escocia'] },
-  { name: 'GRUPO D', teams: ['EE.UU.', 'Paraguay', 'Australia', 'Turquía'] },
+  { name: 'GRUPO D', teams: ['Estados Unidos', 'Paraguay', 'Australia', 'Turquía'] },
   {
     name: 'GRUPO E',
     teams: ['Alemania', 'Curazao', 'Costa de Marfil', 'Ecuador'],
@@ -273,7 +273,7 @@ const WORLD_CUP_GROUPS_DATA = [
     teams: ['España', 'Cabo Verde', 'Arabia Saudita', 'Uruguay'],
   },
   { name: 'GRUPO I', teams: ['Francia', 'Senegal', 'Iraq', 'Noruega'] },
-  { name: 'GRUPO J', teams: ['Argentina', 'Argelia', 'Austria', 'Jordán'] },
+  { name: 'GRUPO J', teams: ['Argentina', 'Argelia', 'Austria', 'Jordania'] },
   {
     name: 'GRUPO K',
     teams: ['Portugal', 'RD Congo', 'Uzbekistán', 'Colombia'],
@@ -312,7 +312,7 @@ const getFlag = (team: string) => {
     México: 'mx',
     Sudáfrica: 'za',
     'Rep. de Corea': 'kr',
-    Chequia: 'cz',
+    'República Checa': 'cz',
     // Grupo B
     Canadá: 'ca',
     'Bosnia/Herzeg.': 'ba',
@@ -324,7 +324,7 @@ const getFlag = (team: string) => {
     Haiti: 'ht',
     Escocia: 'gb-sct',
     // Grupo D
-    'EE.UU.': 'us',
+    'Estados Unidos': 'us',
     Paraguay: 'py',
     Australia: 'au',
     Turquía: 'tr',
@@ -357,7 +357,7 @@ const getFlag = (team: string) => {
     Argentina: 'ar',
     Argelia: 'dz',
     Austria: 'at',
-    Jordán: 'jo',
+    Jordania: 'jo',
     // Grupo K
     Portugal: 'pt',
     'RD Congo': 'cd',
@@ -1959,16 +1959,16 @@ const PlayerAdminRow = ({
 // ==========================================
 
 const GROUPS_2026 = [
-  { id: 'A', teams: ['México', 'Sudáfrica', 'Rep. de Corea', 'Chequia'] },
+  { id: 'A', teams: ['México', 'Sudáfrica', 'Rep. de Corea', 'República Checa'] },
   { id: 'B', teams: ['Canadá', 'Bosnia/Herzeg.', 'Qatar', 'Suiza'] },
   { id: 'C', teams: ['Brasil', 'Marruecos', 'Haiti', 'Escocia'] },
-  { id: 'D', teams: ['EE.UU.', 'Paraguay', 'Australia', 'Turquía'] },
+  { id: 'D', teams: ['Estados Unidos', 'Paraguay', 'Australia', 'Turquía'] },
   { id: 'E', teams: ['Alemania', 'Curazao', 'Costa de Marfil', 'Ecuador'] },
   { id: 'F', teams: ['Países Bajos', 'Japón', 'Suecia', 'Túnez'] },
   { id: 'G', teams: ['Bélgica', 'Egipto', 'IR Irán', 'Nueva Zelanda'] },
   { id: 'H', teams: ['España', 'Cabo Verde', 'Arabia Saudita', 'Uruguay'] },
   { id: 'I', teams: ['Francia', 'Senegal', 'Iraq', 'Noruega'] },
-  { id: 'J', teams: ['Argentina', 'Argelia', 'Austria', 'Jordán'] },
+  { id: 'J', teams: ['Argentina', 'Argelia', 'Austria', 'Jordania'] },
   { id: 'K', teams: ['Portugal', 'RD Congo', 'Uzbekistán', 'Colombia'] },
   { id: 'L', teams: ['Inglaterra', 'Croacia', 'Ghana', 'Panamá'] },
 ];
@@ -3108,7 +3108,7 @@ const [captain, setCaptain] = useState<string | null>(null);
         .select('id, team_name, username, squad_data, has_paid');
 
       if (data) {
-        const matchdays = ['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'];
+        const matchdays = ['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'];
         
         const formattedUsers = data.map((u: any) => {
           const s = u.squad_data?.selected || {};
@@ -4593,77 +4593,65 @@ if (!isInitialSetup) {
                     {/* TABLA DE JUGADORES */}
                     <div className="border-t border-white/5 bg-[#0a101f]">
                       <div className="overflow-x-auto scrollbar-hide">
-                        <table className="w-full text-left text-xs whitespace-nowrap min-w-[700px]">
-                          <thead className="bg-[#111827] border-b border-white/10 uppercase font-black text-[#38bdf8] text-[10px] sm:text-xs tracking-wider">
-                            <tr>
-                              <th className="p-3 sticky left-0 z-10 bg-[#111827] shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5">
-                                <div className="flex gap-4"><span className="w-8">POS</span><span className="w-6">SEL</span><span>NOMBRE</span></div>
-                              </th>
-                              <th className="p-3 text-center text-white bg-[#3b82f6]/20 border-r border-white/5">TOTAL</th>
-                              {['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'].map(j => (
-                                <th key={j} className="p-3 text-center text-white/70">{j}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/5">
-                            {u.players.length > 0 ? (
-                              u.players.map((p: any) => {
-                                const isCap = p.isCaptain;
-                                const isSold = p.isActive === false;
-                                
-                                const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
-                                const flags: any = { 'España': '🇪🇸', 'Francia': '🇫🇷', 'Inglaterra': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Italia': '🇮🇹', 'Alemania': '🇩🇪', 'México': '🇲🇽', 'Sudáfrica': '🇿🇦' };
-                                const playerFlag = flags[p.equipo] || '🏳️';
-                                
-                                // Calcular total real de este jugador concreto
-                                const matchdays = ['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'];
-                                const ptTot = matchdays.reduce((sum, j) => sum + (Number(p.puntos?.[j]) || 0), 0);
+                      <table className="w-full text-left text-xs whitespace-nowrap min-w-[700px]">
+  <thead className="bg-[#111827] border-b border-white/10 uppercase font-black text-[#38bdf8] text-[10px] sm:text-xs tracking-wider">
+    <tr>
+      {/* CABECERA: Agrupamos NOMBRE y TOTAL en un bloque que ocupará el espacio sticky */}
+      <th className="p-3 sticky left-0 z-10 bg-[#111827] shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5">
+        <div className="flex items-center justify-between min-w-[200px]">
+          <div className="flex gap-4"><span className="w-8">POS</span><span className="w-6">SEL</span><span>NOMBRE</span></div>
+          <span className="text-white bg-[#3b82f6]/20 px-2 py-0.5 rounded ml-4">TOTAL</span>
+        </div>
+      </th>
+      {/* RESTO DE JORNADAS */}
+      {['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'].map(j => (
+        <th key={j} className="p-3 text-center text-white/70">{j}</th>
+      ))}
+    </tr>
+  </thead>
+  <tbody className="divide-y divide-white/5">
+    {u.players.length > 0 ? (
+      u.players.map((p: any) => {
+        const isCap = p.isCaptain;
+        const isSold = p.isActive === false;
+        
+        const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
+        const flagUrl = getFlag(p.equipo);
+        
+        const matchdays = ['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'];
+        const ptTot = matchdays.reduce((sum, j) => sum + (Number(p.puntos?.[j]) || 0), 0);
 
-                                const renderScore = (val: any) => {
-                                  if (val === undefined || val === null || val === '-') return <span className="text-white/20 font-bold">-</span>;
-                                  if (val === 'X') return <span className="text-red-500 font-black">X</span>;
-                                  const num = Number(val);
-                                  if (!isNaN(num)) {
-                                    if (num < 0) return <span className="text-red-500 font-black">{num}</span>;
-                                    if (num > 0) return <span className={isSold ? "text-[#22c55e]/50 font-bold" : "text-[#22c55e] font-black"}>{num}</span>;
-                                    return <span className="text-white/50 font-bold">0</span>;
-                                  }
-                                  return val;
-                                };
-
-                                return (
-                                  <tr 
-                                    key={p.id} 
-                                    className={`transition-colors ${
-                                      isSold 
-                                        ? 'bg-black/40 opacity-30 grayscale border-dashed border-white/5 text-white/40' 
-                                        : 'hover:bg-white/5 bg-[#0f172a]'
-                                    }`}
-                                  >
-                                    <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/40' : 'bg-[#0f172a]'}`}>
-                                      <div className="flex items-center gap-4">
-                                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${isSold ? 'bg-white/10 text-white/40' : (posColors[p.posicion] || 'bg-gray-500 text-white')}`}>{p.posicion}</span>
-                                        <span className="text-sm w-6 text-center" title={p.equipo}>{playerFlag}</span>
-                                        <span className={`font-bold truncate max-w-[120px] ${isSold ? 'line-through text-white/30' : 'text-white/90'}`}>
-                                          {p.nombre} 
-                                          {isCap && !isSold && <span className="text-[#eab308] ml-1 drop-shadow-[0_0_2px_rgba(234,179,8,0.8)] text-xs bg-black/50 px-1 rounded">C</span>}
-                                          {isSold && <span className="text-red-400/80 text-[8px] font-black bg-red-950/40 border border-red-500/20 px-1 rounded ml-1.5 uppercase tracking-tighter">Baja</span>}
-                                        </span>
-                                      </div>
-                                    </td>
-                                    
-                                    <td className={`p-3 text-center font-black border-r border-white/5 text-sm ${isSold ? 'text-white/30 bg-white/5' : 'text-white bg-[#3b82f6]/10'}`}>{ptTot}</td>
-                                    {matchdays.map(j => (
-                                      <td key={j} className="p-3 text-center">{renderScore(p.puntos?.[j] ?? '-')}</td>
-                                    ))}
-                                  </tr>
-                                )
-                              })
-                            ) : (
-                              <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">No tienes jugadores en tu plantilla actualmente.</td></tr>
-                            )}
-                          </tbody>
-                        </table>
+        return (
+          <tr key={p.id} className={`transition-colors ${isSold ? 'bg-black/40 opacity-30 grayscale' : 'hover:bg-white/5 bg-[#0f172a]'}`}>
+            {/* CELDA FIJA: Contiene Nombre Y Total */}
+            <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/40' : 'bg-[#0f172a]'}`}>
+              <div className="flex items-center justify-between min-w-[200px]">
+                <div className="flex items-center gap-4">
+                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${isSold ? 'bg-white/10 text-white/40' : (posColors[p.posicion] || 'bg-gray-500 text-white')}`}>{p.posicion}</span>
+                  <span className="w-6 flex justify-center items-center">
+                    {flagUrl ? <img src={flagUrl} alt={p.equipo} className="w-4 h-3 object-cover rounded-[2px]" /> : '🏳️'}
+                  </span>
+                  <span className={`font-bold truncate max-w-[100px] ${isSold ? 'line-through text-white/30' : 'text-white/90'}`}>
+                    {p.nombre} {isCap && !isSold && <span className="text-[#eab308] ml-1">C</span>}
+                  </span>
+                </div>
+                {/* TOTAL ANCLADO AQUÍ */}
+                <span className={`font-black text-sm ml-4 ${isSold ? 'text-white/30' : 'text-white'}`}>{ptTot}</span>
+              </div>
+            </td>
+            
+            {/* RESTO DE JORNADAS */}
+            {matchdays.map(j => (
+              <td key={j} className="p-3 text-center">{p.puntos?.[j] ?? '-'}</td>
+            ))}
+          </tr>
+        )
+      })
+    ) : (
+      <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">No hay jugadores.</td></tr>
+    )}
+  </tbody>
+</table>
                       </div>
                     </div>
                   </details>
@@ -4717,7 +4705,7 @@ if (!isInitialSetup) {
               </h3>
               
               <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
-                {['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM', 'FIN'].map((j, idx) => (
+                {['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'].map((j, idx) => (
                   <button key={j} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
                     idx === 0 ? 'bg-[#22c55e] text-black shadow-[0_0_10px_rgba(34,197,94,0.4)]' : 'bg-black/40 text-white/50 border border-white/5'
                   }`}>
