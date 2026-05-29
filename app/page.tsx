@@ -267,7 +267,7 @@ const WORLD_CUP_GROUPS_DATA = [
     teams: ['Alemania', 'Curazao', 'Costa de Marfil', 'Ecuador'],
   },
   { name: 'GRUPO F', teams: ['Países Bajos', 'Japón', 'Suecia', 'Túnez'] },
-  { name: 'GRUPO G', teams: ['Bélgica', 'Egipto', 'IR Irán', 'Nueva Zelanda'] },
+  { name: 'GRUPO G', teams: ['Bélgica', 'Egipto', 'Irán', 'Nueva Zelanda'] },
   {
     name: 'GRUPO H',
     teams: ['España', 'Cabo Verde', 'Arabia Saudita', 'Uruguay'],
@@ -341,7 +341,7 @@ const getFlag = (team: string) => {
     // Grupo G
     Bélgica: 'be',
     Egipto: 'eg',
-    'IR Irán': 'ir',
+    'Irán': 'ir',
     'Nueva Zelanda': 'nz',
     // Grupo H
     España: 'es',
@@ -1965,7 +1965,7 @@ const GROUPS_2026 = [
   { id: 'D', teams: ['Estados Unidos', 'Paraguay', 'Australia', 'Turquía'] },
   { id: 'E', teams: ['Alemania', 'Curazao', 'Costa de Marfil', 'Ecuador'] },
   { id: 'F', teams: ['Países Bajos', 'Japón', 'Suecia', 'Túnez'] },
-  { id: 'G', teams: ['Bélgica', 'Egipto', 'IR Irán', 'Nueva Zelanda'] },
+  { id: 'G', teams: ['Bélgica', 'Egipto', 'Irán', 'Nueva Zelanda'] },
   { id: 'H', teams: ['España', 'Cabo Verde', 'Arabia Saudita', 'Uruguay'] },
   { id: 'I', teams: ['Francia', 'Senegal', 'Iraq', 'Noruega'] },
   { id: 'J', teams: ['Argentina', 'Argelia', 'Austria', 'Jordania'] },
