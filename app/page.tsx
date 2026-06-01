@@ -257,9 +257,9 @@ const TutorialCaddy = ({
 const WORLD_CUP_GROUPS_DATA = [
   {
     name: 'GRUPO A',
-    teams: ['México', 'Sudáfrica', 'Rep. de Corea', 'República Checa'],
+    teams: ['México', 'Sudáfrica', 'Corea del Sur', 'República Checa'],
   },
-  { name: 'GRUPO B', teams: ['Canadá', 'Bosnia/Herzeg.', 'Qatar', 'Suiza'] },
+  { name: 'GRUPO B', teams: ['Canadá', 'Bosnia y Herzegovina', 'Qatar', 'Suiza'] },
   { name: 'GRUPO C', teams: ['Brasil', 'Marruecos', 'Haiti', 'Escocia'] },
   { name: 'GRUPO D', teams: ['Estados Unidos', 'Paraguay', 'Australia', 'Turquía'] },
   {
@@ -311,11 +311,11 @@ const getFlag = (team: string) => {
     // Grupo A
     México: 'mx',
     Sudáfrica: 'za',
-    'Rep. de Corea': 'kr',
+    'Corea del Sur': 'kr',
     'República Checa': 'cz',
     // Grupo B
     Canadá: 'ca',
-    'Bosnia/Herzeg.': 'ba',
+    'Bosnia y Herzegovina': 'ba',
     Qatar: 'qa',
     Suiza: 'ch',
     // Grupo C
@@ -1959,8 +1959,8 @@ const PlayerAdminRow = ({
 // ==========================================
 
 const GROUPS_2026 = [
-  { id: 'A', teams: ['México', 'Sudáfrica', 'Rep. de Corea', 'República Checa'] },
-  { id: 'B', teams: ['Canadá', 'Bosnia/Herzeg.', 'Qatar', 'Suiza'] },
+  { id: 'A', teams: ['México', 'Sudáfrica', 'Corea del Sur', 'República Checa'] },
+  { id: 'B', teams: ['Canadá', 'Bosnia y Herzegovina', 'Qatar', 'Suiza'] },
   { id: 'C', teams: ['Brasil', 'Marruecos', 'Haiti', 'Escocia'] },
   { id: 'D', teams: ['Estados Unidos', 'Paraguay', 'Australia', 'Turquía'] },
   { id: 'E', teams: ['Alemania', 'Curazao', 'Costa de Marfil', 'Ecuador'] },
