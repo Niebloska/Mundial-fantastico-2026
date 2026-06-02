@@ -276,7 +276,7 @@ const WORLD_CUP_GROUPS_DATA = [
   { name: 'GRUPO J', teams: ['Argentina', 'Argelia', 'Austria', 'Jordania'] },
   {
     name: 'GRUPO K',
-    teams: ['Portugal', 'RD Congo', 'Uzbekistán', 'Colombia'],
+    teams: ['Portugal', 'Congo (RDC)', 'Uzbekistán', 'Colombia'],
   },
   { name: 'GRUPO L', teams: ['Inglaterra', 'Croacia', 'Ghana', 'Panamá'] },
 ];
@@ -360,7 +360,7 @@ const getFlag = (team: string) => {
     Jordania: 'jo',
     // Grupo K
     Portugal: 'pt',
-    'RD Congo': 'cd',
+    'Congo (RDC)': 'cd',
     Uzbekistán: 'uz',
     Colombia: 'co',
     // Grupo L
@@ -1969,7 +1969,7 @@ const GROUPS_2026 = [
   { id: 'H', teams: ['España', 'Cabo Verde', 'Arabia Saudita', 'Uruguay'] },
   { id: 'I', teams: ['Francia', 'Senegal', 'Iraq', 'Noruega'] },
   { id: 'J', teams: ['Argentina', 'Argelia', 'Austria', 'Jordania'] },
-  { id: 'K', teams: ['Portugal', 'RD Congo', 'Uzbekistán', 'Colombia'] },
+  { id: 'K', teams: ['Portugal', 'Congo (RDC)', 'Uzbekistán', 'Colombia'] },
   { id: 'L', teams: ['Inglaterra', 'Croacia', 'Ghana', 'Panamá'] },
 ];
 
