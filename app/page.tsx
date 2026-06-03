@@ -260,7 +260,7 @@ const WORLD_CUP_GROUPS_DATA = [
     teams: ['México', 'Sudáfrica', 'Corea del Sur', 'República Checa'],
   },
   { name: 'GRUPO B', teams: ['Canadá', 'Bosnia y Herzegovina', 'Qatar', 'Suiza'] },
-  { name: 'GRUPO C', teams: ['Brasil', 'Marruecos', 'Haiti', 'Escocia'] },
+  { name: 'GRUPO C', teams: ['Brasil', 'Marruecos', 'Haití', 'Escocia'] },
   { name: 'GRUPO D', teams: ['Estados Unidos', 'Paraguay', 'Australia', 'Turquía'] },
   {
     name: 'GRUPO E',
@@ -321,7 +321,7 @@ const getFlag = (team: string) => {
     // Grupo C
     Brasil: 'br',
     Marruecos: 'ma',
-    Haiti: 'ht',
+    Haití: 'ht',
     Escocia: 'gb-sct',
     // Grupo D
     'Estados Unidos': 'us',
@@ -1961,7 +1961,7 @@ const PlayerAdminRow = ({
 const GROUPS_2026 = [
   { id: 'A', teams: ['México', 'Sudáfrica', 'Corea del Sur', 'República Checa'] },
   { id: 'B', teams: ['Canadá', 'Bosnia y Herzegovina', 'Qatar', 'Suiza'] },
-  { id: 'C', teams: ['Brasil', 'Marruecos', 'Haiti', 'Escocia'] },
+  { id: 'C', teams: ['Brasil', 'Marruecos', 'Haití', 'Escocia'] },
   { id: 'D', teams: ['Estados Unidos', 'Paraguay', 'Australia', 'Turquía'] },
   { id: 'E', teams: ['Alemania', 'Curazao', 'Costa de Marfil', 'Ecuador'] },
   { id: 'F', teams: ['Países Bajos', 'Japón', 'Suecia', 'Túnez'] },
@@ -2013,8 +2013,19 @@ const QuinielaView = ({ user, setHasUnsavedQuiniela }: { user: any, setHasUnsave
           .select('selections')
           .eq('user_id', user.id)
           .single();
+          
         if (data?.selections) {
-          setSelections(data.selections);
+          // 🔥 EL EXORCISMO: Filtramos la base de datos para borrar equipos fantasma
+          const allValidTeams = GROUPS_2026.flatMap(g => g.teams);
+          const cleanSelections: Record<string, string[]> = {};
+          
+          Object.keys(data.selections).forEach(groupId => {
+            cleanSelections[groupId] = data.selections[groupId].filter((team: string) => 
+              allValidTeams.includes(team)
+            );
+          });
+
+          setSelections(cleanSelections);
           setIsSaved(true);
         }
       } catch (e) {
