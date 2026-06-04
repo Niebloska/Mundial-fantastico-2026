@@ -3,41 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
-}
-
-/* 🚨 LA MAGIA ANTI-APPLE EMPIEZA AQUÍ 🚨 */
-html,
-body {
-  /* Forzamos a iOS a permitir gestos táctiles hacia los lados y hacia abajo */
-  touch-action: pan-x pan-y !important;
-  /* Activamos el scroll nativo suave (momentum) en todo el documento */
-  -webkit-overflow-scrolling: touch !important;
-  /* Evitamos el molesto rebote elástico de la página principal */
-  overscroll-behavior-y: none;
-}
-
-/* Hack para asegurar que los divs internos sí puedan deslizarse */
-* {
-  -webkit-overflow-scrolling: touch;
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 0, 0, 0;
+  --background-end-rgb: 0, 0, 0;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: #05080f; /* Forzamos directamente tu color oscuro de fondo */
+  background: #05080f;
 }
 
-/* Ocultar barra de scroll pero mantener funcionalidad (muy útil en iOS) */
+/* Ocultar barra de scroll pero mantener funcionalidad */
 .scrollbar-hide::-webkit-scrollbar {
     display: none;
 }

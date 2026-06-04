@@ -3814,26 +3814,25 @@ if (!isInitialSetup) {
       {/* ==========================================
           2. VÍDEO DE INTRODUCCIÓN 
           ========================================== */}
-      <div className={`fixed inset-0 z-[150] bg-black transition-opacity duration-1000 flex items-center justify-center ${isPlayingVideo ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        <video 
-          ref={videoRef}
-          src="/video/intro.mp4" 
-          onEnded={handleVideoEnd}
-          playsInline
-          preload="auto" // 👈 CRUCIAL: Esta etiqueta fuerza al navegador a descargar el vídeo invisiblemente mientras la barra avanza
-          className="w-full h-full object-cover"
-        />
-        
-        {/* BOTÓN: OMITIR INTRO */}
-        {isPlayingVideo && (
+      {isPlayingVideo && (
+        <div className="fixed inset-0 z-[150] bg-black flex items-center justify-center animate-out fade-out duration-1000">
+          <video 
+            ref={videoRef}
+            src="/video/intro.mp4" 
+            onEnded={handleVideoEnd}
+            playsInline
+            preload="auto"
+            className="w-full h-full object-cover"
+          />
+          
           <button 
             onClick={handleVideoEnd} 
             className="absolute top-8 right-8 bg-[#22c55e] text-black text-xs font-black uppercase px-4 py-2 rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.5)] hover:scale-105 transition-transform z-[160]"
           >
             Omitir Intro ⏭️
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ==========================================
           3. REPRODUCTOR DE MÚSICA Y CONTROLES
