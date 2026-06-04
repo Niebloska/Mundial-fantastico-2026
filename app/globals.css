@@ -16,12 +16,32 @@
   }
 }
 
+/* 🚨 LA MAGIA ANTI-APPLE EMPIEZA AQUÍ 🚨 */
+html,
+body {
+  /* Forzamos a iOS a permitir gestos táctiles hacia los lados y hacia abajo */
+  touch-action: pan-x pan-y !important;
+  /* Activamos el scroll nativo suave (momentum) en todo el documento */
+  -webkit-overflow-scrolling: touch !important;
+  /* Evitamos el molesto rebote elástico de la página principal */
+  overscroll-behavior-y: none;
+}
+
+/* Hack para asegurar que los divs internos sí puedan deslizarse */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background: #05080f; /* Forzamos directamente tu color oscuro de fondo */
+}
+
+/* Ocultar barra de scroll pero mantener funcionalidad (muy útil en iOS) */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
