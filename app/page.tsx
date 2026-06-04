@@ -3399,6 +3399,26 @@ useEffect(() => {
   saveSquadData();
 }, [selected, bench, extras, captain, user?.id]);
 
+// BLOQUEO DE SCROLL PARA iOS
+useEffect(() => {
+  if (activeSlot) {
+    // Bloqueamos la página de fondo cuando el mercado se abre
+    document.body.style.overflow = 'hidden';
+    // Para versiones muy rebeldes de iOS:
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+  } else {
+    // Devolvemos la normalidad al cerrar
+    document.body.style.overflow = 'unset';
+    document.body.style.position = 'static';
+  }
+
+  return () => {
+    document.body.style.overflow = 'unset';
+    document.body.style.position = 'static';
+  };
+}, [activeSlot]);
+
   // --- 8. FUNCIONES DE GESTIÓN ---
   const toggleMarket = async () => {
     const newState = !isMarketOpen;
@@ -4187,13 +4207,14 @@ if (!isInitialSetup) {
 
             {/* 2. EL NUEVO MERCADO FLOTANTE */}
             {activeSlot && (
-              // 1. Añadimos touch-none y overscroll-none al fondo para evitar que Safari pase el scroll a la página principal
-              <div className="fixed inset-0 z-[80] bg-[#05080f]/95 backdrop-blur-md p-4 flex flex-col items-center justify-center animate-in zoom-in-95 duration-200 overscroll-none touch-none">
+              // Fondo del modal: Quitamos el touch-none que nos estaba fastidiando
+              <div className="fixed inset-0 z-[100] bg-[#05080f]/95 backdrop-blur-md p-4 flex flex-col items-center justify-center animate-in zoom-in-95 duration-200">
                 
-                {/* 2. Quitamos h-full y usamos h-[85dvh]. Añadimos touch-auto para reactivar el scroll aquí dentro */}
-                <div className="max-w-md w-full mx-auto flex flex-col h-[85dvh] max-h-[800px] touch-auto pb-4">
+                {/* Contenedor Principal: Le damos overflow-hidden para que el scroll se limite SÓLO a la lista */}
+                <div className="max-w-md w-full mx-auto flex flex-col h-[80vh] h-[80dvh] overflow-hidden relative">
                   
-                  <div className="flex justify-between items-center mb-4 bg-[#1a0b0b] p-4 rounded-2xl border-2 border-[#22c55e] shadow-[0_0_30px_rgba(34,197,94,0.15)] shrink-0 mt-4">
+                  {/* CABECERA (Fija arriba) */}
+                  <div className="shrink-0 flex justify-between items-center mb-4 bg-[#1a0b0b] p-4 rounded-2xl border-2 border-[#22c55e] shadow-[0_0_30px_rgba(34,197,94,0.15)]">
                     <div>
                       <h3 className="text-xl font-black italic text-[#22c55e] uppercase">
                         Mercado
@@ -4229,7 +4250,8 @@ if (!isInitialSetup) {
                     </div>
                   </div>
 
-                  <div className="space-y-3 mb-4 shrink-0 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  {/* BUSCADOR Y FILTROS (Fijos arriba) */}
+                  <div className="shrink-0 space-y-3 mb-4 bg-white/5 p-4 rounded-2xl border border-white/10">
                     <input
                       type="text"
                       placeholder="Buscar por nombre..."
@@ -4275,8 +4297,8 @@ if (!isInitialSetup) {
                     </div>
                   </div>
 
-                  {/* 3. Cambiamos a overflow-y-scroll (mejor que auto en iOS) y añadimos el truco de webkit */}
-                  <div className="flex-1 overflow-y-scroll min-h-0 [-webkit-overflow-scrolling:touch] space-y-2 pb-8 scrollbar-hide px-1">
+                  {/* ZONA DE SCROLL (Aislada del resto del mundo) */}
+                  <div className="flex-1 overflow-y-auto relative pb-20 space-y-2 scrollbar-hide [-webkit-overflow-scrolling:touch]">
                     {filteredAndSortedPlayers.length > 0 ? (
                       filteredAndSortedPlayers.map((p: any) => {
                         const currentPlayer =
