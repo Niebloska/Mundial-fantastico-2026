@@ -3961,28 +3961,41 @@ if (!isInitialSetup) {
                       {user.teamName}
                     </h2>
                     <button
-                      onClick={() => {
-                        const newName = prompt(
-                          'Introduce el nuevo nombre para tu equipo:',
-                          user.teamName
-                        );
-                        if (newName && newName.trim() !== '') {
-                          const updatedUser = {
-                            ...user,
-                            teamName: newName.trim().toUpperCase(),
-                          };
-                          setUser(updatedUser);
-                          localStorage.setItem(
-                            'ef24_teamName',
-                            updatedUser.teamName
-                          );
-                        }
-                      }}
-                      className="text-white/30 hover:text-[#22c55e] transition-colors text-lg active:scale-95"
-                      title="Editar nombre del equipo"
-                    >
-                      ✏️
-                    </button>
+  onClick={async () => {
+    const newName = prompt(
+      'Introduce el nuevo nombre para tu equipo:',
+      user.teamName
+    );
+    
+    if (newName && newName.trim() !== '') {
+      const upperName = newName.trim().toUpperCase();
+      
+      // 1. Actualizamos la memoria de la pantalla y el navegador local
+      const updatedUser = {
+        ...user,
+        teamName: upperName,
+      };
+      setUser(updatedUser);
+      localStorage.setItem('ef24_teamName', upperName);
+
+      // 2. 🚀 ENVIAMOS EL CAMBIO A SUPABASE PARA QUE SEA PERMANENTE
+      // Nota: Asumo que tu tabla de usuarios se llama 'profiles'. Si se llama distinto, cámbialo aquí.
+      const { error } = await supabase
+        .from('profiles') 
+        .update({ team_name: upperName }) 
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('Error guardando el nuevo nombre en Supabase:', error);
+        alert('Hubo un problema al guardar el nombre en la base de datos.');
+      }
+    }
+  }}
+  className="text-white/30 hover:text-[#22c55e] transition-colors text-lg active:scale-95"
+  title="Editar nombre del equipo"
+>
+  ✏️
+</button>
                   </div>
                   
 {/* Contenedor horizontal para los botones de acción */}
