@@ -3399,26 +3399,6 @@ useEffect(() => {
   saveSquadData();
 }, [selected, bench, extras, captain, user?.id]);
 
-// BLOQUEO DE SCROLL PARA iOS
-useEffect(() => {
-  if (activeSlot) {
-    // Bloqueamos la página de fondo cuando el mercado se abre
-    document.body.style.overflow = 'hidden';
-    // Para versiones muy rebeldes de iOS:
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-  } else {
-    // Devolvemos la normalidad al cerrar
-    document.body.style.overflow = 'unset';
-    document.body.style.position = 'static';
-  }
-
-  return () => {
-    document.body.style.overflow = 'unset';
-    document.body.style.position = 'static';
-  };
-}, [activeSlot]);
-
   // --- 8. FUNCIONES DE GESTIÓN ---
   const toggleMarket = async () => {
     const newState = !isMarketOpen;
@@ -3944,18 +3924,18 @@ if (!isInitialSetup) {
           </div>
         </div>
 
-        <nav className="max-w-4xl mx-auto mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <nav className="max-w-4xl mx-auto mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide [-webkit-overflow-scrolling:touch] snap-x touch-pan-x px-1">
           {/* USAMOS visibleNavItems PARA OCULTAR EL MODO DIOS AL RESTO */}
           {visibleNavItems.map((item) => (
             <button
               key={item.id}
               onClick={() => {
-                // 👇 SOLO TE DEJA CAMBIAR SI EL VIGILANTE DA LUZ VERDE
                 if (canNavigateAway()) {
                   setView(item.id as any);
                 }
               }}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] font-black uppercase whitespace-nowrap transition-all ${
+              // 👇 Añadimos "snap-start" y mantenemos "shrink-0" (implícito por el whitespace-nowrap)
+              className={`snap-start flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] font-black uppercase whitespace-nowrap transition-all ${
                 view === item.id
                   ? 'bg-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]'
                   : 'bg-white/5 text-white/60 hover:bg-white/10'
