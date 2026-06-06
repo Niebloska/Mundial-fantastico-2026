@@ -4704,15 +4704,26 @@ if (!isInitialSetup) {
                     
                     {/* 🧠 PINTAMOS UNA LÍNEA REAL POR CADA PARTICIPANTE */}
                     {leaderboard.map((u, i) => {
-                      const strokeColor = u.isMe ? '#22c55e' : i === 0 ? '#eab308' : '#3b82f6';
-                      const shadowColor = u.isMe ? 'rgba(34,197,94,0.6)' : i === 0 ? 'rgba(234,179,8,0.6)' : 'rgba(59,130,246,0.6)';
-                      // Al estar a cero antes del torneo, las líneas se quedan planas en el medio esperando los puntos reales
+                      // Lógica de colores: Tú = Verde | 1º = Oro | 2º = Plata | 3º = Bronce | Resto = Paleta
+                      const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
+                      // Fórmula para que el color de los que no están en podio sea fijo según su ID
+                      const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
+                      
+                      const strokeColor = u.isMe ? '#22c55e' : 
+                                          i === 0 ? '#eab308' : 
+                                          i === 1 ? '#d1d5db' : 
+                                          i === 2 ? '#d97706' : 
+                                          GRAPH_COLORS[colorIndex];
+                                          
+                      const shadowColor = `${strokeColor}99`; // Sombra suave usando el mismo color
+                      const strokeWidth = u.isMe ? "2.5" : "1.5"; // Tu línea destaca más
+                      
                       return (
                         <g key={u.id}>
-                          <path d="M0,50 L20,50 L40,50 L60,50 L80,50 L100,50" fill="none" stroke={strokeColor} strokeWidth="1.5" className="transition-all" style={{ filter: `drop-shadow(0 0 2px ${shadowColor})` }} />
-                          <circle cx="0" cy="50" r="1" fill={strokeColor} />
-                          <circle cx = "20" cy="50" r="1" fill={strokeColor} />
-                          <circle cx="40" cy="50" r="1" fill={strokeColor} />
+                          <path d="M0,50 L20,50 L40,50 L60,50 L80,50 L100,50" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} className="transition-all" style={{ filter: `drop-shadow(0 0 3px ${shadowColor})` }} />
+                          <circle cx="0" cy="50" r={u.isMe ? "1.5" : "1"} fill={strokeColor} />
+                          <circle cx="20" cy="50" r={u.isMe ? "1.5" : "1"} fill={strokeColor} />
+                          <circle cx="40" cy="50" r={u.isMe ? "1.5" : "1"} fill={strokeColor} />
                         </g>
                       );
                     })}
@@ -4724,12 +4735,25 @@ if (!isInitialSetup) {
                
                {/* 👥 LEYENDA DINÁMICA: Muestra a todos los rivales reales de la BD */}
                <div className="flex flex-wrap gap-2 mt-6 justify-center">
-                 {leaderboard.map((u, i) => (
-                   <span key={u.id} className="text-[9px] font-bold px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white flex items-center gap-1.5">
-                     <div className={`w-2 h-2 rounded-full ${u.isMe ? 'bg-[#22c55e] shadow-[0_0_5px_#22c55e]' : i === 0 ? 'bg-[#eab308] shadow-[0_0_5px_#eab308]' : 'bg-[#3b82f6] shadow-[0_0_5px_#3b82f6]'}`}></div> 
-                     {u.name}
-                   </span>
-                 ))}
+                 {leaderboard.map((u, i) => {
+                    const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
+                    const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
+                    
+                    const bulletColor = u.isMe ? '#22c55e' : 
+                                        i === 0 ? '#eab308' : 
+                                        i === 1 ? '#d1d5db' : 
+                                        i === 2 ? '#d97706' : 
+                                        GRAPH_COLORS[colorIndex];
+                                        
+                    return (
+                      <span key={u.id} className={`text-[9px] font-bold px-3 py-1.5 rounded-full border text-white flex items-center gap-1.5 ${
+                        u.isMe ? 'bg-[#22c55e]/10 border-[#22c55e]/50' : 'bg-white/5 border-white/10'
+                      }`}>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: bulletColor, boxShadow: `0 0 5px ${bulletColor}` }}></div> 
+                        {u.name}
+                      </span>
+                    );
+                 })}
                </div>
             </div>
 
