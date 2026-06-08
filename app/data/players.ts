@@ -243,7 +243,7 @@ export const ALL_PLAYERS: Player[] = [
   { equipo: 'Brasil', posicion: 'DEF', nombre: 'Magalhães', precio: 56 },
   { equipo: 'Brasil', posicion: 'DEF', nombre: 'Marquinhos', precio: 50 },
   { equipo: 'Brasil', posicion: 'DEF', nombre: 'Roger Ibañez', precio: 35 },
-  { equipo: 'Brasil', posicion: 'DEF', nombre: 'Wesley', precio: 50 },
+  { equipo: 'Brasil', posicion: 'MED', nombre: 'Ederson dos Santos', precio: 38 },
   { equipo: 'Brasil', posicion: 'MED', nombre: 'Bruno Guimarães', precio: 105 },
   { equipo: 'Brasil', posicion: 'MED', nombre: 'Casemiro', precio: 66 },
   { equipo: 'Brasil', posicion: 'MED', nombre: 'Danilo', precio: 85 },
