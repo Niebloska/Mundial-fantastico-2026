@@ -4908,7 +4908,7 @@ if (!isInitialSetup) {
       const { data } = await supabase.from('match_results').select('*');
       
       // 2. CREAMOS UN NUEVO OBJETO (Para que React detecte el cambio)
-      const newMap = {};
+      const newMap: Record<string, any> = {};
       data?.forEach((r) => (newMap[r.match_id] = r));
       
       // 3. ACTUALIZAMOS EL ESTADO
