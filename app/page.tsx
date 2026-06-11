@@ -4880,10 +4880,30 @@ if (!isInitialSetup) {
                   key={mId} 
                   match={{id: mId, home, away, home_score: results[mId]?.home_score, away_score: results[mId]?.away_score}}
                   onSave={async (id: string, hs: number, as: number) => {
-                    const { error } = await supabase.from('match_results').upsert({ match_id: id, group_id: group.id, home_score: hs, away_score: as },
-                      { onConflict: 'match_id' } // 👈 ESTO ES LO QUE TE FALTA
-                    );
-                    if (!error) {
+                    // 1. Forzamos conversión a número y usamos 0 si llega vacío o undefined
+                    const homeScore = Number(hs) || 0;
+                    const awayScore = Number(as) || 0;
+                  
+                    console.log("Intentando guardar:", { id, group_id: group.id, homeScore, awayScore });
+                  
+                    const { error } = await supabase
+                      .from('match_results')
+                      .upsert(
+                        { 
+                          match_id: id, 
+                          group_id: group.id, 
+                          home_score: homeScore, 
+                          away_score: awayScore 
+                        }, 
+                        { onConflict: 'match_id' }
+                      );
+                  
+                    if (error) {
+                      console.error("Error detallado de Supabase:", error);
+                      alert('Error al guardar: ' + error.message);
+                    } else {
+                      console.log("¡Marcador guardado con éxito!");
+                      // Recargamos los datos
                       const { data } = await supabase.from('match_results').select('*');
                       const map: any = {};
                       data?.forEach((r) => (map[r.match_id] = r));
