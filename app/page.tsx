@@ -4880,7 +4880,9 @@ if (!isInitialSetup) {
                   key={mId} 
                   match={{id: mId, home, away, home_score: results[mId]?.home_score, away_score: results[mId]?.away_score}}
                   onSave={async (id: string, hs: number, as: number) => {
-                    const { error } = await supabase.from('match_results').upsert({ match_id: id, group_id: group.id, home_score: hs, away_score: as });
+                    const { error } = await supabase.from('match_results').upsert({ match_id: id, group_id: group.id, home_score: hs, away_score: as },
+                      { onConflict: 'match_id' } // 👈 ESTO ES LO QUE TE FALTA
+                    );
                     if (!error) {
                       const { data } = await supabase.from('match_results').select('*');
                       const map: any = {};
