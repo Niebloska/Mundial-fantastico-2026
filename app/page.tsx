@@ -2099,26 +2099,12 @@ const QuinielaView = ({ user, setHasUnsavedQuiniela }: { user: any, setHasUnsave
 
 {/* === BOTÓN FLOTANTE (Posicionado arriba a la derecha) === */}
 <div className="fixed top-40 right-4 z-[9999]">
-  {isSaved ? (
-    <button
-      onClick={() => setIsSaved(false)}
-      className="px-4 py-2 bg-yellow-500 text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(234,179,8,0.4)] hover:scale-105 transition-transform border-2 border-black"
-    >
-      Editar Pronóstico
-    </button>
-  ) : (
-    <button
-      onClick={handleSave}
-      disabled={!isComplete}
-      className={`px-4 py-2 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg transition-all border-2 border-black ${
-        isComplete
-          ? 'bg-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:scale-105'
-          : 'bg-gray-800 text-white/20'
-      }`}
-    >
-      {isComplete ? 'Guardar' : `Faltan ${24 - totalSelected}`}
-    </button>
-  )}
+  <button
+    onClick={() => alert("⛔ ¡El balón ya está rodando! La Quiniela está cerrada y los pronósticos son definitivos.")}
+    className="px-4 py-2 bg-gray-600 text-white/50 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg border-2 border-white/10 cursor-not-allowed"
+  >
+    🔒 Quiniela Cerrada
+  </button>
 </div>
         
   
@@ -2882,6 +2868,46 @@ export default function MundialApp() {
     if (isAdmin) setTutorialStep(0);
   }, [isAdmin]);
 
+  // ==========================================
+  // 🔄 NUEVO: CARGA AUTOMÁTICA DEL HISTORIAL POR JORNADA
+  // ==========================================
+  useEffect(() => {
+    const loadMatchdayData = async () => {
+      // Nos aseguramos de que el usuario esté logueado
+      if (!session?.user?.id) return; 
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('lineups_history, squad_data')
+        .eq('id', session.user.id)
+        .single();
+
+      if (data) {
+        const history = data.lineups_history || {};
+        
+        // Si esta jornada (lineupsMatchday) ya tiene una foto guardada, la cargamos en pantalla
+        if (history[lineupsMatchday]) {
+          setSelected(history[lineupsMatchday].selected || {});
+          setBench(history[lineupsMatchday].bench || {});
+          setExtras(history[lineupsMatchday].extras || {});
+          setCaptain(history[lineupsMatchday].captain || null);
+        } else {
+          // Si está vacía (nunca han guardado esta jornada), cargamos su plantilla general base
+          const base = data.squad_data || {};
+          setSelected(base.selected || {});
+          setBench(base.bench || {});
+          setExtras(base.extras || {});
+          setCaptain(base.captain || null);
+        }
+      }
+    };
+
+    // Esto hace que la función se dispare automáticamente si estamos en la vista de alineaciones
+    if (view === 'lineups') {
+      loadMatchdayData();
+    }
+  }, [lineupsMatchday, session?.user?.id, view]);
+
   // --- ESTADOS DE LA PLANTILLA (Carga desde Supabase) ---
   const [selected, setSelected] = useState<any>({});
   const [bench, setBench] = useState<any>({});
@@ -2889,13 +2915,7 @@ export default function MundialApp() {
   // Cambia number por string
 const [captain, setCaptain] = useState<string | null>(null);
 
-  const [isSquadLocked, setIsSquadLocked] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ef24_isLocked');
-      return saved ? JSON.parse(saved) : false;
-    }
-    return false;
-  });
+const [isSquadLocked, setIsSquadLocked] = useState(true);
 
   // 🧠 CEREBRO DEL MERCADO: Calcula los cambios y el presupuesto en tiempo real
   useEffect(() => {
@@ -3227,24 +3247,58 @@ const [captain, setCaptain] = useState<string | null>(null);
   const saveSquadToSupabase = async () => {
     if (!session?.user?.id) return;
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        squad_data: {
+    try {
+      // 1. 🔍 Nos bajamos el historial que ya existe en Supabase para no pisar otras jornadas
+      const { data: profile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('lineups_history')
+        .eq('id', session.user.id)
+        .single();
+
+      if (fetchError) {
+        console.error('Error al recuperar el historial:', fetchError.message);
+        return;
+      }
+
+      // Si la columna está vacía, empezamos con un objeto limpio
+      const currentHistory = profile?.lineups_history || {};
+
+      // 2. 🧠 Creamos el nuevo historial guardando los datos en el "cajón" de la jornada seleccionada (ej: 'J1', 'J2'...)
+      const updatedHistory = {
+        ...currentHistory,
+        [lineupsMatchday]: {
           selected,
           bench,
           extras,
-          captain,
-          snapshot: snapshotSquad,         // 📸 Guardamos la foto congelada para que no se borre al actualizar
-          snapshotMatchday: activeMatchday // 🏅 Dejamos grabada la jornada actual vinculada a esa foto
-        },
-      })
-      .eq('id', session.user.id);
+          captain
+        }
+      };
 
-    if (error) {
-      console.error('Error al guardar en nube:', error.message);
-    } else {
-      console.log('¡Plantilla del Mundial sincronizada!');
+      // 3. 🚀 Subimos la actualización a Supabase
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          // Mantenemos squad_data como la plantilla base general de la app
+          squad_data: {
+            selected,
+            bench,
+            extras,
+            captain,
+            snapshot: snapshotSquad,         
+            snapshotMatchday: lineupsMatchday 
+          },
+          // 📸 Guardamos la foto específica de esta jornada en el historial sin tocar las demás
+          lineups_history: updatedHistory
+        })
+        .eq('id', session.user.id);
+
+      if (updateError) {
+        console.error('Error al guardar en nube:', updateError.message);
+      } else {
+        console.log(`¡Alineación de la jornada ${lineupsMatchday} sincronizada en el historial!`);
+      }
+    } catch (err) {
+      console.error('Error inesperado en saveSquadToSupabase:', err);
     }
   };
 
@@ -4005,84 +4059,14 @@ if (!isInitialSetup) {
                   
 {/* Contenedor horizontal para los botones de acción */}
 <div className="flex flex-wrap items-center gap-2">
-<button
-  onClick={() => {
-    // 2. SEGUNDA BARRERA: Validación de táctica (solo si estamos validando)
-    if (!isSquadLocked && !formationInfo.isValidTactic) {
-      return alert(formationInfo.message);
-    }
-
-    // 👇 === 3. NUEVAS BARRERAS DE SEGURIDAD === 👇
-    if (!isSquadLocked) {
-      // Validar Capitán
-      if (!captain) {
-        return alert('©️ ¡Falta el líder! Es obligatorio seleccionar un Capitán antes de validar.');
-      }
-
-      // Validar 11 Titulares
-      const startersCount = Object.values(selected).filter(Boolean).length;
-      if (startersCount < 11) {
-        return alert('🏟️ Plantilla incompleta: Necesitas 11 jugadores titulares.');
-      }
-
-      // Validar 6 Suplentes en el banquillo
-      const benchCount = Object.values(bench).filter(Boolean).length;
-      if (benchCount < 6) {
-        return alert('⚠️ Plantilla incompleta: Debes fichar exactamente 6 jugadores para el Banquillo Oficial.');
-      }
-    }
-    // 👆 === FIN DE LAS BARRERAS === 👆
-
-    const nextLockState = !isSquadLocked;
-    setIsSquadLocked(nextLockState);
-
-    if (nextLockState === true) {
-      saveSquadToSupabase();
-      
-      // 🎉 EXPLOSIÓN DE CONFETI DE VICTORIA
-      confetti({
-        particleCount: 150,
-        spread: 80,
-        origin: { y: 0.6 },
-        colors: ['#22c55e', '#fbbf24', '#ffffff'] // Verde neón, dorado y blanco
-      });
-    }
-
-    setActiveSlot(null);
-  }}
-  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg border-2 flex items-center justify-center gap-2 ${
-    isSquadLocked
-      ? 'bg-yellow-500 text-black border-yellow-400 hover:bg-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.3)]'
-      : formationInfo.isValidTactic
-      ? 'bg-[#22c55e] text-black border-[#22c55e] hover:brightness-110 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
-      : 'bg-gray-600 text-white/50 border-white/10 cursor-not-allowed'
-  }`}
->
-  {isSquadLocked ? '🔓 Editar Plantilla' : '🔒 Validar Plantilla'}
-</button>
-
-                    {/* 👇 NUEVO BOTÓN: DESHACER FICHAJES (Solo visible si está editando y ha hecho algún cambio) */}
-                    {!isSquadLocked && transfersMade > 0 && (
-                      <button
-                        onClick={() => {
-                          if (!snapshotSquad) return;
-                          if (
-                            confirm(
-                              '🔄 ¿Seguro que quieres deshacer todos tus fichajes de esta ventana y recuperar tu alineación inicial?'
-                            )
-                          ) {
-                            setSelected(snapshotSquad.selected || {});
-                            setBench(snapshotSquad.bench || {});
-                            setExtras(snapshotSquad.extras || {});
-                            setActiveSlot(null);
-                          }
-                        }}
-                        className="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all bg-red-500/10 text-red-400 border-2 border-red-500/20 hover:bg-red-500 hover:text-white shadow-lg active:scale-95 flex items-center justify-center gap-2"
-                        title="Resetear mercado"
-                      >
-                        ↩️ Deshacer Cambios
-                      </button>
-                    )}
+                    
+                    {/* 👇 BOTÓN FIJO (MERCADO CERRADO) 👇 */}
+                    <button
+                      className="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg border-2 flex items-center justify-center gap-2 bg-gray-600 text-white/50 border-white/10 cursor-not-allowed"
+                      onClick={() => alert("⛔ ¡El Mundial Fantástico 2026 ya ha comenzado! El mercado de fichajes de plantillas iniciales está cerrado.")}
+                    >
+                      🔒 Mercado Cerrado
+                    </button>
                   </div>
 
                   <div
@@ -4451,7 +4435,22 @@ if (!isInitialSetup) {
                         <button 
                           className="bg-[#22c55e] text-black px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:scale-105 transition-transform"
                           onClick={() => {
-                            alert(`¡Alineación para la ${lineupsMatchday} guardada con éxito!`);
+                            // 👇 AQUÍ ESTÁ LA MAGIA: Llamamos a la función que guarda todo en Supabase
+                            if (typeof saveSquadToSupabase === 'function') {
+                              saveSquadToSupabase();
+                            }
+                            
+                            // Ypcional: Lanzar un poco de confeti para celebrar que está guardado
+                            if (typeof confetti === 'function') {
+                              confetti({
+                                particleCount: 100,
+                                spread: 70,
+                                origin: { y: 0.6 },
+                                colors: ['#22c55e', '#ffffff']
+                              });
+                            }
+
+                            alert(`¡Alineación y Capitán para la jornada ${lineupsMatchday} guardados con éxito en la base de datos!`);
                           }}
                         >
                           Confirmar 11
