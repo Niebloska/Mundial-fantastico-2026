@@ -1631,15 +1631,18 @@ const PlayerAdminRow = ({
     setIsSaving(true);
     const finalValue = dnp ? null : totalPts;
 
+    // 💡 SOLUCIÓN: Generamos un ID seguro combinando nombre y equipo si p.id no existe
+    const safePlayerId = p.id || `${p.nombre}_${p.equipo}`;
+
     const { error } = await supabase
       .from('player_scores')
       .upsert(
-        { player_id: p.id, matchday: adminMatchday, points: finalValue },
+        { player_id: safePlayerId, matchday: adminMatchday, points: finalValue },
         { onConflict: 'player_id, matchday' }
       );
 
     if (!error) {
-      onScoreSaved(p.id, finalValue);
+      onScoreSaved(safePlayerId, finalValue);
       setIsLocked(true);
     } else {
       alert('Error al guardar en la nube: ' + error.message);
