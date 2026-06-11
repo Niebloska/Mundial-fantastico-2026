@@ -1473,6 +1473,12 @@ const MatchAdminRow = ({ match, onSave, onDelete }: any) => {
   const [hScore, setHScore] = useState<number | ''>(match.home_score ?? '');
   const [aScore, setAScore] = useState<number | ''>(match.away_score ?? '');
 
+  // 👇 Añade este efecto debajo de tus useState
+  useEffect(() => {
+    setHScore(match.home_score ?? '');
+    setAScore(match.away_score ?? '');
+  }, [match.home_score, match.away_score]); // Se ejecutará cada vez que el padre cambie estos valores
+
   // Comprobamos si hay algún marcador escrito (ya sea guardado o en el input)
   const hasAnyScore = hScore !== '' || aScore !== '';
 
@@ -4877,57 +4883,59 @@ if (!isInitialSetup) {
               const mId = `G_${group.id}_${num}`;
               return (
                 <MatchAdminRow 
-                  key={mId} 
-                  match={{id: mId, home, away, home_score: results[mId]?.home_score, away_score: results[mId]?.away_score}}
-                  onSave={async (id: string, hs: number, as: number) => {
-                    // 1. Forzamos conversión a número y usamos 0 si llega vacío o undefined
-                    const homeScore = Number(hs) || 0;
-                    const awayScore = Number(as) || 0;
-                  
-                    console.log("Intentando guardar:", { id, group_id: group.id, homeScore, awayScore });
-                  
-                    const { error } = await supabase
-                      .from('match_results')
-                      .upsert(
-                        { 
-                          match_id: id, 
-                          group_id: group.id, 
-                          home_score: homeScore, 
-                          away_score: awayScore 
-                        }, 
-                        { onConflict: 'match_id' }
-                      );
-                  
-                    if (error) {
-                      console.error("Error detallado de Supabase:", error);
-                      alert('Error al guardar: ' + error.message);
-                    } else {
-                      console.log("¡Marcador guardado con éxito!");
-                      // Recargamos los datos
-                      const { data } = await supabase.from('match_results').select('*');
-                      const map: any = {};
-                      data?.forEach((r) => (map[r.match_id] = r));
-                      setResults(map);
-                    }
-                  }}
-                  // 👇 NUEVA PROP: FUNCIÓN PARA BORRAR EL PARTIDO EN SUPABASE
-                  onDelete={async (id: string) => {
-                    const { error } = await supabase
-                      .from('match_results')
-                      .delete()
-                      .eq('match_id', id);
+  key={mId} 
+  match={{
+    id: mId, 
+    home, 
+    away, 
+    home_score: results[mId]?.home_score, 
+    away_score: results[mId]?.away_score
+  }}
+  // 👇 AQUÍ PONES LA NUEVA VERSIÓN BLINDADA
+  onSave={async (id: string, hs: number, as: number) => {
+    const homeScore = Number(hs) || 0;
+    const awayScore = Number(as) || 0;
+  
+    const { error } = await supabase
+      .from('match_results')
+      .upsert(
+        { match_id: id, group_id: group.id, home_score: homeScore, away_score: awayScore, updated_at: new Date().toISOString() },
+        { onConflict: 'match_id' }
+      );
+  
+    if (!error) {
+      // 1. Recargamos los datos frescos
+      const { data } = await supabase.from('match_results').select('*');
+      
+      // 2. CREAMOS UN NUEVO OBJETO (Para que React detecte el cambio)
+      const newMap = {};
+      data?.forEach((r) => (newMap[r.match_id] = r));
+      
+      // 3. ACTUALIZAMOS EL ESTADO
+      setResults({ ...newMap }); 
+      
+      console.log("Estado actualizado y refrescado");
+    } else {
+      alert('Error: ' + error.message);
+    }
+  }}
+  // 👇 AQUÍ SIGUE TU CÓDIGO DE BORRADO TAL CUAL
+  onDelete={async (id: string) => {
+    const { error } = await supabase
+      .from('match_results')
+      .delete()
+      .eq('match_id', id);
 
-                    if (!error) {
-                      // Volvemos a pedir los datos actualizados a la nube para limpiar la interfaz
-                      const { data } = await supabase.from('match_results').select('*');
-                      const map: any = {};
-                      data?.forEach((r) => (map[r.match_id] = r));
-                      setResults(map);
-                    } else {
-                      alert('Error al eliminar el marcador: ' + error.message);
-                    }
-                  }}
-                />
+    if (!error) {
+      const { data } = await supabase.from('match_results').select('*');
+      const map: any = {};
+      data?.forEach((r) => (map[r.match_id] = r));
+      setResults(map);
+    } else {
+      alert('Error al eliminar el marcador: ' + error.message);
+    }
+  }}
+/>
               );
             })}
           </div>
