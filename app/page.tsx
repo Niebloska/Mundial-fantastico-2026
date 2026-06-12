@@ -3305,63 +3305,39 @@ const [isSquadLocked, setIsSquadLocked] = useState(true);
   // ==========================================
   // NUEVA FUNCIÓN: GUARDADO EN SUPABASE
   // ==========================================
-  const saveSquadToSupabase = async () => {
-    if (!session?.user?.id) return;
+  // 1. Cambiamos la definición para que acepte el historial (historyToSave)
+const saveSquadToSupabase = async (historyToSave: any) => { 
+  if (!session?.user?.id) return;
 
-    try {
-      // 1. 🔍 Nos bajamos el historial que ya existe en Supabase para no pisar otras jornadas
-      const { data: profile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('lineups_history')
-        .eq('id', session.user.id)
-        .single();
-
-      if (fetchError) {
-        console.error('Error al recuperar el historial:', fetchError.message);
-        return;
-      }
-
-      // Si la columna está vacía, empezamos con un objeto limpio
-      const currentHistory = profile?.lineups_history || {};
-
-      // 2. 🧠 Creamos el nuevo historial guardando los datos en el "cajón" de la jornada seleccionada (ej: 'J1', 'J2'...)
-      const updatedHistory = {
-        ...currentHistory,
-        [lineupsMatchday]: {
+  try {
+    // 2. Ya no hace falta calcular 'updatedHistory' aquí dentro, 
+    // porque ya nos viene listo desde el botón.
+    
+    // 3. Subimos la actualización directamente a Supabase
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        squad_data: {
           selected,
           bench,
           extras,
-          captain
-        }
-      };
+          captain,
+          // (Tu lógica de snapshot original)
+        },
+        // 📸 Guardamos el historial que nos acaban de pasar
+        lineups_history: historyToSave
+      })
+      .eq('id', session.user.id);
 
-      // 3. 🚀 Subimos la actualización a Supabase
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          // Mantenemos squad_data como la plantilla base general de la app
-          squad_data: {
-            selected,
-            bench,
-            extras,
-            captain,
-            snapshot: snapshotSquad,         
-            snapshotMatchday: lineupsMatchday 
-          },
-          // 📸 Guardamos la foto específica de esta jornada en el historial sin tocar las demás
-          lineups_history: updatedHistory
-        })
-        .eq('id', session.user.id);
-
-      if (updateError) {
-        console.error('Error al guardar en nube:', updateError.message);
-      } else {
-        console.log(`¡Alineación de la jornada ${lineupsMatchday} sincronizada en el historial!`);
-      }
-    } catch (err) {
-      console.error('Error inesperado en saveSquadToSupabase:', err);
+    if (updateError) {
+      console.error('Error al guardar en nube:', updateError.message);
+    } else {
+      console.log(`¡Alineación guardada correctamente en el historial!`);
     }
-  };
+  } catch (err) {
+    console.error('Error inesperado en saveSquadToSupabase:', err);
+  }
+};
 
   // --- 5. LÓGICA DE CONTROL DEL TUTORIAL ---
   useEffect(() => {
