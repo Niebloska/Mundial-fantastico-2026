@@ -1576,7 +1576,9 @@ const PlayerAdminRow = ({
   const [dnp, setDnp] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
 
-  
+  // Añade esto a tus estados globales arriba del todo (donde tienes el resto de estados)
+const [lineupsHistory, setLineupsHistory] = useState<Record<string, any>>({}); 
+// Ejemplo de estructura: { "J1": { selected: {...}, bench: {...} }, "J2": {...} }
 
   useEffect(() => {
     if (savedScore !== undefined) {
@@ -4450,23 +4452,44 @@ if (!isInitialSetup) {
                 
                 {/* 1. SELECTOR DE JORNADA */}
                 <nav className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide justify-start sm:justify-center">
-                  {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => {
-                    const isEditable = countdown.targetId === j;
-                    return (
-                      <button
-                        key={j}
-                        onClick={() => setLineupsMatchday(j)}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2 flex items-center gap-1.5 whitespace-nowrap ${
-                          lineupsMatchday === j 
-                          ? 'bg-[#22c55e] border-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
-                          : 'bg-white/5 border-transparent text-white/40 hover:bg-white/10'
-                        }`}
-                      >
-                        {j} {isEditable && <span className="text-xs animate-bounce">🔓</span>}
-                      </button>
-                    );
-                  })}
-                </nav>
+  {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => {
+    const isEditable = countdown.targetId === j;
+    return (
+      <button
+        key={j}
+        onClick={() => {
+          // 1. Cambiamos la jornada activa
+          setLineupsMatchday(j);
+
+          // 2. Buscamos si existe una "foto" (snapshot) para esta jornada en el historial
+          const snapshot = lineupsHistory[j];
+
+          if (snapshot) {
+            // Si ya tiene guardada una alineación, cargamos sus datos
+            setSelected(snapshot.selected);
+            setBench(snapshot.bench);
+            setExtras(snapshot.extras);
+            setCaptain(snapshot.captain);
+          } else {
+            // Si no tiene nada, cargamos la plantilla base para que no se quede vacío
+            // (Asegúrate de tener acceso a 'baseSquad' o similar aquí)
+            setSelected(baseSquad.selected);
+            setBench(baseSquad.bench);
+            setExtras(baseSquad.extras);
+            setCaptain(baseSquad.captain);
+          }
+        }}
+        className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2 flex items-center gap-1.5 whitespace-nowrap ${
+          lineupsMatchday === j 
+          ? 'bg-[#22c55e] border-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
+          : 'bg-white/5 border-transparent text-white/40 hover:bg-white/10'
+        }`}
+      >
+        {j} {isEditable && <span className="text-xs animate-bounce">🔓</span>}
+      </button>
+    );
+  })}
+</nav>
 
                 {/* 2. EL TERRENO DE JUEGO */}
                 <div className="bg-[#1a2b1a] border-4 border-[#22c55e]/30 rounded-[2.5rem] p-4 sm:p-6 shadow-2xl relative overflow-hidden">
@@ -4487,12 +4510,32 @@ if (!isInitialSetup) {
                         <button 
                           className="bg-[#22c55e] text-black px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:scale-105 transition-transform"
                           onClick={() => {
-                            // 👇 AQUÍ ESTÁ LA MAGIA: Llamamos a la función que guarda todo en Supabase
+                            // 1. Creamos la 'foto' (snapshot) con los datos actuales de esta jornada
+                            const newSnapshot = { 
+                              selected, 
+                              bench, 
+                              extras, 
+                              captain 
+                            };
+                          
+                            // 2. Creamos la nueva versión del historial
+                            // Esto copia todo lo anterior y añade/actualiza solo la jornada que estamos editando
+                            const newHistory = { 
+                              ...lineupsHistory, 
+                              [lineupsMatchday]: newSnapshot 
+                            };
+                          
+                            // 3. Actualizamos el estado local
+                            setLineupsHistory(newHistory);
+                          
+                            // 4. Guardamos en Supabase (¡OJO!)
+                            // Aquí debes pasarle el objeto 'newHistory' a tu función de guardado 
+                            // para que Supabase guarde todo el historial de jornadas de golpe.
                             if (typeof saveSquadToSupabase === 'function') {
-                              saveSquadToSupabase();
+                              saveSquadToSupabase(newHistory); 
                             }
-                            
-                            // Ypcional: Lanzar un poco de confeti para celebrar que está guardado
+                          
+                            // Confeti y aviso
                             if (typeof confetti === 'function') {
                               confetti({
                                 particleCount: 100,
@@ -4501,8 +4544,7 @@ if (!isInitialSetup) {
                                 colors: ['#22c55e', '#ffffff']
                               });
                             }
-
-                            alert(`¡Alineación y Capitán para la jornada ${lineupsMatchday} guardados con éxito en la base de datos!`);
+                            alert(`¡Alineación para la jornada ${lineupsMatchday} guardada en el historial!`);
                           }}
                         >
                           Confirmar 11
