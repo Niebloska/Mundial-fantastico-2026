@@ -3049,6 +3049,35 @@ const [isSquadLocked, setIsSquadLocked] = useState(true);
   const [adminScoreCountry, setAdminScoreCountry] = useState('SELECCIÓN');
 
   const [adminTab, setAdminTab] = useState<'partidos' | 'tesoreria' | 'puntos'>('partidos');
+  
+  const [unusedTeams, setUnusedTeams] = useState<string[]>([]);
+
+  const auditUnusedTeams = async () => {
+    // 1. Traemos los perfiles
+    const { data: profiles } = await supabase.from('profiles').select('squad_data');
+    if (!profiles) return;
+
+    // 2. Extraemos todos los equipos usados por los usuarios
+    const usedTeams = new Set<string>();
+    profiles.forEach((p: any) => {
+      const squad = p.squad_data || {};
+      // Revisamos todas las secciones de la plantilla
+      [squad.selected, squad.bench, squad.extras].forEach((section) => {
+        if (!section) return;
+        Object.values(section).forEach((player: any) => {
+          if (player?.equipo) usedTeams.add(player.equipo);
+        });
+      });
+    });
+
+    // 3. Obtenemos todos los equipos posibles (asegúrate de tener ALL_PLAYERS accesible)
+    const allTeams = Array.from(new Set(ALL_PLAYERS.map((p) => p.equipo)));
+    
+    // 4. Filtramos los que nadie ha usado
+    const unused = allTeams.filter((team) => !usedTeams.has(team));
+    setUnusedTeams(unused);
+  };
+
   const [allProfiles, setAllProfiles] = useState<any[]>([]);
 
   useEffect(() => {
@@ -4809,23 +4838,23 @@ if (!isInitialSetup) {
           </div>
         )}
 
-        {view === 'admin' && (
+  {view === 'admin' && (
   <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
     
     {/* --- NUEVA SUB-NAVEGACIÓN DE TESORERÍA --- */}
-    <div className="flex gap-2 p-1 bg-black/40 border border-white/5 rounded-2xl max-w-md mx-auto mb-6">
-      {['puntos', 'partidos', 'tesoreria'].map((tab) => (
-        <button
-          key={tab}
-          onClick={() => setAdminTab(tab as any)}
-          className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
-            adminTab === tab ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5'
-          }`}
-        >
-          {tab}
-        </button>
-      ))}
-    </div>
+<div className="flex gap-2 p-1 bg-black/40 border border-white/5 rounded-2xl max-w-md mx-auto mb-6">
+  {['puntos', 'partidos', 'tesoreria', 'auditoria'].map((tab) => ( // 👈 Añadido 'auditoria'
+    <button
+      key={tab}
+      onClick={() => setAdminTab(tab as any)}
+      className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
+        adminTab === tab ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-white/40 hover:bg-white/5'
+      }`}
+    >
+      {tab}
+    </button>
+  ))}
+</div>
 
     {/* ==========================================
         PESTAÑA: PARTIDOS (MERCADO + MARCADORES)
@@ -4883,14 +4912,14 @@ if (!isInitialSetup) {
               const mId = `G_${group.id}_${num}`;
               return (
                 <MatchAdminRow 
-  key={mId} 
-  match={{
-    id: mId, 
-    home, 
-    away, 
-    home_score: results[mId]?.home_score, 
-    away_score: results[mId]?.away_score
-  }}
+                key={`${mId}-${results[mId]?.home_score}-${results[mId]?.away_score}`} 
+                match={{
+                  id: mId, 
+                  home, 
+                  away, 
+                  home_score: results[mId]?.home_score, 
+                  away_score: results[mId]?.away_score
+                }}
   // 👇 AQUÍ PONES LA NUEVA VERSIÓN BLINDADA
   onSave={async (id: string, hs: number, as: number) => {
     const homeScore = Number(hs) || 0;
@@ -4942,6 +4971,37 @@ if (!isInitialSetup) {
         </div>
         </div>
     )}
+
+{adminTab === 'auditoria' && (
+  <div className="animate-in fade-in duration-300">
+    <div className="bg-[#1a0b0b] border border-blue-500/30 rounded-3xl p-6 shadow-2xl">
+      <h2 className="text-xl font-black italic text-blue-500 uppercase tracking-tighter mb-4">
+        Auditoría de Selecciones
+      </h2>
+      <button
+        onClick={auditUnusedTeams}
+        className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-black uppercase text-sm mb-6 transition-all shadow-lg active:scale-95"
+      >
+        {unusedTeams.length > 0 ? 'Volver a Auditar' : 'Ejecutar Auditoría'}
+      </button>
+
+      {unusedTeams.length > 0 && (
+        <div className="bg-black/50 p-4 rounded-xl border border-blue-500/20">
+          <p className="text-blue-400 font-bold text-xs mb-4 uppercase">
+            Selecciones sin usuarios (puedes ignorar estas):
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {unusedTeams.map(team => (
+              <span key={team} className="text-white/60 text-[10px] font-mono bg-white/5 px-2 py-1 rounded">
+                {team}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
     {/* ==========================================
         PESTAÑA: PUNTOS (INYECTAR PUNTOS JUGADORES)
