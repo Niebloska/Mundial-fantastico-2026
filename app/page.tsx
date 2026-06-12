@@ -2243,23 +2243,10 @@ const formatMatchDate = (isoString: string) => {
   return { day: `${day} ${months[parseInt(month, 10) - 1]}`, time };
 };
 
-const CalendarView = () => {
+const CalendarView = ({ results }: { results: Record<string, any> }) => {
   const [activeTab, setActiveTab] = useState<'groups' | 'knockout'>('groups');
   const [activeGroup, setActiveGroup] = useState('A');
-  const [results, setResults] = useState<Record<string, any>>({});
-
-  useEffect(() => {
-    const fetchResults = async () => {
-      const { data } = await supabase.from('match_results').select('*');
-      if (data) {
-        const map: any = {};
-        data.forEach((r) => (map[r.match_id] = r));
-        setResults(map);
-      }
-    };
-    fetchResults();
-  }, []);
-
+  
   const activeGroupData = GROUPS_2026.find((g) => g.id === activeGroup);
 
   // Filtramos los partidos exactos de este grupo
@@ -2859,6 +2846,24 @@ export default function MundialApp() {
     
   const [showSectionHelp, setShowSectionHelp] = useState<string | null>(null);
   const [session, setSession] = useState<any>(null);
+
+  // --- TORRE DE CONTROL DE MARCADORES ---
+const [results, setResults] = useState<Record<string, any>>({});
+
+useEffect(() => {
+  const fetchInitialResults = async () => {
+    const { data } = await supabase.from('match_results').select('*');
+    if (data) {
+      const map: Record<string, any> = {};
+      data.forEach((r) => (map[r.match_id] = r));
+      setResults(map);
+    }
+  };
+  
+  if (session) {
+    fetchInitialResults();
+  }
+}, [session]);
   
   const [user, setUser] = useState<any>({
     email: '',
@@ -3034,7 +3039,7 @@ const [isSquadLocked, setIsSquadLocked] = useState(true);
   }, [selected, bench, extras]);
 
   // --- 4. OTROS ESTADOS DE LA APP ---
-  const [results, setResults] = useState<Record<string, any>>({});
+  
   const [activeSlot, setActiveSlot] = useState<any>(null);
   const [step, setStep] = useState(2); 
   const [searchTerm, setSearchTerm] = useState('');
@@ -4406,7 +4411,7 @@ if (!isInitialSetup) {
     setHasUnsavedQuiniela={setHasUnsavedQuiniela} // 👈 EL CABLE NUEVO
   />
   )}
-        {view === 'calendar' && <CalendarView />}
+        {view === 'calendar' && <CalendarView results={results} />}
         {view === 'lineups' && (
           (() => {
             // 🧠 SANEAMIENTO DE ALINEACIONES: Construimos los puntos reales para la jornada seleccionada
