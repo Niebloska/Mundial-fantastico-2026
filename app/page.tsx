@@ -2861,6 +2861,9 @@ export default function MundialApp() {
   // --- TORRE DE CONTROL DE MARCADORES ---
 const [results, setResults] = useState<Record<string, any>>({});
 
+const [lineupsHistory, setLineupsHistory] = useState<Record<string, any>>({});
+const [squadData, setSquadData] = useState<any>({}); // Tu base
+
 useEffect(() => {
   const fetchInitialResults = async () => {
     const { data } = await supabase.from('match_results').select('*');
@@ -2898,40 +2901,44 @@ useEffect(() => {
   // ==========================================
   useEffect(() => {
     const loadMatchdayData = async () => {
-      // Nos aseguramos de que el usuario esté logueado
       if (!session?.user?.id) return; 
-
+  
       const { data, error } = await supabase
         .from('profiles')
         .select('lineups_history, squad_data')
         .eq('id', session.user.id)
         .single();
-
+  
       if (data) {
+        // 1. Guardamos la fuente de verdad en los estados globales
         const history = data.lineups_history || {};
+        const base = data.squad_data || {};
         
-        // Si esta jornada (lineupsMatchday) ya tiene una foto guardada, la cargamos en pantalla
+        setLineupsHistory(history); // Actualizamos el historial global
+        setSquadData(base);         // Actualizamos la plantilla base global
+  
+        // 2. Cargamos en pantalla haciendo un CLON PROFUNDO (para romper referencias)
         if (history[lineupsMatchday]) {
-          setSelected(history[lineupsMatchday].selected || {});
-          setBench(history[lineupsMatchday].bench || {});
-          setExtras(history[lineupsMatchday].extras || {});
-          setCaptain(history[lineupsMatchday].captain || null);
+          const snap = history[lineupsMatchday];
+          setSelected(JSON.parse(JSON.stringify(snap.selected || {})));
+          setBench(JSON.parse(JSON.stringify(snap.bench || {})));
+          setExtras(JSON.parse(JSON.stringify(snap.extras || {})));
+          setCaptain(snap.captain || null);
         } else {
-          // Si está vacía (nunca han guardado esta jornada), cargamos su plantilla general base
-          const base = data.squad_data || {};
-          setSelected(base.selected || {});
-          setBench(base.bench || {});
-          setExtras(base.extras || {});
+          // Cargamos la base CLONADA
+          setSelected(JSON.parse(JSON.stringify(base.selected || {})));
+          setBench(JSON.parse(JSON.stringify(base.bench || {})));
+          setExtras(JSON.parse(JSON.stringify(base.extras || {})));
           setCaptain(base.captain || null);
         }
       }
     };
-
-    // Esto hace que la función se dispare automáticamente si estamos en la vista de alineaciones
+  
+    // Importante: añadimos lineupsMatchday a la dependencia para que si cambias de jornada, se recargue
     if (view === 'lineups') {
       loadMatchdayData();
     }
-  }, [lineupsMatchday, session?.user?.id, view]);
+  }, [view, lineupsMatchday, session?.user?.id]); // Añadimos lineupsMatchday al array
 
   // --- ESTADOS DE LA PLANTILLA (Carga desde Supabase) ---
   const [selected, setSelected] = useState<any>({});
@@ -4458,25 +4465,19 @@ if (!isInitialSetup) {
       <button
         key={j}
         onClick={() => {
-          // 1. Cambiamos la jornada activa
           setLineupsMatchday(j);
-
-          // 2. Buscamos si existe una "foto" (snapshot) para esta jornada en el historial
           const snapshot = lineupsHistory[j];
-
+        
           if (snapshot) {
-            // Si ya tiene guardada una alineación, cargamos sus datos
-            setSelected(snapshot.selected);
-            setBench(snapshot.bench);
-            setExtras(snapshot.extras);
-            setCaptain(snapshot.captain);
+             // Clonamos del historial
+             setSelected(JSON.parse(JSON.stringify(snapshot.selected || {})));
+             // ... bench, extras, captain
           } else {
-            // Si no tiene nada, cargamos la plantilla base para que no se quede vacío
-            // (Asegúrate de tener acceso a 'baseSquad' o similar aquí)
-            setSelected(baseSquad.selected);
-            setBench(baseSquad.bench);
-            setExtras(baseSquad.extras);
-            setCaptain(baseSquad.captain);
+             // Clonamos de la BASE (usando squadData)
+             setSelected(JSON.parse(JSON.stringify(squadData.selected || {})));
+             setBench(JSON.parse(JSON.stringify(squadData.bench || {})));
+             setExtras(JSON.parse(JSON.stringify(squadData.extras || {})));
+             setCaptain(squadData.captain || null);
           }
         }}
         className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2 flex items-center gap-1.5 whitespace-nowrap ${
