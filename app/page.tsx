@@ -3356,7 +3356,7 @@ const saveSquadToSupabase = async (historyToSave: any) => {
     if (targetView) setView(targetView);
     if (targetView === 'quiniela') {
       setIsSquadLocked(true);
-      saveSquadToSupabase(); // <-- Añade esto aquí también
+      saveSquadToSupabase(lineupsHistory); // <--- Aquí le pasamos el historial actual
     }
     setTutorialStep((prev) => prev + 1);
   };
