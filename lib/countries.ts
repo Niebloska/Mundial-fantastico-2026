@@ -7,6 +7,7 @@ export const availableCountries = [
     'Australia',
     'Austria',
     'Bélgica',
+    'Bosnia y Herzegovina',
     'Brasil',
     'Camerún',
     'Canadá',
@@ -47,5 +48,4 @@ export const availableCountries = [
     'Suiza',
     'Turquía',
     'Uruguay',
-    'Venezuela'
   ];
