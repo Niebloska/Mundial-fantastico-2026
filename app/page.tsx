@@ -2269,8 +2269,11 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
       (t) => (table[t] = { name: t, pts: 0, pj: 0, gf: 0, gc: 0, dif: 0 })
     );
 
-    groupMatches.forEach((match) => {
-      const res = results[match.id];
+    groupMatches.forEach((match, index) => {
+      // 🧠 Traductor: Convertimos el índice (0-5) al ID que usa el Modo Dios (1-6)
+      const modoDiosId = `G_${activeGroup}_${index + 1}`;
+      const res = results[modoDiosId]; // <-- Usamos el ID traducido
+
       if (res && res.home_score !== null && res.away_score !== null) {
         const homeTeam = match.team1;
         const awayTeam = match.team2;
@@ -2408,50 +2411,56 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
           </div>
 
           <div className="space-y-3">
-            {groupMatches.map((m) => (
-              <div
-                key={m.id}
-                className="bg-[#0a101f] border border-white/5 rounded-xl p-4 flex items-center justify-between group hover:border-white/10 transition-all shadow-md relative"
-              >
-                <div className="absolute top-2 left-3 text-[7px] font-black text-white/20 uppercase tracking-widest">
-                  P{m.id}
-                </div>
-                <div className="flex flex-col items-center gap-1 w-1/3">
-                  <img
-                    src={getFlag(m.team1)}
-                    className="w-8 h-5 object-cover rounded-sm"
-                  />
-                  <span className="text-[10px] font-black uppercase text-center text-white/90">
-                    {m.team1}
-                  </span>
-                </div>
-                <div className="flex flex-col items-center justify-center w-1/3">
-                  <div className="bg-black/60 px-4 py-1.5 rounded-lg text-lg font-black text-white border border-white/10 shadow-inner group-hover:text-[#22c55e] transition-colors tabular-nums">
-                    {results[m.id]?.home_score ?? '-'} :{' '}
-                    {results[m.id]?.away_score ?? '-'}
-                  </div>
-                  {/* 👇 CAMBIO: Día en verde, hora en amarillo */}
-                  <div className="flex flex-col items-center mt-1.5 space-y-0.5">
-                    <span className="text-[10px] text-[#22c55e] font-black uppercase tracking-wide drop-shadow-[0_0_2px_rgba(34,197,94,0.3)]">
-                      {m.day}
-                    </span>
-                    <span className="text-[11px] text-[#eab308] font-black uppercase tracking-tight drop-shadow-[0_0_2px_rgba(234,179,8,0.3)]">
-                      {m.time} h
-                    </span>
-                  </div>
-                </div>
-                <div className="flex flex-col items-center gap-1 w-1/3">
-                  <img
-                    src={getFlag(m.team2)}
-                    className="w-8 h-5 object-cover rounded-sm"
-                  />
-                  <span className="text-[10px] font-black uppercase text-center text-white/90">
-                    {m.team2}
-                  </span>
-                </div>
-              </div>
-            ))}
+  {groupMatches.map((m, index) => {
+    // 🧠 EL TRADUCTOR MAGICO: Convertimos el ID numérico del calendario al ID 'G_X_Y' del Modo Dios.
+    // Como groupMatches siempre tiene 6 partidos por grupo, usamos el index (del 0 al 5) para generar el sufijo (del 1 al 6).
+    const modoDiosId = `G_${activeGroup}_${index + 1}`;
+
+    return (
+      <div
+        key={m.id}
+        className="bg-[#0a101f] border border-white/5 rounded-xl p-4 flex items-center justify-between group hover:border-white/10 transition-all shadow-md relative"
+      >
+        <div className="absolute top-2 left-3 text-[7px] font-black text-white/20 uppercase tracking-widest">
+          P{m.id}
+        </div>
+        <div className="flex flex-col items-center gap-1 w-1/3">
+          <img
+            src={getFlag(m.team1)}
+            className="w-8 h-5 object-cover rounded-sm"
+          />
+          <span className="text-[10px] font-black uppercase text-center text-white/90">
+            {m.team1}
+          </span>
+        </div>
+        <div className="flex flex-col items-center justify-center w-1/3">
+          <div className="bg-black/60 px-4 py-1.5 rounded-lg text-lg font-black text-white border border-white/10 shadow-inner group-hover:text-[#22c55e] transition-colors tabular-nums">
+            {/* 👇 AQUÍ USAMOS EL ID TRADUCIDO */}
+            {results[modoDiosId]?.home_score ?? '-'} :{' '}
+            {results[modoDiosId]?.away_score ?? '-'}
           </div>
+          <div className="flex flex-col items-center mt-1.5 space-y-0.5">
+            <span className="text-[10px] text-[#22c55e] font-black uppercase tracking-wide drop-shadow-[0_0_2px_rgba(34,197,94,0.3)]">
+              {m.day}
+            </span>
+            <span className="text-[11px] text-[#eab308] font-black uppercase tracking-tight drop-shadow-[0_0_2px_rgba(234,179,8,0.3)]">
+              {m.time} h
+            </span>
+          </div>
+        </div>
+        <div className="flex flex-col items-center gap-1 w-1/3">
+          <img
+            src={getFlag(m.team2)}
+            className="w-8 h-5 object-cover rounded-sm"
+          />
+          <span className="text-[10px] font-black uppercase text-center text-white/90">
+            {m.team2}
+          </span>
+        </div>
+      </div>
+    );
+  })}
+</div>
         </>
       ) : (
         <div className="flex flex-col gap-10 py-4">
