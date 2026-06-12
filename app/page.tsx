@@ -3048,7 +3048,7 @@ const [isSquadLocked, setIsSquadLocked] = useState(true);
   const [scores, setScores] = useState<Record<string, number | null>>({});
   const [adminScoreCountry, setAdminScoreCountry] = useState('SELECCIÓN');
 
-  const [adminTab, setAdminTab] = useState<'partidos' | 'tesoreria' | 'puntos'>('partidos');
+  const [adminTab, setAdminTab] = useState<'partidos' | 'tesoreria' | 'puntos' | 'auditoria'>('puntos');
   
   const [unusedTeams, setUnusedTeams] = useState<string[]>([]);
 
