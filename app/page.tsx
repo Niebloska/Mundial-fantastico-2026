@@ -377,7 +377,7 @@ const getFlag = (team: string) => {
   // 🚀 AQUI ESTÁ EL CAMBIO:
   // Construimos la URL original y la pasamos por el proxy de CORS
   const originalUrl = `https://flagcdn.com/w40/${code}.png`;
-  return `https://corsproxy.io/?${encodeURIComponent(originalUrl)}`;
+  return `https://flagcdn.com/w40/${code}.png`;
 };
 
 // Componente visual para mostrar el precio del jugador
