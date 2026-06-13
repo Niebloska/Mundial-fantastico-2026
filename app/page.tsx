@@ -3247,70 +3247,57 @@ const [isSquadLocked, setIsSquadLocked] = useState(true);
               .map(getUid)
           );
 
+          // 1. Mapa para guardar los datos limpios de cada jugador
           const allPlayersMap = new Map();
 
+          // Función para asegurar que el jugador existe en el mapa
           const addPlayer = (player: any) => {
-            if (!player) return;
+            if (!player || !getUid(player)) return;
             const uid = getUid(player);
-            // Si el jugador no tiene ni ID ni Nombre, lo ignoramos
-            if (!uid) return;
-
             if (!allPlayersMap.has(uid)) {
               allPlayersMap.set(uid, {
                 ...player,
                 isActive: activePlayerUids.has(uid),
                 isCaptain: false,
-                puntosCalculados: {}
+                puntosCalculados: {} // Aquí guardaremos los puntos jornada a jornada
               });
             }
           };
 
+          // Inicializamos a todos los jugadores que están en la plantilla (titulares, banquillo, extras)
           [...Object.values(s), ...Object.values(b), ...Object.values(e)].forEach(addPlayer);
 
-          let totalPoints = 0;
-
-          // Dentro de tu fetchLeaderboard, sustituye el bloque matchdays.forEach por este:
-
+          // 2. Llenamos los puntos jornada a jornada sin sumar todavía
           matchdays.forEach(j => {
-            // 🚀 EL FALLBACK: Si el historial está en blanco, usamos la alineación actual ('s')
             const snapshot = history[j] || { selected: s, captain: u.squad_data?.captain };
-          
             if (snapshot && snapshot.selected) {
-              const matchdayCaptainUid = snapshot.captain;
-          
               Object.values(snapshot.selected).forEach((player: any) => {
-                if (!player) return;
                 const uid = getUid(player);
-                if (!uid) return;
-          
-                addPlayer(player);
-          
-                const fullPlayer = allPlayersMap.get(uid);
-                if (!fullPlayer) return;
-          
-                // ESTA ES LA CLAVE DE BÚSQUEDA DEFINITIVA
-                const scoreKey = `${fullPlayer.nombre.trim()}_${fullPlayer.equipo.trim()}`;
-          
-                // Buscamos los puntos en globalScores
+                const pRecord = allPlayersMap.get(uid);
+                if (!pRecord) return;
+
+                const scoreKey = `${pRecord.nombre.trim()}_${pRecord.equipo.trim()}`;
                 const rawPoints = Number(globalScores[scoreKey]?.[j] || 0);
-          
-                const isCap = uid === matchdayCaptainUid;
+                const isCap = uid === snapshot.captain;
                 const earnedPoints = isCap ? rawPoints * 2 : rawPoints;
                 
-                totalPoints += earnedPoints;
-          
-                const pRecord = allPlayersMap.get(uid);
-                if (pRecord) {
-                  pRecord.puntosCalculados[j] = earnedPoints;
-                  if (isCap) pRecord.isCaptain = true;
-                }
+                // Guardamos los puntos en la ficha del jugador, NO sumamos a un total global aún
+                pRecord.puntosCalculados[j] = earnedPoints;
+                if (isCap) pRecord.isCaptain = true;
               });
             }
           });
-console.log(`DEBUG: Usuario ${u.team_name} calculado. Puntos totales: ${totalPoints}`);
+
+          // 3. SUMA FINAL (Único punto donde calculamos el total)
+          const totalPoints = Array.from(allPlayersMap.values()).reduce((sum, p) => {
+            // Sumamos todos los valores que guardamos en puntosCalculados para este jugador
+            const puntosJugador = Object.values(p.puntosCalculados || {}).reduce((a: number, b: any) => a + Number(b), 0);
+            return sum + puntosJugador;
+          }, 0);
+
           const finalPlayers = Array.from(allPlayersMap.values()).map(p => ({
             ...p,
-            puntos: p.puntosCalculados 
+            puntos: p.puntosCalculados // Esto es lo que la tabla leerá
           }));
 
           return {
@@ -4898,28 +4885,15 @@ if (!isInitialSetup) {
                           return 95 - (acumulado / maxPoints) * 90;
                         });
 
-                        // 🚀 DIBUJAMOS LA LÍNEA: Extendemos el último punto 10 unidades (mitad de camino hacia la siguiente jornada)
-                        const lastX = activeXCoords[activeXCoords.length - 1];
-                        const lastY = yCoords[yCoords.length - 1];
-                        const extendedX = Math.min(100, lastX + 10); // Aseguramos que no se salga en la final
-                        
-                        // Unimos todos los puntos reales y le añadimos el "bracito" extra al final
-                        const dPath = yCoords.map((y, idx) => `${idx === 0 ? 'M' : 'L'}${activeXCoords[idx]},${y}`).join(' ') 
-                                      + ` L${extendedX},${lastY}`;
+                        const dPath = yCoords.map((y, idx) => `${idx === 0 ? 'M' : 'L'}${activeXCoords[idx]},${y}`).join(' ');
 
                         return (
                           <g key={u.id}>
-                            {/* Ahora la línea siempre se dibuja porque le hemos dado longitud */}
-                            <path 
-                              d={dPath} 
-                              fill="none" 
-                              stroke={strokeColor} 
-                              strokeWidth={strokeWidth} 
-                              strokeLinecap="round"
-                              className="transition-all duration-1000" 
-                              style={{ filter: `drop-shadow(0 0 3px ${shadowColor})` }} 
-                            />
-                            {/* Círculo en cada jornada exacta superpuesto */}
+                            {/* Solo dibujamos la línea si hay más de 1 jornada activa */}
+                            {yCoords.length > 1 && (
+                              <path d={dPath} fill="none" stroke={strokeColor} strokeWidth={strokeWidth} className="transition-all duration-1000" style={{ filter: `drop-shadow(0 0 3px ${shadowColor})` }} />
+                            )}
+                            {/* Los puntitos se dibujan siempre */}
                             {yCoords.map((y, idx) => (
                               <circle key={idx} cx={activeXCoords[idx]} cy={y} r={u.isMe ? "1.5" : "1"} fill={strokeColor} className="transition-all duration-1000" />
                             ))}
