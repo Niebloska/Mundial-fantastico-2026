@@ -4851,31 +4851,82 @@ if (!isInitialSetup) {
                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full absolute inset-0 py-6 px-4 opacity-80 overflow-visible">
                     {[10, 30, 50, 70, 90].map(y => <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />)}
                     
-                    {/* 🧠 PINTAMOS UNA LÍNEA REAL POR CADA PARTICIPANTE */}
-                    {leaderboard.map((u, i) => {
-                      // Lógica de colores: Tú = Verde | 1º = Oro | 2º = Plata | 3º = Bronce | Resto = Paleta
-                      const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
-                      // Fórmula para que el color de los que no están en podio sea fijo según su ID
-                      const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
+                    {/* 🧠 PINTAMOS UNA LÍNEA DINÁMICA POR CADA PARTICIPANTE */}
+                    {(() => {
+                      // 1. Buscamos al líder para saber el máximo de la gráfica
+                      const maxPoints = Math.max(...leaderboard.map(u => u.total), 10); 
                       
-                      const strokeColor = u.isMe ? '#22c55e' : 
-                                          i === 0 ? '#eab308' : 
-                                          i === 1 ? '#d1d5db' : 
-                                          i === 2 ? '#d97706' : 
-                                          GRAPH_COLORS[colorIndex];
-                                          
-                      const shadowColor = `${strokeColor}99`; // Sombra suave usando el mismo color
-                      const strokeWidth = u.isMe ? "2.5" : "1.5"; // Tu línea destaca más
+                      const baseGraphMatchdays = ['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM'];
+                      const baseXCoords = [0, 20, 40, 60, 80, 100];
                       
-                      return (
-                        <g key={u.id}>
-                          <path d="M0,50 L20,50 L40,50 L60,50 L80,50 L100,50" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} className="transition-all" style={{ filter: `drop-shadow(0 0 3px ${shadowColor})` }} />
-                          <circle cx="0" cy="50" r={u.isMe ? "1.5" : "1"} fill={strokeColor} />
-                          <circle cx="20" cy="50" r={u.isMe ? "1.5" : "1"} fill={strokeColor} />
-                          <circle cx="40" cy="50" r={u.isMe ? "1.5" : "1"} fill={strokeColor} />
-                        </g>
-                      );
-                    })}
+                      // 2. MAGIA: Detectamos por qué jornada vamos (buscando si ALGUIEN ha puntuado)
+                      let lastActiveIdx = 0;
+                      baseGraphMatchdays.forEach((j, idx) => {
+                        const jornadaTienePuntos = leaderboard.some(u => 
+                          u.players.some((p: any) => (Number(p.puntos?.[j]) || 0) > 0)
+                        );
+                        if (jornadaTienePuntos) {
+                          lastActiveIdx = idx;
+                        }
+                      });
+
+                      // 3. Recortamos las coordenadas a solo las jornadas disputadas
+                      const activeMatchdays = baseGraphMatchdays.slice(0, lastActiveIdx + 1);
+                      const activeXCoords = baseXCoords.slice(0, lastActiveIdx + 1);
+                      
+                      // 4. Ordenamos para que los colores correspondan al ranking real
+                      const sortedBoard = [...leaderboard].sort((a, b) => b.total - a.total);
+
+                      return sortedBoard.map((u, i) => {
+                        const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
+                        const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
+                        
+                        const strokeColor = u.isMe ? '#22c55e' : 
+                                            i === 0 ? '#eab308' : 
+                                            i === 1 ? '#d1d5db' : 
+                                            i === 2 ? '#d97706' : 
+                                            GRAPH_COLORS[colorIndex];
+                                            
+                        const shadowColor = `${strokeColor}99`; 
+                        const strokeWidth = u.isMe ? "2.5" : "1.5"; 
+                        
+                        // Calculamos los puntos acumulados solo hasta la jornada actual
+                        let acumulado = 0;
+                        const yCoords = activeMatchdays.map(j => {
+                          const ptsJornada = u.players.reduce((sum: number, p: any) => sum + (Number(p.puntos?.[j]) || 0), 0);
+                          acumulado += ptsJornada;
+                          return 95 - (acumulado / maxPoints) * 90;
+                        });
+
+                        // 🚀 DIBUJAMOS LA LÍNEA: Extendemos el último punto 10 unidades (mitad de camino hacia la siguiente jornada)
+                        const lastX = activeXCoords[activeXCoords.length - 1];
+                        const lastY = yCoords[yCoords.length - 1];
+                        const extendedX = Math.min(100, lastX + 10); // Aseguramos que no se salga en la final
+                        
+                        // Unimos todos los puntos reales y le añadimos el "bracito" extra al final
+                        const dPath = yCoords.map((y, idx) => `${idx === 0 ? 'M' : 'L'}${activeXCoords[idx]},${y}`).join(' ') 
+                                      + ` L${extendedX},${lastY}`;
+
+                        return (
+                          <g key={u.id}>
+                            {/* Ahora la línea siempre se dibuja porque le hemos dado longitud */}
+                            <path 
+                              d={dPath} 
+                              fill="none" 
+                              stroke={strokeColor} 
+                              strokeWidth={strokeWidth} 
+                              strokeLinecap="round"
+                              className="transition-all duration-1000" 
+                              style={{ filter: `drop-shadow(0 0 3px ${shadowColor})` }} 
+                            />
+                            {/* Círculo en cada jornada exacta superpuesto */}
+                            {yCoords.map((y, idx) => (
+                              <circle key={idx} cx={activeXCoords[idx]} cy={y} r={u.isMe ? "1.5" : "1"} fill={strokeColor} className="transition-all duration-1000" />
+                            ))}
+                          </g>
+                        );
+                      });
+                    })()}
                  </svg>
                  <div className="absolute bottom-2 left-0 right-0 flex justify-between px-6 text-[8px] sm:text-[10px] text-white/40 font-bold tracking-widest uppercase">
                    <span>J1</span><span>J2</span><span>J3</span><span>OCT</span><span>CUA</span><span>SEM</span>
@@ -4884,7 +4935,8 @@ if (!isInitialSetup) {
                
                {/* 👥 LEYENDA DINÁMICA: Muestra a todos los rivales reales de la BD */}
                <div className="flex flex-wrap gap-2 mt-6 justify-center">
-                 {leaderboard.map((u, i) => {
+                 {/* Añadimos el sort() aquí también para que coincidan colores y orden */}
+                 {[...leaderboard].sort((a, b) => b.total - a.total).map((u, i) => {
                     const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
                     const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
                     
