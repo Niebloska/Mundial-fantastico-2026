@@ -377,7 +377,7 @@ const getFlag = (team: string) => {
   // 🚀 AQUI ESTÁ EL CAMBIO:
   // Construimos la URL original y la pasamos por el proxy de CORS
   const originalUrl = `https://flagcdn.com/w40/${code}.png`;
-  return `https://flagcdn.com/w40/${code}.png`;
+  return `https://corsproxy.io/?${encodeURIComponent(originalUrl)}`;
 };
 
 // Componente visual para mostrar el precio del jugador
@@ -4891,6 +4891,7 @@ if (!isInitialSetup) {
                         const strokeWidth = u.isMe ? "2.5" : "1.5"; 
                         
                         // Calculamos los puntos acumulados solo hasta la jornada actual
+                        // Calculamos los puntos acumulados solo hasta la jornada actual
                         let acumulado = 0;
                         const yCoords = activeMatchdays.map(j => {
                           const ptsJornada = u.players.reduce((sum: number, p: any) => sum + (Number(p.puntos?.[j]) || 0), 0);
@@ -4898,15 +4899,28 @@ if (!isInitialSetup) {
                           return 95 - (acumulado / maxPoints) * 90;
                         });
 
-                        const dPath = yCoords.map((y, idx) => `${idx === 0 ? 'M' : 'L'}${activeXCoords[idx]},${y}`).join(' ');
+                        // 🚀 DIBUJAMOS LA LÍNEA: Extendemos el último punto 10 unidades (mitad de camino hacia la siguiente jornada)
+                        const lastX = activeXCoords[activeXCoords.length - 1];
+                        const lastY = yCoords[yCoords.length - 1];
+                        const extendedX = Math.min(100, lastX + 10); // Aseguramos que no se salga en la final
+                        
+                        // Unimos todos los puntos reales y le añadimos el "bracito" extra al final
+                        const dPath = yCoords.map((y, idx) => `${idx === 0 ? 'M' : 'L'}${activeXCoords[idx]},${y}`).join(' ') 
+                                      + ` L${extendedX},${lastY}`;
 
                         return (
                           <g key={u.id}>
-                            {/* Solo dibujamos la línea si hay más de 1 jornada activa */}
-                            {yCoords.length > 1 && (
-                              <path d={dPath} fill="none" stroke={strokeColor} strokeWidth={strokeWidth} className="transition-all duration-1000" style={{ filter: `drop-shadow(0 0 3px ${shadowColor})` }} />
-                            )}
-                            {/* Los puntitos se dibujan siempre */}
+                            {/* Ahora la línea siempre se dibuja porque le hemos dado longitud */}
+                            <path 
+                              d={dPath} 
+                              fill="none" 
+                              stroke={strokeColor} 
+                              strokeWidth={strokeWidth} 
+                              strokeLinecap="round"
+                              className="transition-all duration-1000" 
+                              style={{ filter: `drop-shadow(0 0 3px ${shadowColor})` }} 
+                            />
+                            {/* Círculo en cada jornada exacta superpuesto */}
                             {yCoords.map((y, idx) => (
                               <circle key={idx} cx={activeXCoords[idx]} cy={y} r={u.isMe ? "1.5" : "1"} fill={strokeColor} className="transition-all duration-1000" />
                             ))}
@@ -4922,8 +4936,7 @@ if (!isInitialSetup) {
                
                {/* 👥 LEYENDA DINÁMICA: Muestra a todos los rivales reales de la BD */}
                <div className="flex flex-wrap gap-2 mt-6 justify-center">
-                 {/* Añadimos el sort() aquí también para que coincidan colores y orden */}
-                 {[...leaderboard].sort((a, b) => b.total - a.total).map((u, i) => {
+                 {leaderboard.map((u, i) => {
                     const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
                     const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
                     
