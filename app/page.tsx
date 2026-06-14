@@ -3904,27 +3904,34 @@ if (!isInitialSetup) {
         </div>
         <button
           onClick={() => {
-            const playerA = originPlayer;
-            const playerB = opt.player;
-            const newSelected = { ...selected };
-            const newBench = { ...bench };
-            const newExtras = { ...extras };
-
+            // 1. CLONADO PROFUNDO INMEDIATO:
+            // Convertimos a string y volvemos a objeto para crear una instancia 100% nueva
+            const playerA = JSON.parse(JSON.stringify(originPlayer));
+            const playerB = JSON.parse(JSON.stringify(opt.player));
+          
+            // 2. CREAMOS COPIAS PROFUNDAS DE LOS ESTADOS TAMBIÉN:
+            const newSelected = JSON.parse(JSON.stringify(selected));
+            const newBench = JSON.parse(JSON.stringify(bench));
+            const newExtras = JSON.parse(JSON.stringify(extras));
+          
+            // 3. REALIZAMOS EL INTERCAMBIO CON LOS CLONES:
             if (opt.type === 'titular') newSelected[opt.slotId] = playerA;
             else if (opt.type === 'bench') newBench[opt.slotId] = playerA;
             else newExtras[opt.slotId] = playerA;
-
+          
             if (activeSlot.type === 'titular') newSelected[activeSlot.id] = playerB;
             else if (activeSlot.type === 'bench') newBench[activeSlot.id] = playerB;
             else newExtras[activeSlot.id] = playerB;
-
+          
+            // 4. ACTUALIZAMOS EL ESTADO CON LOS OBJETOS NUEVOS:
             setSelected(newSelected);
             setBench(newBench);
             setExtras(newExtras);
-
-            if (captain === playerA.id && activeSlot.type === 'titular' && opt.type !== 'titular') setCaptain(null);
-            if (captain === playerB.id && opt.type === 'titular' && activeSlot.type !== 'titular') setCaptain(null);
-
+          
+            // Lógica del capitán (esto es seguro porque comparamos IDs, no objetos)
+            if (captain === originPlayer.id && activeSlot.type === 'titular' && opt.type !== 'titular') setCaptain(null);
+            if (captain === opt.player.id && opt.type === 'titular' && activeSlot.type !== 'titular') setCaptain(null);
+          
             setActiveSlot(null);
           }}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg font-black text-xs uppercase hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
