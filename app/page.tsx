@@ -2928,51 +2928,55 @@ useEffect(() => {
     if (isAdmin) setTutorialStep(0);
   }, [isAdmin]);
 
-  // ==========================================
-  // 🔄 CARGA INICIAL (Solo lee de Supabase al entrar a la app)
-  // ==========================================
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      if (!session?.user?.id) return; 
-  
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('lineups_history, squad_data')
-        .eq('id', session.user.id)
-        .single();
-  
-      if (data) {
-        setLineupsHistory(data.lineups_history || {}); 
-        setSquadData(data.squad_data || {});         
-      }
-    };
-  
-    fetchInitialData();
-  }, [session?.user?.id]); // 👈 Dependencia limpia. Ya no vigila la jornada ni la pestaña.
+  // 🔄 CARGA INICIAL BLINDADA
+useEffect(() => {
+  const fetchInitialData = async () => {
+    if (!session?.user?.id) return; 
 
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('lineups_history, squad_data')
+      .eq('id', session.user.id)
+      .single();
 
-  // ==========================================
-  // ⚡ ACTUALIZACIÓN INSTANTÁNEA (Lee de la memoria sin llamar a Supabase)
-  // ==========================================
-  useEffect(() => {
-    if (view === 'lineups') {
-      const snap = lineupsHistory[lineupsMatchday];
+    if (data) {
+      // 🚨 BLINDAJE: Aquí está el secreto. Clonamos ANTES de guardar en el estado.
+      // Así, pase lo que pase en el resto de la app, 'base' y 'history' no se tocan.
+      const base = JSON.parse(JSON.stringify(data.squad_data || {}));
+      const history = JSON.parse(JSON.stringify(data.lineups_history || {}));
       
-      if (snap) {
-        // Cargamos la jornada específica
-        setSelected(JSON.parse(JSON.stringify(snap.selected || {})));
-        setBench(JSON.parse(JSON.stringify(snap.bench || {})));
-        setExtras(JSON.parse(JSON.stringify(snap.extras || {})));
-        setCaptain(snap.captain || null);
-      } else if (Object.keys(squadData).length > 0) {
-        // Si no hay historial, cargamos la plantilla base cerrada
-        setSelected(JSON.parse(JSON.stringify(squadData.selected || {})));
-        setBench(JSON.parse(JSON.stringify(squadData.bench || {})));
-        setExtras(JSON.parse(JSON.stringify(squadData.extras || {})));
-        setCaptain(squadData.captain || null);
-      }
+      setSquadData(base);         
+      setLineupsHistory(history); 
     }
-  }, [view, lineupsMatchday, lineupsHistory, squadData]);
+  };
+
+  fetchInitialData();
+}, [session?.user?.id]);
+
+
+  // ⚡ ACTUALIZACIÓN INSTANTÁNEA (Modo Paranoico)
+useEffect(() => {
+  if (view === 'lineups') {
+    // Definimos el contenedor local
+    let target = { selected: {}, bench: {}, extras: {}, captain: null };
+
+    // Si hay datos en el historial, usamos el historial (CLONADO)
+    if (lineupsHistory && lineupsHistory[lineupsMatchday]) {
+      target = JSON.parse(JSON.stringify(lineupsHistory[lineupsMatchday]));
+    } 
+    // Si no, usamos la base (CLONADA)
+    else if (squadData && Object.keys(squadData).length > 0) {
+      target = JSON.parse(JSON.stringify(squadData));
+    }
+
+    // Actualizamos TODO el estado de golpe con los clones nuevos
+    setSelected(target.selected || {});
+    setBench(target.bench || {});
+    setExtras(target.extras || {});
+    setCaptain(target.captain || null);
+  }
+}, [view, lineupsMatchday, lineupsHistory, squadData]);
+
   // --- ESTADOS DE LA PLANTILLA (Carga desde Supabase) ---
   const [selected, setSelected] = useState<any>({});
   const [bench, setBench] = useState<any>({});
