@@ -3764,13 +3764,11 @@ const availableCountriesWithCount = useMemo(() => {
     }
 
     // 🔄 CONTROL INTELIGENTE DE LOS 6 CAMBIOS
-
-// Calculamos si estamos en fase de configuración (PRE) comparando con la primera deadline
-// Asumimos que JORNADAS_DEADLINES[0] es el inicio del torneo
 const isInitialSetup = Date.now() < JORNADAS_DEADLINES[0].date;
 
-// Solo bloqueamos los 6 cambios si NO es la fase inicial
-if (!isInitialSetup) {
+// AÑADIMOS LA CONDICIÓN: Si el mercado está abierto (isSquadLocked es false), 
+// saltamos la lógica de bloqueo de cambios.
+if (!isInitialSetup && isSquadLocked) {
     const isIncomingPlayerNew = !snapshotSquad || ![
       ...Object.values(snapshotSquad.selected || {}),
       ...Object.values(snapshotSquad.bench || {}),
