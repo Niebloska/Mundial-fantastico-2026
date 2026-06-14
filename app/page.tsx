@@ -3423,7 +3423,7 @@ console.log(`DEBUG: Usuario ${u.team_name} calculado. Puntos totales: ${totalPoi
   };
 
 // Añade esta función en tu código (donde tienes las otras funciones de Supabase)
-const saveLineupHistoryToSupabase = async (newHistory) => {
+const saveLineupHistoryToSupabase = async (newHistory: any) => {
   if (!session?.user?.id) return;
   
   // 🛡️ AQUÍ ESTÁ EL BLOQUEO: 
