@@ -2731,6 +2731,8 @@ export default function MundialApp() {
 
   const [lineupsMatchday, setLineupsMatchday] = useState('J1');
 
+  const [isEditingLineup, setIsEditingLineup] = useState(false);
+
   // Añade esto al inicio de tu componente Page
 const cleanKey = (str: string) => {
   if (!str) return "";
@@ -2927,10 +2929,10 @@ useEffect(() => {
   }, [isAdmin]);
 
   // ==========================================
-  // 🔄 NUEVO: CARGA AUTOMÁTICA DEL HISTORIAL POR JORNADA
+  // 🔄 CARGA INICIAL (Solo lee de Supabase al entrar a la app)
   // ==========================================
   useEffect(() => {
-    const loadMatchdayData = async () => {
+    const fetchInitialData = async () => {
       if (!session?.user?.id) return; 
   
       const { data, error } = await supabase
@@ -2940,36 +2942,37 @@ useEffect(() => {
         .single();
   
       if (data) {
-        // 1. Guardamos la fuente de verdad en los estados globales
-        const history = data.lineups_history || {};
-        const base = data.squad_data || {};
-        
-        setLineupsHistory(history); // Actualizamos el historial global
-        setSquadData(base);         // Actualizamos la plantilla base global
-  
-        // 2. Cargamos en pantalla haciendo un CLON PROFUNDO (para romper referencias)
-        if (history[lineupsMatchday]) {
-          const snap = history[lineupsMatchday];
-          setSelected(JSON.parse(JSON.stringify(snap.selected || {})));
-          setBench(JSON.parse(JSON.stringify(snap.bench || {})));
-          setExtras(JSON.parse(JSON.stringify(snap.extras || {})));
-          setCaptain(snap.captain || null);
-        } else {
-          // Cargamos la base CLONADA
-          setSelected(JSON.parse(JSON.stringify(base.selected || {})));
-          setBench(JSON.parse(JSON.stringify(base.bench || {})));
-          setExtras(JSON.parse(JSON.stringify(base.extras || {})));
-          setCaptain(base.captain || null);
-        }
+        setLineupsHistory(data.lineups_history || {}); 
+        setSquadData(data.squad_data || {});         
       }
     };
   
-    // Importante: añadimos lineupsMatchday a la dependencia para que si cambias de jornada, se recargue
-    if (view === 'lineups') {
-      loadMatchdayData();
-    }
-  }, [view, lineupsMatchday, session?.user?.id]); // Añadimos lineupsMatchday al array
+    fetchInitialData();
+  }, [session?.user?.id]); // 👈 Dependencia limpia. Ya no vigila la jornada ni la pestaña.
 
+
+  // ==========================================
+  // ⚡ ACTUALIZACIÓN INSTANTÁNEA (Lee de la memoria sin llamar a Supabase)
+  // ==========================================
+  useEffect(() => {
+    if (view === 'lineups') {
+      const snap = lineupsHistory[lineupsMatchday];
+      
+      if (snap) {
+        // Cargamos la jornada específica
+        setSelected(JSON.parse(JSON.stringify(snap.selected || {})));
+        setBench(JSON.parse(JSON.stringify(snap.bench || {})));
+        setExtras(JSON.parse(JSON.stringify(snap.extras || {})));
+        setCaptain(snap.captain || null);
+      } else if (Object.keys(squadData).length > 0) {
+        // Si no hay historial, cargamos la plantilla base cerrada
+        setSelected(JSON.parse(JSON.stringify(squadData.selected || {})));
+        setBench(JSON.parse(JSON.stringify(squadData.bench || {})));
+        setExtras(JSON.parse(JSON.stringify(squadData.extras || {})));
+        setCaptain(squadData.captain || null);
+      }
+    }
+  }, [view, lineupsMatchday, lineupsHistory, squadData]);
   // --- ESTADOS DE LA PLANTILLA (Carga desde Supabase) ---
   const [selected, setSelected] = useState<any>({});
   const [bench, setBench] = useState<any>({});
@@ -3399,6 +3402,22 @@ const saveSquadToSupabase = async (historyToSave: any) => {
     }
   } catch (err) {
     console.error('Error inesperado en saveSquadToSupabase:', err);
+  }
+};
+
+// Añade esta función en tu código (donde tienes las otras funciones de Supabase)
+const saveLineupHistoryToSupabase = async (newHistory: any) => {
+  if (!session?.user?.id) return;
+  
+  // Guardamos SOLO en la columna lineups_history
+  const { error } = await supabase
+    .from('profiles')
+    .update({ lineups_history: newHistory })
+    .eq('id', session.user.id);
+
+  if (error) {
+    console.error('Error guardando alineación:', error);
+    alert('Error al guardar la alineación. Revisa la consola.');
   }
 };
 
@@ -4470,238 +4489,264 @@ if (!isInitialSetup) {
   )}
         {view === 'calendar' && <CalendarView results={results} />}
         {view === 'lineups' && (
-          (() => {
-            // 🧠 SANEAMIENTO DE ALINEACIONES: Leemos los puntos de globalScores
-            const currentLineupsPoints = (() => {
-              const map: any = {};
-              
-              [
-                ...Object.values(selected || {}),
-                ...Object.values(bench || {}),
-                ...Object.values(extras || {})
-              ].filter(Boolean).forEach((p: any) => {
-                
-                // Construimos la llave exacta que tienes en la tabla player_scores
-                // Esta es la línea clave para que el césped se llene de puntos
-                const scoreKey = `${p.nombre}_${p.equipo}`;
-                
-                // 1. Leemos los puntos de la jornada
-                let pts = globalScores[scoreKey]?.[lineupsMatchday];
-                
-                // Si la jornada actual es J1 y el jugador no tiene registro de puntos, asumimos 0.
-                if (pts === undefined) pts = 0;
-                
-                // 2. Comprobamos si es el capitán titular (multiplica x2)
-                const isInTitular = Object.values(selected || {}).some((ap: any) => ap && ap.id === p.id);
-                if (p.id === captain && isInTitular) {
-                  pts = pts * 2;
-                }
-                
-                // 3. Guardamos los puntos bajo el ID del jugador para que el componente <Field> los asigne a la carta
-                map[p.id || p.nombre] = pts;
-              });
-              return map;
-            })();
-
-            return (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
-                
-                {/* 1. SELECTOR DE JORNADA */}
-                <nav className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide justify-start sm:justify-center">
-  {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => {
-    const isEditable = countdown.targetId === j;
-    return (
-      <button
-        key={j}
-        onClick={() => {
-          setLineupsMatchday(j);
-          const snapshot = lineupsHistory[j];
+  (() => {
+    // 🧠 SANEAMIENTO DE ALINEACIONES
+    const currentLineupsPoints = (() => {
+      const map: any = {};
+      [
+        ...Object.values(selected || {}),
+        ...Object.values(bench || {}),
+        ...Object.values(extras || {})
+      ].filter(Boolean).forEach((p: any) => {
+        const scoreKey = `${p.nombre}_${p.equipo}`;
+        let pts = globalScores[scoreKey]?.[lineupsMatchday];
+        if (pts === undefined) pts = 0;
         
-          if (snapshot) {
-             // Clonamos del historial
-             setSelected(JSON.parse(JSON.stringify(snapshot.selected || {})));
-             // ... bench, extras, captain
-          } else {
-             // Clonamos de la BASE (usando squadData)
-             setSelected(JSON.parse(JSON.stringify(squadData.selected || {})));
-             setBench(JSON.parse(JSON.stringify(squadData.bench || {})));
-             setExtras(JSON.parse(JSON.stringify(squadData.extras || {})));
-             setCaptain(squadData.captain || null);
-          }
-        }}
-        className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2 flex items-center gap-1.5 whitespace-nowrap ${
-          lineupsMatchday === j 
-          ? 'bg-[#22c55e] border-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
-          : 'bg-white/5 border-transparent text-white/40 hover:bg-white/10'
-        }`}
-      >
-        {j} {isEditable && <span className="text-xs animate-bounce">🔓</span>}
-      </button>
-    );
-  })}
-</nav>
+        const isInTitular = Object.values(selected || {}).some((ap: any) => ap && ap.id === p.id);
+        if (p.id === captain && isInTitular) {
+          pts = pts * 2;
+        }
+        map[p.id || p.nombre] = pts;
+      });
+      return map;
+    })();
 
-                {/* 2. EL TERRENO DE JUEGO */}
-                <div className="bg-[#1a2b1a] border-4 border-[#22c55e]/30 rounded-[2.5rem] p-4 sm:p-6 shadow-2xl relative overflow-hidden">
-                  <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/grass.png')]"></div>
-                  
-                  <div className="relative z-10 flex justify-between items-center mb-6 bg-black/40 p-3 sm:p-4 rounded-2xl border border-white/10">
-                     <div>
-                       <h3 className="text-white font-black italic uppercase text-lg">Alineación {lineupsMatchday}</h3>
-                       <p className={`text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 mt-1 ${
-                         countdown.targetId === lineupsMatchday ? 'text-[#22c55e]' : 'text-red-500'
-                       }`}>
-                         <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
-                         {countdown.targetId === lineupsMatchday ? 'Edición Abierta' : 'Bloqueado (Solo lectura)'}
-                       </p>
-                     </div>
-                     
-                     {countdown.targetId === lineupsMatchday ? (
-                        <button 
-                          className="bg-[#22c55e] text-black px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:scale-105 transition-transform"
-                          onClick={() => {
-                            // 1. Creamos la 'foto' (snapshot) con los datos actuales de esta jornada
-                            const newSnapshot = { 
-                              selected, 
-                              bench, 
-                              extras, 
-                              captain 
-                            };
-                          
-                            // 2. Creamos la nueva versión del historial
-                            // Esto copia todo lo anterior y añade/actualiza solo la jornada que estamos editando
-                            const newHistory = { 
-                              ...lineupsHistory, 
-                              [lineupsMatchday]: newSnapshot 
-                            };
-                          
-                            // 3. Actualizamos el estado local
-                            setLineupsHistory(newHistory);
-                          
-                            // 4. Guardamos en Supabase (¡OJO!)
-                            // Aquí debes pasarle el objeto 'newHistory' a tu función de guardado 
-                            // para que Supabase guarde todo el historial de jornadas de golpe.
-                            if (typeof saveSquadToSupabase === 'function') {
-                              saveSquadToSupabase(newHistory); 
-                            }
-                          
-                            // Confeti y aviso
-                            if (typeof confetti === 'function') {
-                              confetti({
-                                particleCount: 100,
-                                spread: 70,
-                                origin: { y: 0.6 },
-                                colors: ['#22c55e', '#ffffff']
-                              });
-                            }
-                            alert(`¡Alineación para la jornada ${lineupsMatchday} guardada en el historial!`);
-                          }}
-                        >
-                          Confirmar 11
-                        </button>
-                     ) : (
-                        <div className="bg-white/5 border border-white/10 text-white/40 px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase flex items-center gap-2 cursor-not-allowed">
-                          <span>🔒 Cerrado</span>
-                        </div>
-                     )}
-                  </div>
+    return (
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
+        
+        {/* 1. SELECTOR DE JORNADA */}
+        <nav className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide justify-start sm:justify-center">
+          {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => {
+            const isEditable = countdown.targetId === j;
+            return (
+              <button
+                key={j}
+                onClick={() => {
+                  // 🛡️ BLOQUEO: No dejar cambiar de jornada si estamos editando
+                  if (isEditingLineup) {
+                    alert("Debes guardar tu alineación para continuar");
+                    return;
+                  }
 
-                  <div className="relative z-10">
-                    <Field
-                      selected={selected}
-                      step={2}
-                      evaluatedPlayers={currentLineupsPoints} // 👈 Conectado al inyector real y limpio
-                      canInteractField={countdown.targetId === lineupsMatchday}
-                      activeSlot={activeSlot}
-                      setActiveSlot={setActiveSlot}
-                      captain={captain}
-                      setCaptain={(id: any) => {
-                        if (countdown.targetId === lineupsMatchday) setCaptain(id);
-                      }}
-                    />
-                  </div>
-
-                  {/* MENSAJE DE AVISO SUPLENTES */}
-                  <div className="relative z-10 mt-2 mb-6 bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
-                    <p className="text-[10px] sm:text-xs font-black text-blue-400 uppercase text-center leading-relaxed">
-                      ⚠️ Los puntos de los suplentes, aunque se muestren aquí, no serán efectivos hasta cerrar la jornada.
-                    </p>
-                  </div>
-
-                  {/* 3. BANQUILLO Y GRADA EN ALINEACIONES */}
-                  <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                    <div className="bg-black/40 border border-white/10 rounded-3xl p-4">
-                      <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Banquillo Oficial</h3>
-                      <div className="grid grid-cols-2 gap-2">
-                        {['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].map((id) => (
-                          <BenchCard
-                            key={id}
-                            id={id}
-                            player={bench[id]}
-                            evaluatedPlayers={currentLineupsPoints} // 👈 Conectado al inyector real y limpio
-                            isActive={activeSlot?.id === id}
-                            onClick={() => {
-                              if (countdown.targetId === lineupsMatchday) {
-                                setActiveSlot({ id, type: 'bench', pos: bench[id]?.posicion });
-                              }
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="bg-black/40 border border-white/10 rounded-3xl p-4">
-                      <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Grada (No Convocados)</h3>
-                      <div className="grid grid-cols-2 gap-2">
-                        {['NC1', 'NC2', 'NC3', 'NC4'].map((id) => (
-                          <BenchCard
-                            key={id}
-                            id={id}
-                            player={extras[id]}
-                            evaluatedPlayers={currentLineupsPoints} // 👈 Conectado al inyector real y limpio
-                            isActive={activeSlot?.id === id}
-                            onClick={() => {
-                              if (countdown.targetId === lineupsMatchday) {
-                                setActiveSlot({ id, type: 'extras', pos: extras[id]?.posicion });
-                              }
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="relative z-10 mt-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4">
-                    <p className="text-[9px] sm:text-[10px] font-black text-yellow-500 uppercase text-center leading-relaxed">
-                      ⚠️ Toca a un jugador para sustituirlo por otro de su misma posición. El capitán (C) suma doble.
-                    </p>
-                  </div>
-                </div>
-
-                {/* 4. MODAL DE SUSTITUCIONES FLOTANTE (Exclusivo para Alineaciones) */}
-                {activeSlot && (
-                  <div className="fixed inset-0 z-[80] bg-[#05080f]/95 backdrop-blur-md p-4 flex flex-col animate-in zoom-in-95 duration-200">
-                    <div className="max-w-md w-full mx-auto flex flex-col h-full pt-16 pb-20">
-                      <div className="flex justify-between items-center mb-4 bg-[#1a0b0b] p-4 rounded-2xl border-2 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.15)]">
-                        <div>
-                          <h3 className="text-xl font-black italic text-blue-500 uppercase">Sustitución</h3>
-                          <p className="text-xs text-white/60 font-bold uppercase">
-                            Posición requerida: <span className="text-white">{activeSlot.pos || 'Cualquiera'}</span>
-                          </p>
-                        </div>
-                        <button onClick={() => setActiveSlot(null)} className="bg-white/10 text-white border border-white/20 w-10 h-10 rounded-xl flex items-center justify-center font-black text-xl hover:bg-white hover:text-black transition-all active:scale-95">✕</button>
-                      </div>
-
-                      {/* LLAMADA A LA FUNCIÓN LIMPIA AQUÍ */}
-                      <div className="flex-1 overflow-y-auto space-y-2 pb-4 scrollbar-hide">
-                        {renderSubstitutionOptions()}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  setLineupsMatchday(j);
+                  const snapshot = lineupsHistory[j];
+                
+                  if (snapshot) {
+                     setSelected(JSON.parse(JSON.stringify(snapshot.selected || {})));
+                     setBench(JSON.parse(JSON.stringify(snapshot.bench || {})));
+                     setExtras(JSON.parse(JSON.stringify(snapshot.extras || {})));
+                     setCaptain(snapshot.captain || null);
+                  } else {
+                     setSelected(JSON.parse(JSON.stringify(squadData.selected || {})));
+                     setBench(JSON.parse(JSON.stringify(squadData.bench || {})));
+                     setExtras(JSON.parse(JSON.stringify(squadData.extras || {})));
+                     setCaptain(squadData.captain || null);
+                  }
+                }}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2 flex items-center gap-1.5 whitespace-nowrap ${
+                  lineupsMatchday === j 
+                  ? 'bg-[#22c55e] border-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
+                  : 'bg-white/5 border-transparent text-white/40 hover:bg-white/10'
+                }`}
+              >
+                {j} {isEditable && <span className="text-xs animate-bounce">🔓</span>}
+              </button>
             );
-          })()
+          })}
+        </nav>
+
+        {/* 2. EL TERRENO DE JUEGO */}
+        <div className="bg-[#1a2b1a] border-4 border-[#22c55e]/30 rounded-[2.5rem] p-4 sm:p-6 shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/grass.png')]"></div>
+          
+          <div className="relative z-10 flex justify-between items-center mb-6 bg-black/40 p-3 sm:p-4 rounded-2xl border border-white/10">
+             <div>
+               <h3 className="text-white font-black italic uppercase text-lg">Alineación {lineupsMatchday}</h3>
+               <p className={`text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 mt-1 ${
+                 countdown.targetId === lineupsMatchday ? 'text-[#22c55e]' : 'text-red-500'
+               }`}>
+                 <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+                 {countdown.targetId === lineupsMatchday ? 'Edición Abierta' : 'Bloqueado (Solo lectura)'}
+               </p>
+             </div>
+             
+             {/* 🛡️ LÓGICA DE BOTONES EDITAR / GUARDAR */}
+             {countdown.targetId === lineupsMatchday ? (
+                !isEditingLineup ? (
+                  <button 
+                    className="bg-[#eab308] text-black px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-[0_0_15px_rgba(234,179,8,0.4)] hover:scale-105 transition-transform"
+                    onClick={() => setIsEditingLineup(true)}
+                  >
+                    Editar Alineación
+                  </button>
+                ) : (
+                  <button 
+                    className="bg-[#22c55e] text-black px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:scale-105 transition-transform"
+                    onClick={() => {
+                      // Hacemos una copia profunda antes de guardar para desvincular referencias
+                      const newSnapshot = { 
+                        selected: JSON.parse(JSON.stringify(selected)), 
+                        bench: JSON.parse(JSON.stringify(bench)), 
+                        extras: JSON.parse(JSON.stringify(extras)), 
+                        captain 
+                      };
+                    
+                      const newHistory = { 
+                        ...lineupsHistory, 
+                        [lineupsMatchday]: newSnapshot 
+                      };
+                    
+                      setLineupsHistory(newHistory);
+                    
+                      // Función dedicada SOLO a lineups_history
+                      if (typeof saveLineupHistoryToSupabase === 'function') {
+                        saveLineupHistoryToSupabase(newHistory); 
+                      }
+                      
+                      // Salimos del modo edición
+                      setIsEditingLineup(false);
+                    
+                      if (typeof confetti === 'function') {
+                        confetti({
+                          particleCount: 100,
+                          spread: 70,
+                          origin: { y: 0.6 },
+                          colors: ['#22c55e', '#ffffff']
+                        });
+                      }
+                      alert(`¡Alineación para la jornada ${lineupsMatchday} guardada en el historial!`);
+                    }}
+                  >
+                    Guardar Alineación
+                  </button>
+                )
+             ) : (
+                <div className="bg-white/5 border border-white/10 text-white/40 px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase flex items-center gap-2 cursor-not-allowed">
+                  <span>🔒 Cerrado</span>
+                </div>
+             )}
+          </div>
+
+          <div className="relative z-10">
+            <Field
+              selected={selected}
+              step={2}
+              evaluatedPlayers={currentLineupsPoints}
+              canInteractField={countdown.targetId === lineupsMatchday}
+              activeSlot={activeSlot}
+              setActiveSlot={(slot: any) => {
+                // 🛡️ BLOQUEO EN EL CAMPO
+                if (countdown.targetId === lineupsMatchday) {
+                  if (!isEditingLineup) {
+                    alert("Pulsa el botón EDITAR ALINEACIÓN para hacer cambios.");
+                    return;
+                  }
+                  setActiveSlot(slot);
+                }
+              }}
+              captain={captain}
+              setCaptain={(id: any) => {
+                // 🛡️ BLOQUEO DE CAPITÁN
+                if (countdown.targetId === lineupsMatchday) {
+                  if (!isEditingLineup) {
+                    alert("Pulsa el botón EDITAR ALINEACIÓN para hacer cambios.");
+                    return;
+                  }
+                  setCaptain(id);
+                }
+              }}
+            />
+          </div>
+
+          <div className="relative z-10 mt-2 mb-6 bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+            <p className="text-[10px] sm:text-xs font-black text-blue-400 uppercase text-center leading-relaxed">
+              ⚠️ Los puntos de los suplentes, aunque se muestren aquí, no serán efectivos hasta cerrar la jornada.
+            </p>
+          </div>
+
+          {/* 3. BANQUILLO Y GRADA EN ALINEACIONES */}
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            <div className="bg-black/40 border border-white/10 rounded-3xl p-4">
+              <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Banquillo Oficial</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].map((id) => (
+                  <BenchCard
+                    key={id}
+                    id={id}
+                    player={bench[id]}
+                    evaluatedPlayers={currentLineupsPoints}
+                    isActive={activeSlot?.id === id}
+                    onClick={() => {
+                      // 🛡️ BLOQUEO EN EL BANQUILLO
+                      if (countdown.targetId === lineupsMatchday) {
+                        if (!isEditingLineup) {
+                          alert("Pulsa el botón EDITAR ALINEACIÓN para hacer cambios.");
+                          return;
+                        }
+                        setActiveSlot({ id, type: 'bench', pos: bench[id]?.posicion });
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="bg-black/40 border border-white/10 rounded-3xl p-4">
+              <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Grada (No Convocados)</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {['NC1', 'NC2', 'NC3', 'NC4'].map((id) => (
+                  <BenchCard
+                    key={id}
+                    id={id}
+                    player={extras[id]}
+                    evaluatedPlayers={currentLineupsPoints}
+                    isActive={activeSlot?.id === id}
+                    onClick={() => {
+                      // 🛡️ BLOQUEO EN LA GRADA
+                      if (countdown.targetId === lineupsMatchday) {
+                        if (!isEditingLineup) {
+                          alert("Pulsa el botón EDITAR ALINEACIÓN para hacer cambios.");
+                          return;
+                        }
+                        setActiveSlot({ id, type: 'extras', pos: extras[id]?.posicion });
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <div className="relative z-10 mt-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4">
+            <p className="text-[9px] sm:text-[10px] font-black text-yellow-500 uppercase text-center leading-relaxed">
+              ⚠️ Toca a un jugador para sustituirlo por otro de su misma posición. El capitán (C) suma doble.
+            </p>
+          </div>
+        </div>
+
+        {/* 4. MODAL DE SUSTITUCIONES */}
+        {activeSlot && (
+          <div className="fixed inset-0 z-[80] bg-[#05080f]/95 backdrop-blur-md p-4 flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="max-w-md w-full mx-auto flex flex-col h-full pt-16 pb-20">
+              <div className="flex justify-between items-center mb-4 bg-[#1a0b0b] p-4 rounded-2xl border-2 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.15)]">
+                <div>
+                  <h3 className="text-xl font-black italic text-blue-500 uppercase">Sustitución</h3>
+                  <p className="text-xs text-white/60 font-bold uppercase">
+                    Posición requerida: <span className="text-white">{activeSlot.pos || 'Cualquiera'}</span>
+                  </p>
+                </div>
+                <button onClick={() => setActiveSlot(null)} className="bg-white/10 text-white border border-white/20 w-10 h-10 rounded-xl flex items-center justify-center font-black text-xl hover:bg-white hover:text-black transition-all active:scale-95">✕</button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-2 pb-4 scrollbar-hide">
+                {renderSubstitutionOptions()}
+              </div>
+            </div>
+          </div>
         )}
+      </div>
+    );
+  })()
+)}
         {view === 'scores' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto space-y-6">
             
