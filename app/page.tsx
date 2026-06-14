@@ -2807,6 +2807,23 @@ const cleanKey = (str: string) => {
 
   const [globalScores, setGlobalScores] = useState<Record<string, Record<string, number>>>({});
 
+  // 🌍 LECTURA DE CONFIGURACIÓN GLOBAL (Modo Dios)
+useEffect(() => {
+  const fetchGlobalSettings = async () => {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('is_market_open')
+      .single();
+
+    if (data) {
+      // Si is_market_open es TRUE, isSquadLocked debe ser FALSE (y viceversa)
+      setIsSquadLocked(!data.is_market_open);
+    }
+  };
+
+  fetchGlobalSettings();
+}, []);
+
   useEffect(() => {
     const loadScores = async () => {
       const { data, error } = await supabase.from('player_scores').select('*');
@@ -2988,9 +3005,9 @@ useEffect(() => {
   const [bench, setBench] = useState<any>({});
   const [extras, setExtras] = useState<any>({});
   // Cambia number por string
-const [captain, setCaptain] = useState<string | null>(null);
+  const [captain, setCaptain] = useState<string | null>(null);
 
-const [isSquadLocked, setIsSquadLocked] = useState(true);
+  const [isSquadLocked, setIsSquadLocked] = useState(true);
 
   // 🧠 CEREBRO DEL MERCADO: Calcula los cambios y el presupuesto en tiempo real
   useEffect(() => {
@@ -3448,8 +3465,9 @@ const saveLineupHistoryToSupabase = async (newHistory: any) => {
       setTutorialStep(0);
       setView('rules');
     } else {
-      // Si el jugador entra y ya hizo el tutorial otro día, la plantilla estará bloqueada
-      setIsSquadLocked(true);
+      // YA NO BLOQUEAMOS AQUÍ. 
+      // El bloqueo real lo manejará el nuevo useEffect que consulta 'app_settings'.
+      console.log("Tutorial visto, esperando sincronización de mercado con Supabase...");
     }
   }, []);
 
@@ -4205,13 +4223,21 @@ if (!isInitialSetup) {
 {/* Contenedor horizontal para los botones de acción */}
 <div className="flex flex-wrap items-center gap-2">
                     
-                    {/* 👇 BOTÓN FIJO (MERCADO CERRADO) 👇 */}
-                    <button
-                      className="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg border-2 flex items-center justify-center gap-2 bg-gray-600 text-white/50 border-white/10 cursor-not-allowed"
-                      onClick={() => alert("⛔ ¡El Mundial Fantástico 2026 ya ha comenzado! El mercado de fichajes de plantillas iniciales está cerrado.")}
-                    >
-                      🔒 Mercado Cerrado
-                    </button>
+                    {/* 👇 BOTÓN DINÁMICO (MERCADO ABIERTO/CERRADO) 👇 */}
+{isSquadLocked ? (
+  <button
+    className="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg border-2 flex items-center justify-center gap-2 bg-gray-600 text-white/50 border-white/10 cursor-not-allowed"
+    onClick={() => alert("⛔ ¡El Mundial Fantástico 2026 ya ha comenzado! El mercado de fichajes de plantillas iniciales está cerrado.")}
+  >
+    🔒 Mercado Cerrado
+  </button>
+) : (
+  <button
+    className="px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg border-2 flex items-center justify-center gap-2 bg-green-600 text-white border-green-500 cursor-default"
+  >
+    🟢 Mercado Abierto
+  </button>
+)}
                   </div>
 
                   <div
@@ -4221,6 +4247,21 @@ if (!isInitialSetup) {
                     {formationInfo.message}{' '}
                     {formationInfo.count > 0 && `(${formationInfo.count}/11)`}
                   </div>
+
+                  {/* 👇 BOTÓN DE VALIDACIÓN DE PLANTILLA 👇 */}
+{!isSquadLocked && formationInfo.isValidTactic && (
+  <div className="mt-4 flex justify-center">
+    <button
+      onClick={() => {
+        saveLineupHistoryToSupabase(snapshotSquad);
+        alert("¡Alineación validada correctamente! La foto ha sido guardada en la base de datos.");
+      }}
+      className="px-8 py-3 bg-green-500 hover:bg-green-600 text-black font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(34,197,94,0.4)] border-2 border-green-400 flex items-center justify-center gap-2 transform active:scale-95"
+    >
+      ✅ VALIDAR ALINEACIÓN
+    </button>
+  </div>
+)}
                 </div>
 
                 {/* Presupuesto y Vender */}
