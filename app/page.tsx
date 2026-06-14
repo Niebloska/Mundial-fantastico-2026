@@ -2954,28 +2954,34 @@ useEffect(() => {
 }, [session?.user?.id]);
 
 
-  // ⚡ ACTUALIZACIÓN INSTANTÁNEA (Modo Paranoico)
-useEffect(() => {
-  if (view === 'lineups') {
-    // Definimos el contenedor local
-    let target = { selected: {}, bench: {}, extras: {}, captain: null };
+  // ⚡ ACTUALIZACIÓN INSTANTÁNEA (Modo Paranoico + Retorno a Plantilla)
+  useEffect(() => {
+    if (view === 'lineups') {
+      // Si estamos en Alineaciones, cargamos la jornada que toque
+      let target = { selected: {}, bench: {}, extras: {}, captain: null };
 
-    // Si hay datos en el historial, usamos el historial (CLONADO)
-    if (lineupsHistory && lineupsHistory[lineupsMatchday]) {
-      target = JSON.parse(JSON.stringify(lineupsHistory[lineupsMatchday]));
-    } 
-    // Si no, usamos la base (CLONADA)
-    else if (squadData && Object.keys(squadData).length > 0) {
-      target = JSON.parse(JSON.stringify(squadData));
+      if (lineupsHistory && lineupsHistory[lineupsMatchday]) {
+        target = JSON.parse(JSON.stringify(lineupsHistory[lineupsMatchday]));
+      } else if (squadData && Object.keys(squadData).length > 0) {
+        target = JSON.parse(JSON.stringify(squadData));
+      }
+
+      setSelected(target.selected || {});
+      setBench(target.bench || {});
+      setExtras(target.extras || {});
+      setCaptain(target.captain || null);
+
+    } else if (view === 'squad') {
+      // 🔥 LA PIEZA QUE FALTABA 🔥
+      // Si volvemos a la pantalla de Plantilla, OBLIGAMOS a cargar la base limpia
+      if (squadData && Object.keys(squadData).length > 0) {
+        setSelected(JSON.parse(JSON.stringify(squadData.selected || {})));
+        setBench(JSON.parse(JSON.stringify(squadData.bench || {})));
+        setExtras(JSON.parse(JSON.stringify(squadData.extras || {})));
+        setCaptain(squadData.captain || null);
+      }
     }
-
-    // Actualizamos TODO el estado de golpe con los clones nuevos
-    setSelected(target.selected || {});
-    setBench(target.bench || {});
-    setExtras(target.extras || {});
-    setCaptain(target.captain || null);
-  }
-}, [view, lineupsMatchday, lineupsHistory, squadData]);
+  }, [view, lineupsMatchday, lineupsHistory, squadData]);
 
   // --- ESTADOS DE LA PLANTILLA (Carga desde Supabase) ---
   const [selected, setSelected] = useState<any>({});
@@ -3157,28 +3163,19 @@ const [isSquadLocked, setIsSquadLocked] = useState(true);
         });
 
         if (data.squad_data) {
-          // Extraemos también "snapshot" y "snapshotMatchday" del JSON de la base de datos
+          // Extraemos los datos, pero YA NO los volcamos al estado de la pantalla aquí
           const { 
             selected: s, 
             bench: b, 
             extras: e, 
-            captain: c, 
             snapshot: savedSnapshot, 
             snapshotMatchday: savedMatchday 
           } = data.squad_data;
 
-          if (s) setSelected(s);
-          if (b) setBench(b);
-          if (e) setExtras(e);
-          if (c) setCaptain(c);
-
           // 🛡️ BÚNKER DE MERCADO: Comprobamos si la foto de la BD es de ESTA ventana
           if (savedSnapshot && savedMatchday === activeMatchday) {
-            // Si ya existía una foto congelada para esta jornada, la respetamos (así no se resetean los cambios al pulsar F5)
             setSnapshotSquad(savedSnapshot);
           } else {
-            // 📸 Si no hay foto, o es de una jornada anterior (ej: era de la J3 y ahora estamos en Octavos)...
-            // ¡Hacemos una foto nueva oficial con el equipo actual!
             const newSnapshot = {
               selected: s || {},
               bench: b || {},
@@ -3186,14 +3183,16 @@ const [isSquadLocked, setIsSquadLocked] = useState(true);
             };
             setSnapshotSquad(newSnapshot);
 
-            // Guardamos inmediatamente esta foto en Supabase para que quede blindada en esta jornada
+            // Guardamos inmediatamente esta foto en Supabase.
+            // Esto es seguro porque usa la variable 'data.squad_data' que viene pura 
+            // de la base de datos, no la de la pantalla.
             await supabase
               .from('profiles')
               .update({
                 squad_data: {
                   ...data.squad_data,
                   snapshot: newSnapshot,
-                  snapshotMatchday: activeMatchday // Vinculamos la foto a la jornada actual (ej: 'Octavos')
+                  snapshotMatchday: activeMatchday 
                 }
               })
               .eq('id', sessionUser.id);
@@ -3212,18 +3211,22 @@ const [isSquadLocked, setIsSquadLocked] = useState(true);
       if (session) {
         fetchUserProfile(session.user);
       } else {
+        // 🧹 LIMPIEZA TOTAL AL SALIR: Borramos absolutamente todo para no dejar rastros
         setUser({ email: '', username: 'Invitado', teamName: 'MI EQUIPO', id: '' });
         setSelected({});
         setBench({});
         setExtras({});
         setCaptain(null);
         setSnapshotSquad(null);
+        
+        // ¡LA PIEZA QUE FALTABA! Vaciamos también las copias de seguridad globales
+        if (typeof setSquadData === 'function') setSquadData({});
+        if (typeof setLineupsHistory === 'function') setLineupsHistory({});
       }
     });
 
     return () => authListener.subscription.unsubscribe();
-  }, [activeMatchday]); // 👈 Añadimos activeMatchday aquí para que se recalcule si cambias de jornada en el panel
-
+  }, [activeMatchday]);
   // =========================================================================
   // 🏆 EFECTO NUEVO: Descarga las plantillas y lee el historial por NOMBRE
   // =========================================================================
@@ -3376,53 +3379,65 @@ console.log(`DEBUG: Usuario ${u.team_name} calculado. Puntos totales: ${totalPoi
   // NUEVA FUNCIÓN: GUARDADO EN SUPABASE
   // ==========================================
   // 1. Cambiamos la definición para que acepte el historial (historyToSave)
-const saveSquadToSupabase = async (historyToSave: any) => { 
-  if (!session?.user?.id) return;
-
-  try {
-    // 2. Ya no hace falta calcular 'updatedHistory' aquí dentro, 
-    // porque ya nos viene listo desde el botón.
-    
-    // 3. Subimos la actualización directamente a Supabase
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        squad_data: {
+  const saveSquadToSupabase = async (historyToSave?: any) => { 
+    if (!session?.user?.id) return;
+  
+    try {
+      // 1. Creamos un objeto vacío donde meteremos solo lo que toque guardar
+      const updatePayload: any = {};
+  
+      // 2. Si nos pasan historial (cuando guardas alineación), lo añadimos al paquete
+      if (historyToSave) {
+        updatePayload.lineups_history = historyToSave;
+      }
+  
+      // 3. 🛡️ BLINDAJE DE PLANTILLA: 
+      // SOLO permitimos guardar en 'squad_data' si estamos explícitamente 
+      // en la pestaña 'squad' (Plantilla) Y el mercado no está bloqueado.
+      if (view === 'squad' && !isSquadLocked) {
+        updatePayload.squad_data = {
           selected,
           bench,
           extras,
           captain,
-          // (Tu lógica de snapshot original)
-        },
-        // 📸 Guardamos el historial que nos acaban de pasar
-        lineups_history: historyToSave
-      })
-      .eq('id', session.user.id);
-
-    if (updateError) {
-      console.error('Error al guardar en nube:', updateError.message);
-    } else {
-      console.log(`¡Alineación guardada correctamente en el historial!`);
+        };
+      }
+  
+      // 4. Si no hay nada que actualizar, cortamos la ejecución
+      if (Object.keys(updatePayload).length === 0) return;
+  
+      // 5. Subimos a Supabase SOLO lo que hay en el Payload
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update(updatePayload)
+        .eq('id', session.user.id);
+  
+      if (updateError) {
+        console.error('Error al guardar en nube:', updateError.message);
+      } else {
+        console.log(`¡Datos guardados en Supabase correctamente!`);
+      }
+    } catch (err) {
+      console.error('Error inesperado en saveSquadToSupabase:', err);
     }
-  } catch (err) {
-    console.error('Error inesperado en saveSquadToSupabase:', err);
-  }
-};
+  };
 
 // Añade esta función en tu código (donde tienes las otras funciones de Supabase)
-const saveLineupHistoryToSupabase = async (newHistory: any) => {
+const saveLineupHistoryToSupabase = async (newHistory) => {
   if (!session?.user?.id) return;
   
-  // Guardamos SOLO en la columna lineups_history
+  // 🛡️ AQUÍ ESTÁ EL BLOQUEO: 
+  // Solo pasamos el campo 'lineups_history'.
+  // Aunque 'newHistory' contuviera 'squad_data' por error, 
+  // esto solo actualizará la columna lineups_history.
   const { error } = await supabase
     .from('profiles')
-    .update({ lineups_history: newHistory })
+    .update({ 
+       lineups_history: newHistory 
+    })
     .eq('id', session.user.id);
 
-  if (error) {
-    console.error('Error guardando alineación:', error);
-    alert('Error al guardar la alineación. Revisa la consola.');
-  }
+  if (error) console.error('Error:', error);
 };
 
   // --- 5. LÓGICA DE CONTROL DEL TUTORIAL ---
