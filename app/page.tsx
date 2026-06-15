@@ -3600,30 +3600,29 @@ const saveLineupHistoryToSupabase = async (newHistory: any) => {
     }
   }, [isAdmin]);
 
-  // --- AUTO-GUARDADO DE PLANTILLA EN SUPABASE ---
+  // --- AUTO-GUARDADO DE PLANTILLA BLINDADO POR JORNADA ---
 useEffect(() => {
   const saveSquadData = async () => {
-    // 🛡️ BARRERA FÍSICA: Si no ha pasado el tiempo de cortesía de carga, bloqueamos en seco.
-    if (!isInitialLoadComplete.current) {
-      console.log("Auto-guardado bloqueado: La app se está estabilizando.");
+    // 1. Escudo de carga inicial (el que ya teníamos)
+    if (!isInitialLoadComplete.current) return;
+
+    // 2. 🛡️ FILTRO DE SEGURIDAD DE JORNADA:
+    // Solo guardamos si estamos en la fase de preparación ('PRE'). 
+    // Si estamos mirando J1, J2, J3, etc., ¡BLOQUEADO!
+    if (activeMatchday !== 'PRE') {
+      console.log("Auto-guardado bloqueado: Estás consultando una jornada histórica.");
       return;
     }
 
-    // Si no hay usuario real o es el ID de prueba, no guardamos
-    if (!user?.id || user.id === '' || user.id === '000-111') return;
-
-    // 🛡️ SALVAVIDAS ANTI-VACIADO TOTAL (Opcional pero recomendado en tu caso):
-    // Como medida extra, si TODOS los objetos están completamente vacíos, 
-    // asumimos que es un fallo de React al desmontar pestañas y NO guardamos.
+    // 3. Salvavidas anti-vaciado (el que ya teníamos)
     const isSquadCompletelyEmpty = 
       Object.keys(selected).length === 0 && 
       Object.keys(bench).length === 0 && 
       Object.keys(extras).length === 0;
 
-    if (isSquadCompletelyEmpty) {
-      console.log("Auto-guardado bloqueado: Intento de guardar equipo vacío detectado.");
-      return;
-    }
+    if (isSquadCompletelyEmpty) return;
+
+    if (!user?.id || user.id === '' || user.id === '000-111') return;
 
     const { error } = await supabase
       .from('profiles')
@@ -3637,8 +3636,7 @@ useEffect(() => {
   };
 
   saveSquadData();
-}, [selected, bench, extras, captain, user?.id]); 
-// 👆 Fíjate que isInitialLoadComplete NO va en la lista de dependencias
+}, [selected, bench, extras, captain, user?.id, activeMatchday]); // 👈 Añadimos activeMatchday aquí
 
   // --- 8. FUNCIONES DE GESTIÓN ---
   const toggleMarket = async () => {
