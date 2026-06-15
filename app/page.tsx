@@ -2739,6 +2739,9 @@ const cleanKey = (str: string) => {
   return str.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 };
 
+  // 🛡️ LOCK DE SEGURIDAD ABSOLUTA: Bloquea físicamente el auto-guardado en el arranque
+const isInitialLoadComplete = useRef(false);
+
   // Estados para Intro y Música
   const [showWelcome, setShowWelcome] = useState(true);
   const [isPlayingVideo, setIsPlayingVideo] = useState(false);
@@ -3170,7 +3173,7 @@ useEffect(() => {
         .select('team_name, username, squad_data')
         .eq('id', sessionUser.id)
         .single();
-
+    
       if (data) {
         setUser({
           email: sessionUser.email,
@@ -3178,18 +3181,22 @@ useEffect(() => {
           username: data.username,
           id: sessionUser.id
         });
-
+    
         if (data.squad_data) {
-          // Extraemos los datos, pero YA NO los volcamos al estado de la pantalla aquí
           const { 
             selected: s, 
             bench: b, 
             extras: e, 
+            captain: c,
             snapshot: savedSnapshot, 
             snapshotMatchday: savedMatchday 
           } = data.squad_data;
-
-          // 🛡️ BÚNKER DE MERCADO: Comprobamos si la foto de la BD es de ESTA ventana
+    
+          setSelected(s || {});
+          setBench(b || {});
+          setExtras(e || {});
+          setCaptain(c || null);
+    
           if (savedSnapshot && savedMatchday === activeMatchday) {
             setSnapshotSquad(savedSnapshot);
           } else {
@@ -3199,10 +3206,7 @@ useEffect(() => {
               extras: e || {}
             };
             setSnapshotSquad(newSnapshot);
-
-            // Guardamos inmediatamente esta foto en Supabase.
-            // Esto es seguro porque usa la variable 'data.squad_data' que viene pura 
-            // de la base de datos, no la de la pantalla.
+    
             await supabase
               .from('profiles')
               .update({
@@ -3215,6 +3219,12 @@ useEffect(() => {
               .eq('id', sessionUser.id);
           }
         }
+    
+        // 🛡️ COJÍN DE SEGURIDAD: Damos 1 segundo de cortesía tras cargar los datos 
+        // para que la interfaz se asiente por completo antes de activar el auto-guardado.
+        setTimeout(() => {
+          isInitialLoadComplete.current = true;
+        }, 1000);
       }
     };
 
@@ -3228,17 +3238,18 @@ useEffect(() => {
       if (session) {
         fetchUserProfile(session.user);
       } else {
-        // 🧹 LIMPIEZA TOTAL AL SALIR: Borramos absolutamente todo para no dejar rastros
+        // 🧹 LIMPIEZA TOTAL AL SALIR
         setUser({ email: '', username: 'Invitado', teamName: 'MI EQUIPO', id: '' });
         setSelected({});
         setBench({});
         setExtras({});
         setCaptain(null);
         setSnapshotSquad(null);
-        
-        // ¡LA PIEZA QUE FALTABA! Vaciamos también las copias de seguridad globales
         if (typeof setSquadData === 'function') setSquadData({});
         if (typeof setLineupsHistory === 'function') setLineupsHistory({});
+        
+        // Apagamos el interruptor al salir
+        isInitialLoadComplete.current = false;
       }
     });
 
@@ -3592,8 +3603,27 @@ const saveLineupHistoryToSupabase = async (newHistory: any) => {
   // --- AUTO-GUARDADO DE PLANTILLA EN SUPABASE ---
 useEffect(() => {
   const saveSquadData = async () => {
+    // 🛡️ BARRERA FÍSICA: Si no ha pasado el tiempo de cortesía de carga, bloqueamos en seco.
+    if (!isInitialLoadComplete.current) {
+      console.log("Auto-guardado bloqueado: La app se está estabilizando.");
+      return;
+    }
+
     // Si no hay usuario real o es el ID de prueba, no guardamos
     if (!user?.id || user.id === '' || user.id === '000-111') return;
+
+    // 🛡️ SALVAVIDAS ANTI-VACIADO TOTAL (Opcional pero recomendado en tu caso):
+    // Como medida extra, si TODOS los objetos están completamente vacíos, 
+    // asumimos que es un fallo de React al desmontar pestañas y NO guardamos.
+    const isSquadCompletelyEmpty = 
+      Object.keys(selected).length === 0 && 
+      Object.keys(bench).length === 0 && 
+      Object.keys(extras).length === 0;
+
+    if (isSquadCompletelyEmpty) {
+      console.log("Auto-guardado bloqueado: Intento de guardar equipo vacío detectado.");
+      return;
+    }
 
     const { error } = await supabase
       .from('profiles')
@@ -3601,13 +3631,14 @@ useEffect(() => {
         id: user.id,
         squad_data: { selected, bench, extras, captain },
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' }); // Esto asegura que si no existe, lo cree
+      }, { onConflict: 'id' }); 
 
     if (error) console.error("Error al guardar plantilla:", error);
   };
 
   saveSquadData();
-}, [selected, bench, extras, captain, user?.id]);
+}, [selected, bench, extras, captain, user?.id]); 
+// 👆 Fíjate que isInitialLoadComplete NO va en la lista de dependencias
 
   // --- 8. FUNCIONES DE GESTIÓN ---
   const toggleMarket = async () => {
