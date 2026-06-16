@@ -766,11 +766,20 @@ const Field = ({
             const p = selected[id];
 
             // 🛡️ PARCHE DE SEGURIDAD: Inyectamos el ID si falta
-const playerWithId = p ? { ...p, id: p.id || `${p.nombre}_${p.equipo}` } : null;
-const pFinal = playerWithId; // Usaremos esto para todo ahora
+            const playerWithId = p ? { ...p, id: p.id || `${p.nombre}_${p.equipo}` } : null;
+            const pFinal = playerWithId; // Usaremos esto para todo ahora
 
             // 🧠 LEEMOS LOS STATS DEL JUGADOR
-            const stats = p && evaluatedPlayers ? evaluatedPlayers[p.id] : null;
+            // Construimos el ID dinámico: "Nombre_Equipo"
+            const playerId = p ? `${p.nombre}_${p.equipo}` : null;
+            // 🧠 LEEMOS LOS STATS DE FORMA NORMALIZADA (sin el "_País")
+            const nombreLimpio = p ? p.nombre.split('_')[0].trim() : '';
+            // 🧠 LEEMOS LOS STATS DE FORMA CONSISTENTE
+// Usamos 'p' (la variable que tienes definida en este bloque)
+const stats = (p && evaluatedPlayers) 
+? evaluatedPlayers[`${p.nombre}_${p.equipo}`] 
+: null;
+
             const isSubbedOut = stats?.isSubbedOut; // ¿Se quedó sin jugar?
 
             const isActive = activeSlot?.id === id && activeSlot?.type === 'titular';
@@ -3057,10 +3066,10 @@ useEffect(() => {
 
   }, [selected, bench, extras, snapshotSquad, quinielaPrize]);
 
-  // ==========================================
-  // 🧠 AQUÍ VA EL CEREBRO MATEMÁTICO DE SUSTITUCIONES
-  // ==========================================
-  const evaluatedPlayers = useMemo(() => {
+    // ==========================================
+    // 🧠 AQUÍ VA EL CEREBRO MATEMÁTICO DE SUSTITUCIONES
+    // ==========================================
+    const evaluatedPlayers = useMemo(() => {
     const playerStats: any = {};
     const startersMissing: any[] = [];
     const benchAvailable: any[] = [];
@@ -3076,32 +3085,48 @@ useEffect(() => {
 
     Object.entries(selected).forEach(([slotId, p]: any) => {
       if (!p) return;
+      const playerKey = `${p.nombre}_${p.equipo}`; // 👈 Clave única
       const didNotPlay = (p.nombre.length + p.precio) % 4 === 0; 
       const pts = didNotPlay ? 'X' : (p.nombre.length % 6) + 2;
-      playerStats[p.id] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: p.id, slotId };
-      if (didNotPlay) startersMissing.push(p.id);
+      
+      playerStats[playerKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: playerKey, slotId };
+      
+      if (didNotPlay) startersMissing.push(playerKey);
       else currentActivePositions[p.posicion as keyof typeof currentActivePositions]++;
     });
 
     ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].forEach(slotId => {
-       const p = bench[slotId];
-       if (!p) return;
-       const didNotPlay = (p.nombre.length + p.precio) % 3 === 0; 
-       const pts = didNotPlay ? 'X' : (p.nombre.length % 5) + 3;
-       playerStats[p.id] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: p.id, slotId };
-       if (!didNotPlay) benchAvailable.push(p.id);
-    });
+      const p = bench[slotId];
+      if (!p) return;
+      const playerKey = `${p.nombre}_${p.equipo}`; // 👈 Clave única
+      const didNotPlay = (p.nombre.length + p.precio) % 3 === 0; 
+      const pts = didNotPlay ? 'X' : (p.nombre.length % 5) + 3;
+      
+      playerStats[playerKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: playerKey, slotId };
+      
+      if (!didNotPlay) benchAvailable.push(playerKey);
+   });
 
-    Object.values(extras).forEach((p: any) => {
-        if (!p) return;
-        playerStats[p.id] = { points: 'X', isSubbedOut: false, isSubbedIn: false, id: p.id };
-    });
+   Object.values(extras).forEach((p: any) => {
+    if (!p) return;
+    const playerKey = `${p.nombre}_${p.equipo}`; // 👈 Clave única
+    playerStats[playerKey] = { points: 'X', isSubbedOut: false, isSubbedIn: false, id: playerKey };
+});
 
-    for (const subId of benchAvailable) {
-       if (startersMissing.length === 0) break; 
-       const subPlayer = Object.values(bench).find((p: any) => p?.id === subId) as any;
-       
-       for (let i = 0; i < startersMissing.length; i++) {
+for (const subId of benchAvailable) {
+  if (startersMissing.length === 0) break; 
+  
+  // 🧠 CORRECCIÓN: Buscamos al jugador en el banquillo comparando nombre y equipo
+  // ya que subId ahora es "Nombre_Equipo"
+  const [subNombre, subEquipo] = subId.split('_');
+  
+  const subPlayer = Object.values(bench).find((p: any) => 
+     p && p.nombre === subNombre && p.equipo === subEquipo
+  ) as any;
+
+  if (!subPlayer) continue; // Por seguridad, si no lo encuentra, saltamos
+  
+  for (let i = 0; i < startersMissing.length; i++) {
           const missingId = startersMissing[i];
           const testCounts = { ...currentActivePositions };
           testCounts[subPlayer.posicion as keyof typeof testCounts]++; 
@@ -3406,44 +3431,35 @@ console.log(`DEBUG: Usuario ${u.team_name} calculado. Puntos totales: ${totalPoi
   // ==========================================
   // NUEVA FUNCIÓN: GUARDADO EN SUPABASE
   // ==========================================
-  // 1. Cambiamos la definición para que acepte el historial (historyToSave)
+  // ==========================================================================
+  // FUNCIÓN REFORZADA: GUARDADO EXCLUSIVO PARA HISTORIAL
+  // ==========================================================================
   const saveSquadToSupabase = async (historyToSave?: any) => { 
     if (!session?.user?.id) return;
   
     try {
-      // 1. Creamos un objeto vacío donde meteremos solo lo que toque guardar
-      const updatePayload: any = {};
-  
-      // 2. Si nos pasan historial (cuando guardas alineación), lo añadimos al paquete
-      if (historyToSave) {
-        updatePayload.lineups_history = historyToSave;
+      // 1. Validamos que tengamos algo que guardar
+      if (!historyToSave) {
+        console.log("No hay historial para guardar, omitiendo...");
+        return;
       }
   
-      // 3. 🛡️ BLINDAJE DE PLANTILLA: 
-      // SOLO permitimos guardar en 'squad_data' si estamos explícitamente 
-      // en la pestaña 'squad' (Plantilla) Y el mercado no está bloqueado.
-      if (view === 'squad' && !isSquadLocked) {
-        updatePayload.squad_data = {
-          selected,
-          bench,
-          extras,
-          captain,
-        };
-      }
+      // 2. Preparamos el payload EXCLUSIVAMENTE para el historial.
+      // Ya NO tocamos 'squad_data' aquí para evitar conflictos con el useEffect.
+      const updatePayload = {
+        lineups_history: historyToSave
+      };
   
-      // 4. Si no hay nada que actualizar, cortamos la ejecución
-      if (Object.keys(updatePayload).length === 0) return;
-  
-      // 5. Subimos a Supabase SOLO lo que hay en el Payload
+      // 3. Subimos a Supabase
       const { error: updateError } = await supabase
         .from('profiles')
         .update(updatePayload)
         .eq('id', session.user.id);
   
       if (updateError) {
-        console.error('Error al guardar en nube:', updateError.message);
+        console.error('Error al guardar historial en nube:', updateError.message);
       } else {
-        console.log(`¡Datos guardados en Supabase correctamente!`);
+        console.log(`¡Historial guardado en Supabase correctamente!`);
       }
     } catch (err) {
       console.error('Error inesperado en saveSquadToSupabase:', err);
@@ -3601,42 +3617,38 @@ const saveLineupHistoryToSupabase = async (newHistory: any) => {
   }, [isAdmin]);
 
   // --- AUTO-GUARDADO DE PLANTILLA BLINDADO POR JORNADA ---
-useEffect(() => {
-  const saveSquadData = async () => {
-    // 1. Escudo de carga inicial (el que ya teníamos)
-    if (!isInitialLoadComplete.current) return;
-
-    // 2. 🛡️ FILTRO DE SEGURIDAD DE JORNADA:
-    // Solo guardamos si estamos en la fase de preparación ('PRE'). 
-    // Si estamos mirando J1, J2, J3, etc., ¡BLOQUEADO!
-    if (activeMatchday !== 'PRE') {
-      console.log("Auto-guardado bloqueado: Estás consultando una jornada histórica.");
-      return;
-    }
-
-    // 3. Salvavidas anti-vaciado (el que ya teníamos)
-    const isSquadCompletelyEmpty = 
-      Object.keys(selected).length === 0 && 
-      Object.keys(bench).length === 0 && 
-      Object.keys(extras).length === 0;
-
-    if (isSquadCompletelyEmpty) return;
-
-    if (!user?.id || user.id === '' || user.id === '000-111') return;
-
-    const { error } = await supabase
-      .from('profiles')
-      .upsert({
-        id: user.id,
-        squad_data: { selected, bench, extras, captain },
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' }); 
-
-    if (error) console.error("Error al guardar plantilla:", error);
-  };
-
-  saveSquadData();
-}, [selected, bench, extras, captain, user?.id, activeMatchday]); // 👈 Añadimos activeMatchday aquí
+  useEffect(() => {
+    const saveSquadData = async () => {
+      // 1. Escudo de carga: no hagas nada si no han llegado los datos
+      if (!isInitialLoadComplete.current) return;
+  
+      // 2. Escudo de jornada: no toques nada si es histórico
+      if (activeMatchday !== 'PRE') return;
+  
+      // 3. 🛡️ PROTECCIÓN ANTIBORRADO (La más importante)
+      // Contamos cuántos jugadores hay. Un equipo real mínimo tiene al menos 11 titulares.
+      const totalPlayers = Object.keys(selected).length;
+      if (totalPlayers < 11) {
+        console.warn("⚠️ GUARDADO BLOQUEADO: El equipo tiene menos de 11 jugadores. Protegiendo datos.");
+        return; 
+      }
+  
+      // 4. Seguridad de ID
+      if (!user?.id || user.id === '000-111') return;
+  
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          squad_data: { selected, bench, extras, captain },
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' }); 
+  
+      if (error) console.error("Error al guardar plantilla:", error);
+    };
+  
+    saveSquadData();
+  }, [selected, bench, extras, captain, user?.id, activeMatchday]);
 
   // --- 8. FUNCIONES DE GESTIÓN ---
   const toggleMarket = async () => {
@@ -4934,17 +4946,23 @@ if (!isInitialSetup && isSquadLocked) {
       
       // 🚀 CALCULAMOS AQUÍ DENTRO (donde 'p' sí existe)
       const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
+      const playerPoints = globalScores[scoreKey] || {}; // Obtenemos el objeto de puntos de una vez
       
       const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
       const flagUrl = getFlag(p.equipo);
       
       const matchdays = ['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'];
       
-      // Calculamos el total sumando los puntos que encontramos en globalScores
-      const ptTot = matchdays.reduce((sum, j) => sum + (Number(globalScores[scoreKey]?.[j]) || 0), 0);
+      // Calculamos el total usando el objeto playerPoints local
+      const ptTot = matchdays.reduce((sum, j) => sum + (Number(playerPoints[j]) || 0), 0);
+
+      // DEBUG: ESTO TE DIRÁ LA VERDAD
+console.log("DEBUG | Clave buscada:", scoreKey);
+console.log("DEBUG | Objeto playerPoints:", playerPoints);
+console.log("DEBUG | Total calculado:", ptTot);
 
       return (
-        <tr key={p.id || `${p.nombre}-${p.equipo}-${idx}`} className={`transition-colors ${isSold ? 'bg-black/40 opacity-30 grayscale' : 'hover:bg-white/5 bg-[#0f172a]'}`}>
+        <tr key={p.id || `${scoreKey}-${idx}`} className={`transition-colors ${isSold ? 'bg-black/40 opacity-30 grayscale' : 'hover:bg-white/5 bg-[#0f172a]'}`}>
           <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/40' : 'bg-[#0f172a]'}`}>
             <div className="flex items-center justify-between min-w-[200px]">
               <div className="flex items-center gap-4">
@@ -4960,13 +4978,11 @@ if (!isInitialSetup && isSquadLocked) {
             </div>
           </td>
           
-          
-{matchdays.map(j => (
-  <td key={j} className="p-3 text-center text-white/90 font-bold">
-    {/* Aplica el trim aquí también para asegurar la coincidencia */}
-    {globalScores[`${p.nombre.trim()}_${p.equipo.trim()}`]?.[j] ?? '-'}
-  </td>
-))}
+          {matchdays.map(j => (
+            <td key={j} className="p-3 text-center text-white/90 font-bold">
+              {playerPoints[j] ?? '-'}
+            </td>
+          ))}
         </tr>
       );
     })
@@ -5472,18 +5488,36 @@ if (!isInitialSetup && isSquadLocked) {
   );
 }
 
-// ==========================================
-// 9. TARJETAS DE BANQUILLO Y MERCADO
-// ==========================================
+  // ==========================================
+  // 9. TARJETAS DE BANQUILLO Y MERCADO
+  // ==========================================
 
-const BenchCard = ({ player, id, onClick, isActive, evaluatedPlayers }: any) => {
-  const posColor = player
-    ? posColors[player.posicion]
-    : 'bg-white/10 text-white/30';
+  // 🔍 DEBUG: ¡Vamos a ver qué está pasando!
 
-  // 🧠 LEEMOS LOS DATOS DEL CEREBRO PARA ESTE JUGADOR
-  const stats = player && evaluatedPlayers ? evaluatedPlayers[player.id] : null;
-  const isSubbedIn = stats?.isSubbedIn; // ¿Entró al campo como salvador?
+
+  const BenchCard = ({ player, id, onClick, isActive, evaluatedPlayers }: any) => {
+    // 🔍 DEBUG: ¡Vamos a ver qué hay realmente dentro!
+if (player) {
+  const key = `${player.nombre}_${player.equipo}`;
+  console.log("Buscando clave:", key);
+  console.log("Claves disponibles en evaluatedPlayers:", Object.keys(evaluatedPlayers || {}));
+} else {
+      console.log("Jugador vacío en el hueco:", id);
+    }
+  
+    const posColor = player
+      ? posColors[player.posicion]
+      : 'bg-white/10 text-white/30';
+    
+// 🧠 LEEMOS LOS STATS USANDO EL FORMATO EXACTO DE LA BD: "Nombre_Selección"
+const stats = (player && evaluatedPlayers) 
+  ? evaluatedPlayers[`${player.nombre}_${player.equipo}`] 
+  : null;
+
+// 🔍 PARA DEPURAR (Solo déjalo temporalmente)
+console.log("Buscando exactamente:", player?.nombre);
+console.log("¿Resultado en evaluatedPlayers?:", stats ? "¡ENCONTRADO!" : "NO EXISTE");
+const isSubbedIn = stats?.isSubbedIn; // ¿Entró al campo como salvador?
 
   // 🎨 ESTILOS DINÁMICOS
   let cardStyle = isActive
