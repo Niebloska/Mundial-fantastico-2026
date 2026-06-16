@@ -769,16 +769,10 @@ const Field = ({
             const playerWithId = p ? { ...p, id: p.id || `${p.nombre}_${p.equipo}` } : null;
             const pFinal = playerWithId; // Usaremos esto para todo ahora
 
-            // 🧠 LEEMOS LOS STATS DEL JUGADOR
-            // Construimos el ID dinámico: "Nombre_Equipo"
-            const playerId = p ? `${p.nombre}_${p.equipo}` : null;
-            // 🧠 LEEMOS LOS STATS DE FORMA NORMALIZADA (sin el "_País")
-            const nombreLimpio = p ? p.nombre.split('_')[0].trim() : '';
-            // 🧠 LEEMOS LOS STATS DE FORMA CONSISTENTE
-// Usamos 'p' (la variable que tienes definida en este bloque)
-const stats = (p && evaluatedPlayers) 
-? evaluatedPlayers[`${p.nombre}_${p.equipo}`] 
-: null;
+            // 🧠 LEEMOS LOS STATS DEL JUGADOR CON TRIM()
+            const stats = (p && evaluatedPlayers) 
+              ? evaluatedPlayers[`${p.nombre.trim()}_${p.equipo.trim()}`] 
+              : null;
 
             const isSubbedOut = stats?.isSubbedOut; // ¿Se quedó sin jugar?
 
@@ -820,17 +814,15 @@ const stats = (p && evaluatedPlayers)
                     </div>
                   )}
 
-                  {/* ⭐ GLOBO DE PUNTOS (Arriba Izquierda) */}
-                  {stats && stats.points !== undefined && (
-                    <div className={`absolute -top-2 -left-2 w-6 h-6 rounded-full border-2 font-black text-[10px] flex items-center justify-center z-50 shadow-lg ${
-                      stats.points === 'X' ? 'bg-red-500 text-white border-white' :
-                      stats.points > 0 ? 'bg-[#22c55e] text-black border-white' :
-                      stats.points < 0 ? 'bg-red-500 text-white border-white' :
-                      'bg-gray-500 text-white border-white'
-                    }`}>
-                      {stats.points}
-                    </div>
-                  )}
+                  {/* ⭐ GLOBO DE PUNTOS (Estilo EF24: Elíptico, borde blanco, texto negro) */}
+{stats && stats.points !== undefined && stats.points !== '-' && (
+  <div className={`absolute -top-2 -left-3 min-w-[28px] h-[22px] px-2 rounded-full border-[2px] border-white font-black text-[11px] flex items-center justify-center z-50 shadow-lg tracking-tighter
+    ${stats.points > 0 ? 'bg-[#22c55e] text-black' : 
+      stats.points < 0 ? 'bg-red-500 text-white' : 
+      'bg-gray-500 text-white'}`}>
+    {stats.points > 0 ? `+${stats.points}` : stats.points}
+  </div>
+)}
 
                   {/* 🔄 ICONO DE SUSTITUIDO (Titular que no juega) */}
                   {isSubbedOut && (
@@ -840,24 +832,21 @@ const stats = (p && evaluatedPlayers)
                   )}
 
                   {/* © CAPITÁN (Arriba Derecha) */}
-{p && step >= 2 && (
-  <button
-  onClick={(e) => {
-    e.stopPropagation();
-    if (canInteractField) setCaptain(pFinal.id); // 👈 Usamos pFinal
-  }}
-    className={`absolute -top-2 -right-2 w-5 h-5 rounded-full border-2 font-black text-[9px] flex items-center justify-center transition-all z-50 ${
-      // 🛡️ AHORA SOLO SE PINTA SI captain ES IGUAL AL ID DEL JUGADOR
-      // Añadimos una comprobación extra: captain debe tener valor para pintarse
-      (captain && captain === pFinal.id)
-        ? 'bg-[#facc15] text-black border-white scale-110 shadow-lg'
-        : 'bg-black/60 text-white/30 border-white/10 hover:bg-black/80 hover:text-white'
-    }`}
-  >
-    {/* 🛡️ LO MISMO AQUÍ: La lógica debe ser idéntica */}
-    {(captain && captain === pFinal.id) ? <IconCheck /> : 'C'}
-  </button>
-)}
+                  {p && step >= 2 && (
+                    <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (canInteractField) setCaptain(pFinal.id);
+                    }}
+                      className={`absolute -top-2 -right-2 w-5 h-5 rounded-full border-2 font-black text-[9px] flex items-center justify-center transition-all z-50 ${
+                        (captain && captain === pFinal.id)
+                          ? 'bg-[#facc15] text-black border-white scale-110 shadow-lg'
+                          : 'bg-black/60 text-white/30 border-white/10 hover:bg-black/80 hover:text-white'
+                      }`}
+                    >
+                      {(captain && captain === pFinal.id) ? <IconCheck /> : 'C'}
+                    </button>
+                  )}
 
                   {/* VALOR DEL JUGADOR */}
                   {p && (
@@ -3066,83 +3055,94 @@ useEffect(() => {
 
   }, [selected, bench, extras, snapshotSquad, quinielaPrize]);
 
+  const [activeMatchday, setActiveMatchday] = useState('PRE'); // PRE = Fase de preparación
+  const [scores, setScores] = useState<Record<string, number | null>>({});
+
     // ==========================================
-    // 🧠 AQUÍ VA EL CEREBRO MATEMÁTICO DE SUSTITUCIONES
+    // 🧠 AQUÍ VA EL CEREBRO DE SUSTITUCIONES Y PUNTOS REALES
     // ==========================================
     const evaluatedPlayers = useMemo(() => {
-    const playerStats: any = {};
-    const startersMissing: any[] = [];
-    const benchAvailable: any[] = [];
-
-    const isValidFormation = (counts: any) => {
-       return counts.POR === 1 &&
-              counts.DEF >= 3 && counts.DEF <= 5 &&
-              counts.MED >= 3 && counts.MED <= 5 &&
-              counts.DEL >= 1 && counts.DEL <= 3;
-    };
-
-    let currentActivePositions = { POR: 0, DEF: 0, MED: 0, DEL: 0 };
-
-    Object.entries(selected).forEach(([slotId, p]: any) => {
+      const playerStats: any = {};
+      const startersMissing: any[] = [];
+      const benchAvailable: any[] = [];
+  
+      const isValidFormation = (counts: any) => {
+         return counts.POR === 1 &&
+                counts.DEF >= 3 && counts.DEF <= 5 &&
+                counts.MED >= 3 && counts.MED <= 5 &&
+                counts.DEL >= 1 && counts.DEL <= 3;
+      };
+  
+      let currentActivePositions = { POR: 0, DEF: 0, MED: 0, DEL: 0 };
+  
+      Object.entries(selected).forEach(([slotId, p]: any) => {
+        if (!p) return;
+        const playerKey = `${p.nombre.trim()}_${p.equipo.trim()}`; // 👈 Clave única limpia
+        
+        // 🚀 CONEXIÓN REAL: Leemos los puntos de la base de datos (scores)
+        // Si el jugador no existe en scores, le ponemos '-'
+        const pts = scores && scores[playerKey] !== undefined ? scores[playerKey] : '-';
+        
+        // Consideramos que no ha jugado si no tiene puntos asignados o tiene un '-'
+        const didNotPlay = pts === '-'; 
+        
+        playerStats[playerKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: playerKey, slotId };
+        
+        if (didNotPlay) startersMissing.push(playerKey);
+        else currentActivePositions[p.posicion as keyof typeof currentActivePositions]++;
+      });
+  
+      ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].forEach(slotId => {
+        const p = bench[slotId];
+        if (!p) return;
+        const playerKey = `${p.nombre.trim()}_${p.equipo.trim()}`; 
+        
+        // 🚀 CONEXIÓN REAL BANQUILLO
+        const pts = scores && scores[playerKey] !== undefined ? scores[playerKey] : '-';
+        const didNotPlay = pts === '-';
+        
+        playerStats[playerKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: playerKey, slotId };
+        
+        if (!didNotPlay) benchAvailable.push(playerKey);
+     });
+  
+     Object.values(extras).forEach((p: any) => {
       if (!p) return;
-      const playerKey = `${p.nombre}_${p.equipo}`; // 👈 Clave única
-      const didNotPlay = (p.nombre.length + p.precio) % 4 === 0; 
-      const pts = didNotPlay ? 'X' : (p.nombre.length % 6) + 2;
+      const playerKey = `${p.nombre.trim()}_${p.equipo.trim()}`; 
       
-      playerStats[playerKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: playerKey, slotId };
-      
-      if (didNotPlay) startersMissing.push(playerKey);
-      else currentActivePositions[p.posicion as keyof typeof currentActivePositions]++;
+      // 🚀 CONEXIÓN REAL EXTRAS
+      const pts = scores && scores[playerKey] !== undefined ? scores[playerKey] : '-';
+      playerStats[playerKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: playerKey };
     });
-
-    ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].forEach(slotId => {
-      const p = bench[slotId];
-      if (!p) return;
-      const playerKey = `${p.nombre}_${p.equipo}`; // 👈 Clave única
-      const didNotPlay = (p.nombre.length + p.precio) % 3 === 0; 
-      const pts = didNotPlay ? 'X' : (p.nombre.length % 5) + 3;
+  
+    for (const subId of benchAvailable) {
+      if (startersMissing.length === 0) break; 
       
-      playerStats[playerKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: playerKey, slotId };
+      const [subNombre, subEquipo] = subId.split('_');
       
-      if (!didNotPlay) benchAvailable.push(playerKey);
-   });
-
-   Object.values(extras).forEach((p: any) => {
-    if (!p) return;
-    const playerKey = `${p.nombre}_${p.equipo}`; // 👈 Clave única
-    playerStats[playerKey] = { points: 'X', isSubbedOut: false, isSubbedIn: false, id: playerKey };
-});
-
-for (const subId of benchAvailable) {
-  if (startersMissing.length === 0) break; 
+      const subPlayer = Object.values(bench).find((p: any) => 
+         p && p.nombre.trim() === subNombre && p.equipo.trim() === subEquipo
+      ) as any;
   
-  // 🧠 CORRECCIÓN: Buscamos al jugador en el banquillo comparando nombre y equipo
-  // ya que subId ahora es "Nombre_Equipo"
-  const [subNombre, subEquipo] = subId.split('_');
+      if (!subPlayer) continue; 
+      
+      for (let i = 0; i < startersMissing.length; i++) {
+            const missingId = startersMissing[i];
+            const testCounts = { ...currentActivePositions };
+            testCounts[subPlayer.posicion as keyof typeof testCounts]++; 
   
-  const subPlayer = Object.values(bench).find((p: any) => 
-     p && p.nombre === subNombre && p.equipo === subEquipo
-  ) as any;
-
-  if (!subPlayer) continue; // Por seguridad, si no lo encuentra, saltamos
+            if (isValidFormation(testCounts)) {
+               playerStats[missingId].isSubbedOut = true;
+               playerStats[subId].isSubbedIn = true;
+               currentActivePositions = testCounts; 
+               startersMissing.splice(i, 1); 
+               break; 
+            }
+         }
+      }
   
-  for (let i = 0; i < startersMissing.length; i++) {
-          const missingId = startersMissing[i];
-          const testCounts = { ...currentActivePositions };
-          testCounts[subPlayer.posicion as keyof typeof testCounts]++; 
-
-          if (isValidFormation(testCounts)) {
-             playerStats[missingId].isSubbedOut = true;
-             playerStats[subId].isSubbedIn = true;
-             currentActivePositions = testCounts; 
-             startersMissing.splice(i, 1); 
-             break; 
-          }
-       }
-    }
-
-    return playerStats;
-  }, [selected, bench, extras]);
+      return playerStats;
+    }, [selected, bench, extras, scores]); // 👈 ¡CRUCIAL! Hemos añadido 'scores' aquí
 
   // --- 4. OTROS ESTADOS DE LA APP ---
   
@@ -3155,8 +3155,6 @@ for (const subId of benchAvailable) {
   const [isMarketOpen, setIsMarketOpen] = useState(false);
   const [marketWindow, setMarketWindow] = useState<'groups' | 'octavos' | null>('groups');
 
-  const [activeMatchday, setActiveMatchday] = useState('PRE'); // PRE = Fase de preparación
-  const [scores, setScores] = useState<Record<string, number | null>>({});
   const [adminScoreCountry, setAdminScoreCountry] = useState('SELECCIÓN');
 
   const [adminTab, setAdminTab] = useState<'partidos' | 'tesoreria' | 'puntos' | 'auditoria'>('puntos');
@@ -3557,11 +3555,11 @@ const saveLineupHistoryToSupabase = async (newHistory: any) => {
 
   // --- EFECTO DE AUTOGUARDADO (LocalStorage) ---
   useEffect(() => {
-    localStorage.setItem('ef24_selected', JSON.stringify(selected));
-    localStorage.setItem('ef24_bench', JSON.stringify(bench));
-    localStorage.setItem('ef24_extras', JSON.stringify(extras));
-    localStorage.setItem('ef24_captain', JSON.stringify(captain));
-    localStorage.setItem('ef24_isLocked', JSON.stringify(isSquadLocked));
+  localStorage.setItem('mf26_selected', JSON.stringify(selected));
+  localStorage.setItem('mf26_bench', JSON.stringify(bench));
+  localStorage.setItem('mf26_extras', JSON.stringify(extras));
+  localStorage.setItem('mf26_captain', JSON.stringify(captain));
+  localStorage.setItem('mf26_isLocked', JSON.stringify(isSquadLocked));
   }, [selected, bench, extras, captain, isSquadLocked]);
 
   // --- PROTECCIÓN CONTRA SALIDAS ACCIDENTALES EN MÓVILES Y PC ---
@@ -4237,7 +4235,7 @@ if (!isInitialSetup && isSquadLocked) {
         teamName: upperName,
       };
       setUser(updatedUser);
-      localStorage.setItem('ef24_teamName', upperName);
+      localStorage.setItem('mf26_teamName', upperName);
 
       // 2. 🚀 ENVIAMOS EL CAMBIO A SUPABASE PARA QUE SEA PERMANENTE
       // Nota: Asumo que tu tabla de usuarios se llama 'profiles'. Si se llama distinto, cámbialo aquí.
@@ -4596,24 +4594,84 @@ if (!isInitialSetup && isSquadLocked) {
         {view === 'calendar' && <CalendarView results={results} />}
         {view === 'lineups' && (
   (() => {
-    // 🧠 SANEAMIENTO DE ALINEACIONES
+    // 🧠 SANEAMIENTO Y SUSTITUCIONES DE ALINEACIONES
     const currentLineupsPoints = (() => {
       const map: any = {};
-      [
-        ...Object.values(selected || {}),
-        ...Object.values(bench || {}),
-        ...Object.values(extras || {})
-      ].filter(Boolean).forEach((p: any) => {
-        const scoreKey = `${p.nombre}_${p.equipo}`;
+      const startersMissing: string[] = [];
+      const benchAvailable: string[] = [];
+      let currentActivePositions = { POR: 0, DEF: 0, MED: 0, DEL: 0 };
+
+      // 1. Evaluamos a los Titulares
+      Object.entries(selected || {}).forEach(([slotId, p]: any) => {
+        if (!p) return;
+        const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
         let pts = globalScores[scoreKey]?.[lineupsMatchday];
-        if (pts === undefined) pts = 0;
         
-        const isInTitular = Object.values(selected || {}).some((ap: any) => ap && ap.id === p.id);
-        if (p.id === captain && isInTitular) {
-          pts = pts * 2;
+        if (pts === undefined) pts = '-';
+        if (p.id === captain && pts !== '-') pts = pts * 2;
+
+        const didNotPlay = pts === '-'; 
+        map[scoreKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
+        
+        if (didNotPlay) {
+          startersMissing.push(scoreKey);
+        } else {
+          currentActivePositions[p.posicion as keyof typeof currentActivePositions]++;
         }
-        map[p.id || p.nombre] = pts;
       });
+
+      // 2. Evaluamos al Banquillo
+      ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].forEach(slotId => {
+        const p = (bench || {})[slotId];
+        if (!p) return;
+        const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
+        let pts = globalScores[scoreKey]?.[lineupsMatchday];
+        if (pts === undefined) pts = '-';
+        
+        map[scoreKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
+        if (pts !== '-') benchAvailable.push(scoreKey);
+      });
+
+      // 3. Evaluamos Extras
+      Object.values(extras || {}).forEach((p: any) => {
+        if (!p) return;
+        const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
+        let pts = globalScores[scoreKey]?.[lineupsMatchday];
+        if (pts === undefined) pts = '-';
+        map[scoreKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
+      });
+
+      // 4. Lógica de sustituciones
+      const isValidFormation = (counts: any) => {
+         return counts.POR === 1 &&
+                counts.DEF >= 3 && counts.DEF <= 5 &&
+                counts.MED >= 3 && counts.MED <= 5 &&
+                counts.DEL >= 1 && counts.DEL <= 3;
+      };
+
+      for (const subKey of benchAvailable) {
+        if (startersMissing.length === 0) break;
+        const [subName, subTeam] = subKey.split('_');
+        const subPlayer = Object.values(bench || {}).find((p: any) => 
+           p && p.nombre.trim() === subName && p.equipo.trim() === subTeam
+        ) as any;
+
+        if (!subPlayer) continue;
+
+        for (let i = 0; i < startersMissing.length; i++) {
+          const missingId = startersMissing[i];
+          const testCounts = { ...currentActivePositions };
+          testCounts[subPlayer.posicion as keyof typeof testCounts]++; 
+
+          if (isValidFormation(testCounts)) {
+             map[missingId].isSubbedOut = true;
+             map[subKey].isSubbedIn = true;
+             currentActivePositions = testCounts; 
+             startersMissing.splice(i, 1); 
+             break; 
+          }
+        }
+      }
       return map;
     })();
 
@@ -5496,92 +5554,82 @@ console.log("DEBUG | Total calculado:", ptTot);
 
 
   const BenchCard = ({ player, id, onClick, isActive, evaluatedPlayers }: any) => {
-    // 🔍 DEBUG: ¡Vamos a ver qué hay realmente dentro!
-if (player) {
-  const key = `${player.nombre}_${player.equipo}`;
-  console.log("Buscando clave:", key);
-  console.log("Claves disponibles en evaluatedPlayers:", Object.keys(evaluatedPlayers || {}));
-} else {
-      console.log("Jugador vacío en el hueco:", id);
-    }
-  
     const posColor = player
       ? posColors[player.posicion]
       : 'bg-white/10 text-white/30';
     
-// 🧠 LEEMOS LOS STATS USANDO EL FORMATO EXACTO DE LA BD: "Nombre_Selección"
-const stats = (player && evaluatedPlayers) 
-  ? evaluatedPlayers[`${player.nombre}_${player.equipo}`] 
-  : null;
-
-// 🔍 PARA DEPURAR (Solo déjalo temporalmente)
-console.log("Buscando exactamente:", player?.nombre);
-console.log("¿Resultado en evaluatedPlayers?:", stats ? "¡ENCONTRADO!" : "NO EXISTE");
-const isSubbedIn = stats?.isSubbedIn; // ¿Entró al campo como salvador?
-
-  // 🎨 ESTILOS DINÁMICOS
-  let cardStyle = isActive
-    ? 'border-white bg-white/20 scale-105 shadow-lg shadow-white/20'
-    : 'border-white/10 bg-black/40 hover:bg-white/10';
-
-  if (isSubbedIn && !isActive) {
-    cardStyle = 'border-[#22c55e] bg-[#22c55e]/10 hover:bg-[#22c55e]/20 shadow-[0_0_10px_rgba(34,197,94,0.3)]';
-  }
-
-  if (!player) cardStyle += ' border-dashed';
-
-  return (
-    <div
-      onClick={onClick}
-      // 👇 AQUÍ ESTÁ LA MAGIA 3D AÑADIDA A TUS CLASES
-      className={`relative flex items-center justify-between p-2 rounded-xl border-2 transition-all duration-300 hover:z-50 hover:-translate-y-2 hover:scale-105 hover:[transform:perspective(800px)_rotateX(10deg)_rotateY(-10deg)] active:[transform:perspective(800px)_rotateX(-10deg)_rotateY(10deg)_scale(0.95)] hover:shadow-[0_20px_30px_rgba(34,197,94,0.4)] cursor-pointer ${cardStyle}`}
-    >
-      {/* 🔄 ICONO DE SUSTITUCIÓN (Solo si entró a jugar) */}
-      {isSubbedIn && (
-        <div className="absolute -top-2 -right-2 bg-[#22c55e] rounded-full w-5 h-5 flex items-center justify-center border-2 border-black z-20 shadow-[0_0_8px_#22c55e] text-[10px]">
-          🔄
-        </div>
-      )}
-
-      <div className="flex items-center gap-2">
-        <div
-          className={`w-6 h-6 rounded flex items-center justify-center text-[8px] font-black ${posColor}`}
-        >
-          {player ? player.posicion : id}
-        </div>
-        {player ? (
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase leading-tight truncate w-16">
-              {player.nombre.split(' ').pop()}
-            </span>
-            <div className="flex items-center gap-1 mt-0.5">
-              <img
-                src={getFlag(player.equipo)}
-                alt={player.equipo}
-                className="w-3 h-2.5 object-cover rounded shadow-sm"
-              />
-              <span className="text-[8px] text-[#22c55e] font-black">
-                {player.precio}M
-              </span>
-            </div>
+    // 🧠 LEEMOS LOS STATS USANDO EL FORMATO EXACTO DE LA BD (CON TRIM)
+    const stats = (player && evaluatedPlayers) 
+      ? evaluatedPlayers[`${player.nombre.trim()}_${player.equipo.trim()}`] 
+      : null;
+  
+    const isSubbedIn = stats?.isSubbedIn; // ¿Entró al campo como salvador?
+  
+    // 🎨 ESTILOS DINÁMICOS
+    let cardStyle = isActive
+      ? 'border-white bg-white/20 scale-105 shadow-lg shadow-white/20'
+      : 'border-white/10 bg-black/40 hover:bg-white/10';
+  
+    if (isSubbedIn && !isActive) {
+      cardStyle = 'border-[#22c55e] bg-[#22c55e]/10 hover:bg-[#22c55e]/20 shadow-[0_0_10px_rgba(34,197,94,0.3)]';
+    }
+  
+    if (!player) cardStyle += ' border-dashed';
+  
+    return (
+      <div
+        onClick={onClick}
+        // 👇 AQUÍ ESTÁ TU MAGIA 3D INTACTA
+        className={`relative flex items-center justify-between p-2 rounded-xl border-2 transition-all duration-300 hover:z-50 hover:-translate-y-2 hover:scale-105 hover:[transform:perspective(800px)_rotateX(10deg)_rotateY(-10deg)] active:[transform:perspective(800px)_rotateX(-10deg)_rotateY(10deg)_scale(0.95)] hover:shadow-[0_20px_30px_rgba(34,197,94,0.4)] cursor-pointer ${cardStyle}`}
+      >
+        {/* 🔄 ICONO DE SUSTITUCIÓN (Estilo EF24: SVG flecha arriba con borde blanco) */}
+        {isSubbedIn && (
+          <div className="absolute -top-2 -right-2 bg-[#22c55e] text-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-white z-20 shadow-[0_0_8px_#22c55e]">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 19V5M5 12l7-7 7 7"/>
+            </svg>
           </div>
-        ) : (
-          <span className="text-[10px] text-white/30 font-bold uppercase italic">
-            Vacío
-          </span>
+        )}
+  
+        <div className="flex items-center gap-2">
+          <div
+            className={`w-6 h-6 rounded flex items-center justify-center text-[8px] font-black ${posColor}`}
+          >
+            {player ? player.posicion : id}
+          </div>
+          {player ? (
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase leading-tight truncate w-16">
+                {player.nombre.split(' ').pop()}
+              </span>
+              <div className="flex items-center gap-1 mt-0.5">
+                <img
+                  src={getFlag(player.equipo)}
+                  alt={player.equipo}
+                  className="w-3 h-2.5 object-cover rounded shadow-sm"
+                />
+                <span className="text-[8px] text-[#22c55e] font-black">
+                  {player.precio}M
+                </span>
+              </div>
+            </div>
+          ) : (
+            <span className="text-[10px] text-white/30 font-bold uppercase italic">
+              Vacío
+            </span>
+          )}
+        </div>
+  
+        {/* ⭐ PUNTUACIÓN OBTENIDA (Ocultamos si es '-') */}
+        {stats && stats.points !== undefined && stats.points !== '-' && (
+          <div className={`text-[11px] font-black mr-1 ${
+            stats.points > 0 ? 'text-[#22c55e]' : 
+            stats.points < 0 ? 'text-red-500' : 
+            'text-white/50'
+          }`}>
+             {stats.points > 0 ? `+${stats.points}` : stats.points} pts
+          </div>
         )}
       </div>
-
-      {/* ⭐ PUNTUACIÓN OBTENIDA (O 'X' ROJA SI FALLÓ) */}
-      {stats && stats.points !== undefined && (
-        <div className={`text-[11px] font-black mr-1 ${
-          stats.points === 'X' ? 'text-red-500' : 
-          stats.points > 0 ? 'text-[#22c55e]' : 
-          'text-white/50'
-        }`}>
-           {stats.points} pts
-        </div>
-      )}
-    </div>
-  );
-};
+    );
+  };
