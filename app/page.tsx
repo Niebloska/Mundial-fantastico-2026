@@ -4605,7 +4605,7 @@ if (!isInitialSetup && isSquadLocked) {
       Object.entries(selected || {}).forEach(([slotId, p]: any) => {
         if (!p) return;
         const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
-        let pts = globalScores[scoreKey]?.[lineupsMatchday];
+        let pts: any = globalScores[scoreKey]?.[lineupsMatchday];
         
         if (pts === undefined) pts = '-';
         if (p.id === captain && pts !== '-') pts = pts * 2;
@@ -4625,7 +4625,7 @@ if (!isInitialSetup && isSquadLocked) {
         const p = (bench || {})[slotId];
         if (!p) return;
         const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
-        let pts = globalScores[scoreKey]?.[lineupsMatchday];
+        let pts: any = globalScores[scoreKey]?.[lineupsMatchday];
         if (pts === undefined) pts = '-';
         
         map[scoreKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
@@ -4636,7 +4636,7 @@ if (!isInitialSetup && isSquadLocked) {
       Object.values(extras || {}).forEach((p: any) => {
         if (!p) return;
         const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
-        let pts = globalScores[scoreKey]?.[lineupsMatchday];
+        let pts: any = globalScores[scoreKey]?.[lineupsMatchday];
         if (pts === undefined) pts = '-';
         map[scoreKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
       });
