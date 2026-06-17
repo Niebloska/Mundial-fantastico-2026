@@ -5055,7 +5055,8 @@ if (!isInitialSetup && isSquadLocked) {
             const rawPts = playerPoints[j];
             // 🧠 PINTAMOS LOS PUNTOS DE LA JORNADA TAMBIÉN CON EL BONUS APLICADO
             const finalPts = calculateFinalPoints(rawPts);
-            const showPts = (rawPts === undefined || rawPts === '-') ? '-' : finalPts;
+            // Añadimos "as any" para que TypeScript nos deje comparar números con ese guion
+            const showPts = (rawPts === undefined || (rawPts as any) === '-') ? '-' : finalPts;
 
             return (
                 <td key={j} className="p-3 text-center text-white/90 font-bold">
