@@ -4608,7 +4608,12 @@ if (!isInitialSetup && isSquadLocked) {
         let pts: any = globalScores[scoreKey]?.[lineupsMatchday];
         
         if (pts === undefined) pts = '-';
-        if (p.id === captain && pts !== '-') pts = pts * 2;
+
+        // 🛡️ CORRECCIÓN: ID Robusto para asegurar que el Capitán puntúa doble
+        const pid = p.id || scoreKey; 
+        if (pid === captain && pts !== '-') {
+           pts = pts * 2;
+        }
 
         const didNotPlay = pts === '-'; 
         map[scoreKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
@@ -5002,22 +5007,31 @@ if (!isInitialSetup && isSquadLocked) {
       const isCap = p.isCaptain;
       const isSold = p.isActive === false;
       
-      // 🚀 CALCULAMOS AQUÍ DENTRO (donde 'p' sí existe)
+      // Obtenemos el objeto de puntos de una vez
       const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
-      const playerPoints = globalScores[scoreKey] || {}; // Obtenemos el objeto de puntos de una vez
+      const playerPoints = globalScores[scoreKey] || {}; 
       
       const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
       const flagUrl = getFlag(p.equipo);
       
       const matchdays = ['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'];
       
-      // Calculamos el total usando el objeto playerPoints local
-      const ptTot = matchdays.reduce((sum, j) => sum + (Number(playerPoints[j]) || 0), 0);
+      // 🚀 FUNCIÓN LOCAL PARA APLICAR EL BONUS DEL CAPITÁN
+      // Esta función garantiza la consistencia matemática en toda la tabla
+      const calculateFinalPoints = (rawPoints: any) => {
+          if (rawPoints === undefined || rawPoints === '-') return 0;
+          const numPts = Number(rawPoints);
+          if (isNaN(numPts)) return 0;
+          
+          // Aplicamos el bonus si es capitán y NO está vendido
+          return (isCap && !isSold) ? numPts * 2 : numPts;
+      };
+
+      // 🧠 CALCULAMOS EL TOTAL CORRECTAMENTE USANDO LA FUNCIÓN DE BONUS
+      const ptTot = matchdays.reduce((sum, j) => sum + calculateFinalPoints(playerPoints[j]), 0);
 
       // DEBUG: ESTO TE DIRÁ LA VERDAD
-console.log("DEBUG | Clave buscada:", scoreKey);
-console.log("DEBUG | Objeto playerPoints:", playerPoints);
-console.log("DEBUG | Total calculado:", ptTot);
+      console.log(`DEBUG Scores | Jugador: ${p.nombre} | isCap: ${isCap} | Total calculado (con bonus): ${ptTot}`);
 
       return (
         <tr key={p.id || `${scoreKey}-${idx}`} className={`transition-colors ${isSold ? 'bg-black/40 opacity-30 grayscale' : 'hover:bg-white/5 bg-[#0f172a]'}`}>
@@ -5032,15 +5046,23 @@ console.log("DEBUG | Total calculado:", ptTot);
                   {p.nombre} {isCap && !isSold && <span className="text-[#eab308] ml-1">C</span>}
                 </span>
               </div>
+              {/* TOTAL AHORA ES CORRECTO */}
               <span className={`font-black text-sm ml-4 ${isSold ? 'text-white/30' : 'text-white'}`}>{ptTot}</span>
             </div>
           </td>
           
-          {matchdays.map(j => (
-            <td key={j} className="p-3 text-center text-white/90 font-bold">
-              {playerPoints[j] ?? '-'}
-            </td>
-          ))}
+          {matchdays.map(j => {
+            const rawPts = playerPoints[j];
+            // 🧠 PINTAMOS LOS PUNTOS DE LA JORNADA TAMBIÉN CON EL BONUS APLICADO
+            const finalPts = calculateFinalPoints(rawPts);
+            const showPts = (rawPts === undefined || rawPts === '-') ? '-' : finalPts;
+
+            return (
+                <td key={j} className="p-3 text-center text-white/90 font-bold">
+                  {showPts}
+                </td>
+            );
+          })}
         </tr>
       );
     })
@@ -5171,7 +5193,7 @@ console.log("DEBUG | Total calculado:", ptTot);
                </div>
             </div>
 
-            {/* 3. CLASIFICACIÓN POR JORNADA (Dinámica y Conectada) */}
+            {/* 3. CLASIFICACIÓN POR JORNADA (Dinámica y Conectado) */}
             <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-6">
               <h3 className="text-lg font-black italic text-[#22c55e] uppercase mb-4 flex items-center gap-2">
                  <span>🏆</span> Clasificación por Jornada
