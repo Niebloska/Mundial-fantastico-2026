@@ -5082,7 +5082,7 @@ const resolveCaptain = (user: any, md: string) => {
                         {matchdays.map((j: string) => {
                           const rawPts = playerPoints[j];
                           const finalPts = calculatePointsForMatchday(j, rawPts);
-                          const showPts = (rawPts === undefined || rawPts === '-') ? '-' : finalPts;
+                          const showPts = (rawPts === undefined || String(rawPts) === '-') ? '-' : finalPts;
                           return (
                               <td key={j} className="p-3 text-center text-white/90 font-bold">
                                 {showPts}
