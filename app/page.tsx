@@ -4935,34 +4935,34 @@ if (!isInitialSetup && isSquadLocked) {
     <div className="space-y-3">
       {(() => {
         // 🧠 1. EL CEREBRO DEFINITIVO PARA ENCONTRAR AL CAPITÁN
-        const resolveCaptain = (user, md) => {
-            // A) Si eres tú, leemos de tus estados de React (igual que hace la pestaña Alineación)
-            if (user.isMe) {
-                return lineupsHistory?.[md]?.captain || captain;
-            }
+const resolveCaptain = (user: any, md: string) => {
+  // A) Si eres tú, leemos de tus estados de React
+  if (user.isMe) {
+      return lineupsHistory?.[md]?.captain || captain;
+  }
 
-            // B) Si son otros, leemos de Supabase de forma estricta y con fallback
-            const parseSafely = (data) => {
-                if (!data) return null;
-                if (typeof data === 'object') return data;
-                try { return JSON.parse(data); } catch(e) { return null; }
-            };
+  // B) Si son otros, leemos de Supabase de forma estricta y con fallback
+  const parseSafely = (data: any) => {
+      if (!data) return null;
+      if (typeof data === 'object') return data;
+      try { return JSON.parse(data); } catch(e) { return null; }
+  };
 
-            const historyObj = parseSafely(user.lineups_history);
-            const squadObj = parseSafely(user.squad_data);
+  const historyObj = parseSafely(user.lineups_history);
+  const squadObj = parseSafely(user.squad_data);
 
-            // 1º Buscamos en el historial de la jornada concreta
-            if (historyObj && historyObj[md] && historyObj[md].captain) {
-                return historyObj[md].captain;
-            }
-            
-            // 2º Si la jornada está vacía o no existe el historial, el fallback es la alineación base
-            if (squadObj && squadObj.captain) {
-                return squadObj.captain;
-            }
+  // 1º Buscamos en el historial de la jornada concreta
+  if (historyObj && historyObj[md] && historyObj[md].captain) {
+      return historyObj[md].captain;
+  }
+  
+  // 2º Si la jornada está vacía o no existe el historial, el fallback es la alineación base
+  if (squadObj && squadObj.captain) {
+      return squadObj.captain;
+  }
 
-            return null;
-        };
+  return null;
+};
 
         return leaderboard
           .map(u => {
