@@ -3313,7 +3313,6 @@ useEffect(() => {
           const addPlayer = (player: any) => {
             if (!player) return;
             const uid = getUid(player);
-            // Si el jugador no tiene ni ID ni Nombre, lo ignoramos
             if (!uid) return;
 
             if (!allPlayersMap.has(uid)) {
@@ -3329,8 +3328,6 @@ useEffect(() => {
           [...Object.values(s), ...Object.values(b), ...Object.values(e)].forEach(addPlayer);
 
           let totalPoints = 0;
-
-          // Dentro de tu fetchLeaderboard, sustituye el bloque matchdays.forEach por este:
 
           matchdays.forEach(j => {
             // 🚀 EL FALLBACK: Si el historial está en blanco, usamos la alineación actual ('s')
@@ -3355,7 +3352,13 @@ useEffect(() => {
                 // Buscamos los puntos en globalScores
                 const rawPoints = Number(globalScores[scoreKey]?.[j] || 0);
           
-                const isCap = uid === matchdayCaptainUid;
+                // 🛠️ ¡CORRECCIÓN CRÍTICA! 
+                // Antes comparaba "Messi" (uid) con "Messi_Argentina" (matchdayCaptainUid).
+                // Ahora compara "Messi_Argentina" con "Messi_Argentina".
+                const isCap = matchdayCaptainUid 
+                  ? matchdayCaptainUid.trim().toLowerCase() === scoreKey.toLowerCase() 
+                  : false;
+
                 const earnedPoints = isCap ? rawPoints * 2 : rawPoints;
                 
                 totalPoints += earnedPoints;
@@ -3368,7 +3371,9 @@ useEffect(() => {
               });
             }
           });
-console.log(`DEBUG: Usuario ${u.team_name} calculado. Puntos totales: ${totalPoints}`);
+          
+          console.log(`DEBUG: Usuario ${u.team_name} calculado. Puntos totales: ${totalPoints}`);
+          
           const finalPlayers = Array.from(allPlayersMap.values()).map(p => ({
             ...p,
             puntos: p.puntosCalculados 
@@ -3381,6 +3386,9 @@ console.log(`DEBUG: Usuario ${u.team_name} calculado. Puntos totales: ${totalPoi
             total: totalPoints,
             isMe: u.id === session?.user?.id,
             hasPaid: u.has_paid ?? false,
+            // 🛠️ ¡ESTO FALTABA! Sin esto, el frontend no podía leer las alineaciones
+            squad_data: u.squad_data,
+            lineups_history: u.lineups_history,
             players: finalPlayers.sort((a: any, b: any) => {
               if (a.isActive && !b.isActive) return -1;
               if (!a.isActive && b.isActive) return 1;
@@ -3392,7 +3400,6 @@ console.log(`DEBUG: Usuario ${u.team_name} calculado. Puntos totales: ${totalPoi
 
         console.log("¿Hay totales calculados?", formattedUsers.map(u => ({ name: u.name, total: u.total })));
         setLeaderboard(formattedUsers);
-        
       }
     };
 
@@ -4917,326 +4924,344 @@ if (!isInitialSetup && isSquadLocked) {
   })()
 )}
         {view === 'scores' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto space-y-6">
+  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto space-y-6">
+    
+    {/* CABECERA GENERAL */}
+    <h2 className="text-2xl sm:text-3xl font-black italic text-[#eab308] uppercase flex items-center gap-2 mb-2">
+      🏆 CLASIFICACIÓN GENERAL
+    </h2>
+
+    {/* 1. ACORDEÓN DE USUARIOS HUMANOS */}
+    <div className="space-y-3">
+      {(() => {
+        // 🧠 1. EL CEREBRO DEFINITIVO PARA ENCONTRAR AL CAPITÁN
+        const resolveCaptain = (user, md) => {
+            // A) Si eres tú, leemos de tus estados de React (igual que hace la pestaña Alineación)
+            if (user.isMe) {
+                return lineupsHistory?.[md]?.captain || captain;
+            }
+
+            // B) Si son otros, leemos de Supabase de forma estricta y con fallback
+            const parseSafely = (data) => {
+                if (!data) return null;
+                if (typeof data === 'object') return data;
+                try { return JSON.parse(data); } catch(e) { return null; }
+            };
+
+            const historyObj = parseSafely(user.lineups_history);
+            const squadObj = parseSafely(user.squad_data);
+
+            // 1º Buscamos en el historial de la jornada concreta
+            if (historyObj && historyObj[md] && historyObj[md].captain) {
+                return historyObj[md].captain;
+            }
             
-            {/* CABECERA GENERAL */}
-            <h2 className="text-2xl sm:text-3xl font-black italic text-[#eab308] uppercase flex items-center gap-2 mb-2">
-              🏆 CLASIFICACIÓN GENERAL
-            </h2>
+            // 2º Si la jornada está vacía o no existe el historial, el fallback es la alineación base
+            if (squadObj && squadObj.captain) {
+                return squadObj.captain;
+            }
 
-            {/* 1. ACORDEÓN DE USUARIOS HUMANOS (Leídos en tiempo real de Supabase) */}
-            <div className="space-y-3">
-              {leaderboard
-                .sort((a, b) => b.total - a.total)
-                .map((u, idx) => ({ ...u, pos: idx + 1 }))
-                .map((u) => (
-                  <details 
-                    key={u.id} 
-                    className={`group border rounded-2xl overflow-hidden transition-all relative ${
-                      u.pos === 1 ? 'border-[#eab308] shadow-[0_0_15px_rgba(234,179,8,0.15)] bg-[#1a1c23]' :
-                      u.isMe ? 'border-[#22c55e] border-2 shadow-[0_0_15px_rgba(34,197,94,0.15)] bg-[#1a2b1a]' : 
-                      'border-white/10 hover:border-white/20 bg-[#0f172a]'
-                    }`}
-                    open={u.isMe}
-                  >
-                    <summary className={`flex justify-between items-center p-3 sm:p-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden ${u.pos === 1 ? 'bg-[#1a1c23]' : 'bg-[#0f172a]'}`}>
-                      
-                      <div className="flex items-center gap-4 sm:gap-6">
-                        {/* POSICIÓN ORO, PLATA, BRONCE */}
-                        <span className={`font-black italic text-3xl sm:text-4xl w-10 text-center ${
-                          u.pos === 1 ? 'text-[#eab308] drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]' :
-                          u.pos === 2 ? 'text-gray-300 drop-shadow-[0_0_8px_rgba(209,213,219,0.5)]' :
-                          u.pos === 3 ? 'text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.5)]' :
-                          'text-white/20'
-                        }`}>
-                          #{u.pos}
-                        </span>
+            return null;
+        };
 
-                        {/* DATOS DEL EQUIPO */}
-                        <div className="flex flex-col">
-                          <h3 className={`font-black italic uppercase text-base sm:text-lg tracking-wider ${
-                            u.pos === 1 ? 'text-[#eab308]' : u.isMe ? 'text-[#22c55e]' : 'text-white'
-                          }`}>
-                            {u.name}
-                          </h3>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <p className="text-[9px] sm:text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1">
-                              <span>👤</span> {u.username}
-                            </p>
-                            {u.hasPaid && (
-                              <span className="bg-[#eab308] text-black text-[9px] font-black rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
-                                5€
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <div className="flex flex-col items-end">
-                          <span className={`font-black text-xl sm:text-2xl leading-none ${u.isMe ? 'text-[#22c55e]' : 'text-[#38bdf8]'}`}>
-                            {u.total} <span className="text-sm">PTS</span>
-                          </span>
-                        </div>
-                        <span className="text-sm group-open:rotate-180 transition-transform duration-300 text-white/40">▼</span>
-                      </div>
-                    </summary>
-                    
-                    {/* TABLA DE JUGADORES */}
-                    <div className="border-t border-white/5 bg-[#0a101f]">
-                      <div className="overflow-x-auto scrollbar-hide">
-                      <table className="w-full text-left text-xs whitespace-nowrap min-w-[700px]">
-  <thead className="bg-[#111827] border-b border-white/10 uppercase font-black text-[#38bdf8] text-[10px] sm:text-xs tracking-wider">
-    <tr>
-      {/* CABECERA: Agrupamos NOMBRE y TOTAL en un bloque que ocupará el espacio sticky */}
-      <th className="p-3 sticky left-0 z-10 bg-[#111827] shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5">
-        <div className="flex items-center justify-between min-w-[200px]">
-          <div className="flex gap-4"><span className="w-8">POS</span><span className="w-6">SEL</span><span>NOMBRE</span></div>
-          <span className="text-white bg-[#3b82f6]/20 px-2 py-0.5 rounded ml-4">TOTAL</span>
-        </div>
-      </th>
-      {/* RESTO DE JORNADAS */}
-      {['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'].map(j => (
-        <th key={j} className="p-3 text-center text-white/70">{j}</th>
-      ))}
-    </tr>
-  </thead>
-  <tbody className="divide-y divide-white/5">
-  {u.players.length > 0 ? (
-    u.players.map((p: any, idx: number) => {
-      const isCap = p.isCaptain;
-      const isSold = p.isActive === false;
-      
-      // Obtenemos el objeto de puntos de una vez
-      const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
-      const playerPoints = globalScores[scoreKey] || {}; 
-      
-      const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
-      const flagUrl = getFlag(p.equipo);
-      
-      const matchdays = ['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'];
-      
-      // 🚀 FUNCIÓN LOCAL PARA APLICAR EL BONUS DEL CAPITÁN
-      // Esta función garantiza la consistencia matemática en toda la tabla
-      const calculateFinalPoints = (rawPoints: any) => {
-          if (rawPoints === undefined || rawPoints === '-') return 0;
-          const numPts = Number(rawPoints);
-          if (isNaN(numPts)) return 0;
-          
-          // Aplicamos el bonus si es capitán y NO está vendido
-          return (isCap && !isSold) ? numPts * 2 : numPts;
-      };
-
-      // 🧠 CALCULAMOS EL TOTAL CORRECTAMENTE USANDO LA FUNCIÓN DE BONUS
-      const ptTot = matchdays.reduce((sum, j) => sum + calculateFinalPoints(playerPoints[j]), 0);
-
-      // DEBUG: ESTO TE DIRÁ LA VERDAD
-      console.log(`DEBUG Scores | Jugador: ${p.nombre} | isCap: ${isCap} | Total calculado (con bonus): ${ptTot}`);
-
-      return (
-        <tr key={p.id || `${scoreKey}-${idx}`} className={`transition-colors ${isSold ? 'bg-black/40 opacity-30 grayscale' : 'hover:bg-white/5 bg-[#0f172a]'}`}>
-          <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/40' : 'bg-[#0f172a]'}`}>
-            <div className="flex items-center justify-between min-w-[200px]">
-              <div className="flex items-center gap-4">
-                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${isSold ? 'bg-white/10 text-white/40' : (posColors[p.posicion] || 'bg-gray-500 text-white')}`}>{p.posicion}</span>
-                <span className="w-6 flex justify-center items-center">
-                  {flagUrl ? <img src={flagUrl} alt={p.equipo} className="w-4 h-3 object-cover rounded-[2px]" /> : '🏳️'}
-                </span>
-                <span className={`font-bold truncate max-w-[100px] ${isSold ? 'line-through text-white/30' : 'text-white/90'}`}>
-                  {p.nombre} {isCap && !isSold && <span className="text-[#eab308] ml-1">C</span>}
-                </span>
-              </div>
-              {/* TOTAL AHORA ES CORRECTO */}
-              <span className={`font-black text-sm ml-4 ${isSold ? 'text-white/30' : 'text-white'}`}>{ptTot}</span>
-            </div>
-          </td>
-          
-          {matchdays.map(j => {
-            const rawPts = playerPoints[j];
-            // 🧠 PINTAMOS LOS PUNTOS DE LA JORNADA TAMBIÉN CON EL BONUS APLICADO
-            const finalPts = calculateFinalPoints(rawPts);
-            // Añadimos "as any" para que TypeScript nos deje comparar números con ese guion
-            const showPts = (rawPts === undefined || (rawPts as any) === '-') ? '-' : finalPts;
-
-            return (
-                <td key={j} className="p-3 text-center text-white/90 font-bold">
-                  {showPts}
-                </td>
-            );
-          })}
-        </tr>
-      );
-    })
-  ) : (
-    <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">No hay jugadores.</td></tr>
-  )}
-  </tbody>
-</table>
-                      </div>
-                    </div>
-                  </details>
-                ))}
-            </div>
-
-            {/* 2. EVOLUCIÓN DEL RANKING (Dinámico y Conectado) */}
-            <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-8">
-               <h3 className="text-lg font-black italic text-[#eab308] uppercase mb-6 flex items-center gap-2">
-                 <span>📈</span> Evolución del Ranking
-               </h3>
-               <div className="relative w-full h-48 sm:h-64 rounded-xl border border-white/5 bg-[#0a101f] p-4 flex items-end">
-                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full absolute inset-0 py-6 px-4 opacity-80 overflow-visible">
-                    {[10, 30, 50, 70, 90].map(y => <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />)}
-                    
-                    {/* 🧠 PINTAMOS UNA LÍNEA DINÁMICA POR CADA PARTICIPANTE */}
-                    {(() => {
-                      // 1. Buscamos al líder para saber el máximo de la gráfica
-                      const maxPoints = Math.max(...leaderboard.map(u => u.total), 10); 
-                      
-                      const baseGraphMatchdays = ['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM'];
-                      const baseXCoords = [0, 20, 40, 60, 80, 100];
-                      
-                      // 2. MAGIA: Detectamos por qué jornada vamos (buscando si ALGUIEN ha puntuado)
-                      let lastActiveIdx = 0;
-                      baseGraphMatchdays.forEach((j, idx) => {
-                        const jornadaTienePuntos = leaderboard.some(u => 
-                          u.players.some((p: any) => (Number(p.puntos?.[j]) || 0) > 0)
-                        );
-                        if (jornadaTienePuntos) {
-                          lastActiveIdx = idx;
-                        }
-                      });
-
-                      // 3. Recortamos las coordenadas a solo las jornadas disputadas
-                      const activeMatchdays = baseGraphMatchdays.slice(0, lastActiveIdx + 1);
-                      const activeXCoords = baseXCoords.slice(0, lastActiveIdx + 1);
-                      
-                      // 4. Ordenamos para que los colores correspondan al ranking real
-                      const sortedBoard = [...leaderboard].sort((a, b) => b.total - a.total);
-
-                      return sortedBoard.map((u, i) => {
-                        const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
-                        const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
-                        
-                        const strokeColor = u.isMe ? '#22c55e' : 
-                                            i === 0 ? '#eab308' : 
-                                            i === 1 ? '#d1d5db' : 
-                                            i === 2 ? '#d97706' : 
-                                            GRAPH_COLORS[colorIndex];
-                                            
-                        const shadowColor = `${strokeColor}99`; 
-                        const strokeWidth = u.isMe ? "2.5" : "1.5"; 
-                        
-                        // Calculamos los puntos acumulados solo hasta la jornada actual
-                        // Calculamos los puntos acumulados solo hasta la jornada actual
-                        let acumulado = 0;
-                        const yCoords = activeMatchdays.map(j => {
-                          const ptsJornada = u.players.reduce((sum: number, p: any) => sum + (Number(p.puntos?.[j]) || 0), 0);
-                          acumulado += ptsJornada;
-                          return 95 - (acumulado / maxPoints) * 90;
-                        });
-
-                        // 🚀 DIBUJAMOS LA LÍNEA: Extendemos el último punto 10 unidades (mitad de camino hacia la siguiente jornada)
-                        const lastX = activeXCoords[activeXCoords.length - 1];
-                        const lastY = yCoords[yCoords.length - 1];
-                        const extendedX = Math.min(100, lastX + 10); // Aseguramos que no se salga en la final
-                        
-                        // Unimos todos los puntos reales y le añadimos el "bracito" extra al final
-                        const dPath = yCoords.map((y, idx) => `${idx === 0 ? 'M' : 'L'}${activeXCoords[idx]},${y}`).join(' ') 
-                                      + ` L${extendedX},${lastY}`;
-
-                        return (
-                          <g key={u.id}>
-                            {/* Ahora la línea siempre se dibuja porque le hemos dado longitud */}
-                            <path 
-                              d={dPath} 
-                              fill="none" 
-                              stroke={strokeColor} 
-                              strokeWidth={strokeWidth} 
-                              strokeLinecap="round"
-                              className="transition-all duration-1000" 
-                              style={{ filter: `drop-shadow(0 0 3px ${shadowColor})` }} 
-                            />
-                            {/* Círculo en cada jornada exacta superpuesto */}
-                            {yCoords.map((y, idx) => (
-                              <circle key={idx} cx={activeXCoords[idx]} cy={y} r={u.isMe ? "1.5" : "1"} fill={strokeColor} className="transition-all duration-1000" />
-                            ))}
-                          </g>
-                        );
-                      });
-                    })()}
-                 </svg>
-                 <div className="absolute bottom-2 left-0 right-0 flex justify-between px-6 text-[8px] sm:text-[10px] text-white/40 font-bold tracking-widest uppercase">
-                   <span>J1</span><span>J2</span><span>J3</span><span>OCT</span><span>CUA</span><span>SEM</span>
-                 </div>
-               </div>
-               
-               {/* 👥 LEYENDA DINÁMICA: Muestra a todos los rivales reales de la BD */}
-               <div className="flex flex-wrap gap-2 mt-6 justify-center">
-                 {leaderboard.map((u, i) => {
-                    const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
-                    const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
-                    
-                    const bulletColor = u.isMe ? '#22c55e' : 
-                                        i === 0 ? '#eab308' : 
-                                        i === 1 ? '#d1d5db' : 
-                                        i === 2 ? '#d97706' : 
-                                        GRAPH_COLORS[colorIndex];
-                                        
-                    return (
-                      <span key={u.id} className={`text-[9px] font-bold px-3 py-1.5 rounded-full border text-white flex items-center gap-1.5 ${
-                        u.isMe ? 'bg-[#22c55e]/10 border-[#22c55e]/50' : 'bg-white/5 border-white/10'
-                      }`}>
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: bulletColor, boxShadow: `0 0 5px ${bulletColor}` }}></div> 
-                        {u.name}
-                      </span>
-                    );
-                 })}
-               </div>
-            </div>
-
-            {/* 3. CLASIFICACIÓN POR JORNADA (Dinámica y Conectado) */}
-            <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-6">
-              <h3 className="text-lg font-black italic text-[#22c55e] uppercase mb-4 flex items-center gap-2">
-                 <span>🏆</span> Clasificación por Jornada
-              </h3>
-              
-              <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
-                {['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'].map((j, idx) => (
-                  <button key={j} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
-                    idx === 0 ? 'bg-[#22c55e] text-black shadow-[0_0_10px_rgba(34,197,94,0.4)]' : 'bg-black/40 text-white/50 border border-white/5'
+        return leaderboard
+          .map(u => {
+              // 🚀 2. CÁLCULO DEL TOTAL (¡El trabajo duro ya está hecho en la base!)
+              // fetchLeaderboard ya ha calculado u.total sumando SOLO a los titulares (selected)
+              // y duplicando al capitán correctamente. No necesitamos recalcular nada aquí.
+              return { ...u, displayTotal: u.total || 0 };
+          })
+          .sort((a, b) => b.displayTotal - a.displayTotal)
+          .map((u, idx) => ({ ...u, pos: idx + 1 }))
+          .map((u) => (
+            <details 
+              key={u.id} 
+              className={`group border rounded-2xl overflow-hidden transition-all relative ${
+                u.pos === 1 ? 'border-[#eab308] shadow-[0_0_15px_rgba(234,179,8,0.15)] bg-[#1a1c23]' :
+                u.isMe ? 'border-[#22c55e] border-2 shadow-[0_0_15px_rgba(34,197,94,0.15)] bg-[#1a2b1a]' : 
+                'border-white/10 hover:border-white/20 bg-[#0f172a]'
+              }`}
+              open={u.isMe}
+            >
+              <summary className={`flex justify-between items-center p-3 sm:p-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden ${u.pos === 1 ? 'bg-[#1a1c23]' : 'bg-[#0f172a]'}`}>
+                <div className="flex items-center gap-4 sm:gap-6">
+                  <span className={`font-black italic text-3xl sm:text-4xl w-10 text-center ${
+                    u.pos === 1 ? 'text-[#eab308] drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]' :
+                    u.pos === 2 ? 'text-gray-300 drop-shadow-[0_0_8px_rgba(209,213,219,0.5)]' :
+                    u.pos === 3 ? 'text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.5)]' :
+                    'text-white/20'
                   }`}>
-                    {j}
-                  </button>
-                ))}
-              </div>
-
-              {/* 👥 LISTADO REAL: Muestra a todos los usuarios ordenados */}
-              <div className="space-y-2">
-                {leaderboard
-                  .sort((a, b) => b.total - a.total)
-                  .map((r, idx) => (
-                    <div key={r.id} className="flex justify-between items-center bg-[#111827] border border-white/5 p-3 sm:p-4 rounded-xl hover:border-white/10 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <span className={`font-black text-xl w-6 text-center ${
-                          idx === 0 ? 'text-[#eab308] drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]' : 'text-white/40'
-                        }`}>
-                          {idx + 1}
+                    #{u.pos}
+                  </span>
+                  <div className="flex flex-col">
+                    <h3 className={`font-black italic uppercase text-base sm:text-lg tracking-wider ${
+                      u.pos === 1 ? 'text-[#eab308]' : u.isMe ? 'text-[#22c55e]' : 'text-white'
+                    }`}>
+                      {u.name}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-[9px] sm:text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1">
+                        <span>👤</span> {u.username}
+                      </p>
+                      {u.hasPaid && (
+                        <span className="bg-[#eab308] text-black text-[9px] font-black rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
+                          5€
                         </span>
-                        <div className="flex flex-col">
-                          <span className={`font-black text-sm uppercase italic tracking-wide ${r.isMe ? 'text-[#22c55e]' : 'text-white'}`}>
-                            {r.name}
-                          </span>
-                          <span className="text-[9px] text-white/40 font-bold uppercase">{r.username}</span>
-                        </div>
-                      </div>
-                      <span className="font-black text-[#22c55e] text-base">{r.total} PTS</span>
+                      )}
                     </div>
-                  ))}
-              </div>
-            </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col items-end">
+                    <span className={`font-black text-xl sm:text-2xl leading-none ${u.isMe ? 'text-[#22c55e]' : 'text-[#38bdf8]'}`}>
+                      {u.displayTotal} <span className="text-sm">PTS</span>
+                    </span>
+                  </div>
+                  <span className="text-sm group-open:rotate-180 transition-transform duration-300 text-white/40">▼</span>
+                </div>
+              </summary>
+              
+              <div className="border-t border-white/5 bg-[#0a101f]">
+                <div className="overflow-x-auto scrollbar-hide">
+                <table className="w-full text-left text-xs whitespace-nowrap min-w-[700px]">
+                  <thead className="bg-[#111827] border-b border-white/10 uppercase font-black text-[#38bdf8] text-[10px] sm:text-xs tracking-wider">
+                    <tr>
+                      <th className="p-3 sticky left-0 z-10 bg-[#111827] shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5">
+                        <div className="flex items-center justify-between min-w-[200px]">
+                          <div className="flex gap-4"><span className="w-8">POS</span><span className="w-6">SEL</span><span>NOMBRE</span></div>
+                          <span className="text-white bg-[#3b82f6]/20 px-2 py-0.5 rounded ml-4">TOTAL</span>
+                        </div>
+                      </th>
+                      {['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'].map(j => (
+                        <th key={j} className="p-3 text-center text-white/70">{j}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                  {u.players.length > 0 ? (
+                  u.players.map((p: any, idx: number) => {
+                    const matchdays = ['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'];
+                    const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
+                    const flagUrl = getFlag(p.equipo);
+                    const isSold = p.isActive === false;
 
-          </div>
-        )}
+                    const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
+                    const playerPoints = globalScores[scoreKey] || {}; 
+                  
+                    // 🚀 3. CÁLCULO DE LA FILA (Usa exactamente el mismo resolveCaptain)
+                    const calculatePointsForMatchday = (md: string, rawPoints: any) => {
+                        const val = (rawPoints === undefined || rawPoints === '-') ? 0 : Number(rawPoints);
+                        
+                        const capStr = resolveCaptain(u, md);
+                        const isCap = capStr ? (capStr.trim().toLowerCase() === scoreKey.trim().toLowerCase()) : false;
+
+                        return (isCap && !isSold) ? val * 2 : val;
+                    };
+                  
+                    const ptTot = matchdays.reduce((sum: number, j: string) => sum + calculatePointsForMatchday(j, playerPoints[j]), 0);
+                  
+                    const isCapNow = resolveCaptain(u, u.snapshotMatchday || 'J1') === scoreKey;
+
+                    return (
+                      <tr key={p.id || `${scoreKey}-${idx}`} className={`transition-colors ${isSold ? 'bg-black/40 opacity-30 grayscale' : 'hover:bg-white/5 bg-[#0f172a]'}`}>
+                        <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/40' : 'bg-[#0f172a]'}`}>
+                          <div className="flex items-center justify-between min-w-[200px]">
+                            <div className="flex items-center gap-4">
+                              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${isSold ? 'bg-white/10 text-white/40' : (posColors[p.posicion] || 'bg-gray-500 text-white')}`}>{p.posicion}</span>
+                              <span className="w-6 flex justify-center items-center">
+                                {flagUrl ? <img src={flagUrl} alt={p.equipo} className="w-4 h-3 object-cover rounded-[2px]" /> : '🏳️'}
+                              </span>
+                              <span className={`font-bold truncate max-w-[100px] ${isSold ? 'line-through text-white/30' : 'text-white/90'}`}>
+                                {p.nombre} {isCapNow && !isSold && <span className="text-[#eab308] ml-1">C</span>}
+                              </span>
+                            </div>
+                            <span className={`font-black text-sm ml-4 ${isSold ? 'text-white/30' : 'text-white'}`}>{ptTot}</span>
+                          </div>
+                        </td>
+                        
+                        {matchdays.map((j: string) => {
+                          const rawPts = playerPoints[j];
+                          const finalPts = calculatePointsForMatchday(j, rawPts);
+                          const showPts = (rawPts === undefined || rawPts === '-') ? '-' : finalPts;
+                          return (
+                              <td key={j} className="p-3 text-center text-white/90 font-bold">
+                                {showPts}
+                              </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                })
+                ) : (
+                  <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">No hay jugadores.</td></tr>
+                )}
+                  </tbody>
+                </table>
+                </div>
+              </div>
+            </details>
+          ));
+      })()}
+    </div>
+
+    {/* 2. EVOLUCIÓN DEL RANKING (Dinámico y Conectado) */}
+    <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-8">
+       <h3 className="text-lg font-black italic text-[#eab308] uppercase mb-6 flex items-center gap-2">
+         <span>📈</span> Evolución del Ranking
+       </h3>
+       <div className="relative w-full h-48 sm:h-64 rounded-xl border border-white/5 bg-[#0a101f] p-4 flex items-end">
+         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full absolute inset-0 py-6 px-4 opacity-80 overflow-visible">
+            {[10, 30, 50, 70, 90].map(y => <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />)}
+            
+            {/* 🧠 PINTAMOS UNA LÍNEA DINÁMICA POR CADA PARTICIPANTE */}
+            {(() => {
+              // 1. Buscamos al líder para saber el máximo de la gráfica
+              const maxPoints = Math.max(...leaderboard.map(u => u.total), 10); 
+              
+              const baseGraphMatchdays = ['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM'];
+              const baseXCoords = [0, 20, 40, 60, 80, 100];
+              
+              // 2. MAGIA: Detectamos por qué jornada vamos (buscando si ALGUIEN ha puntuado)
+              let lastActiveIdx = 0;
+              baseGraphMatchdays.forEach((j, idx) => {
+                const jornadaTienePuntos = leaderboard.some(u => 
+                  u.players.some((p: any) => (Number(p.puntos?.[j]) || 0) > 0)
+                );
+                if (jornadaTienePuntos) {
+                  lastActiveIdx = idx;
+                }
+              });
+
+              // 3. Recortamos las coordenadas a solo las jornadas disputadas
+              const activeMatchdays = baseGraphMatchdays.slice(0, lastActiveIdx + 1);
+              const activeXCoords = baseXCoords.slice(0, lastActiveIdx + 1);
+              
+              // 4. Ordenamos para que los colores correspondan al ranking real
+              const sortedBoard = [...leaderboard].sort((a, b) => b.total - a.total);
+
+              return sortedBoard.map((u, i) => {
+                const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
+                const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
+                
+                const strokeColor = u.isMe ? '#22c55e' : 
+                                    i === 0 ? '#eab308' : 
+                                    i === 1 ? '#d1d5db' : 
+                                    i === 2 ? '#d97706' : 
+                                    GRAPH_COLORS[colorIndex];
+                                    
+                const shadowColor = `${strokeColor}99`; 
+                const strokeWidth = u.isMe ? "2.5" : "1.5"; 
+                
+                // Calculamos los puntos acumulados solo hasta la jornada actual
+                let acumulado = 0;
+                const yCoords = activeMatchdays.map(j => {
+                  const ptsJornada = u.players.reduce((sum: number, p: any) => sum + (Number(p.puntos?.[j]) || 0), 0);
+                  acumulado += ptsJornada;
+                  return 95 - (acumulado / maxPoints) * 90;
+                });
+
+                // 🚀 DIBUJAMOS LA LÍNEA: Extendemos el último punto 10 unidades (mitad de camino hacia la siguiente jornada)
+                const lastX = activeXCoords[activeXCoords.length - 1];
+                const lastY = yCoords[yCoords.length - 1];
+                const extendedX = Math.min(100, lastX + 10); // Aseguramos que no se salga en la final
+                
+                // Unimos todos los puntos reales y le añadimos el "bracito" extra al final
+                const dPath = yCoords.map((y, idx) => `${idx === 0 ? 'M' : 'L'}${activeXCoords[idx]},${y}`).join(' ') 
+                              + ` L${extendedX},${lastY}`;
+
+                return (
+                  <g key={u.id}>
+                    {/* Ahora la línea siempre se dibuja porque le hemos dado longitud */}
+                    <path 
+                      d={dPath} 
+                      fill="none" 
+                      stroke={strokeColor} 
+                      strokeWidth={strokeWidth} 
+                      strokeLinecap="round"
+                      className="transition-all duration-1000" 
+                      style={{ filter: `drop-shadow(0 0 3px ${shadowColor})` }} 
+                    />
+                    {/* Círculo en cada jornada exacta superpuesto */}
+                    {yCoords.map((y, idx) => (
+                      <circle key={idx} cx={activeXCoords[idx]} cy={y} r={u.isMe ? "1.5" : "1"} fill={strokeColor} className="transition-all duration-1000" />
+                    ))}
+                  </g>
+                );
+              });
+            })()}
+         </svg>
+         <div className="absolute bottom-2 left-0 right-0 flex justify-between px-6 text-[8px] sm:text-[10px] text-white/40 font-bold tracking-widest uppercase">
+           <span>J1</span><span>J2</span><span>J3</span><span>OCT</span><span>CUA</span><span>SEM</span>
+         </div>
+       </div>
+       
+       {/* 👥 LEYENDA DINÁMICA: Muestra a todos los rivales reales de la BD */}
+       <div className="flex flex-wrap gap-2 mt-6 justify-center">
+         {leaderboard.map((u, i) => {
+            const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
+            const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
+            
+            const bulletColor = u.isMe ? '#22c55e' : 
+                                i === 0 ? '#eab308' : 
+                                i === 1 ? '#d1d5db' : 
+                                i === 2 ? '#d97706' : 
+                                GRAPH_COLORS[colorIndex];
+                                
+            return (
+              <span key={u.id} className={`text-[9px] font-bold px-3 py-1.5 rounded-full border text-white flex items-center gap-1.5 ${
+                u.isMe ? 'bg-[#22c55e]/10 border-[#22c55e]/50' : 'bg-white/5 border-white/10'
+              }`}>
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: bulletColor, boxShadow: `0 0 5px ${bulletColor}` }}></div> 
+                {u.name}
+              </span>
+            );
+         })}
+       </div>
+    </div>
+
+    {/* 3. CLASIFICACIÓN POR JORNADA (Dinámica y Conectado) */}
+    <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-6">
+      <h3 className="text-lg font-black italic text-[#22c55e] uppercase mb-4 flex items-center gap-2">
+         <span>🏆</span> Clasificación por Jornada
+      </h3>
+      
+      <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
+        {['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'].map((j, idx) => (
+          <button key={j} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
+            idx === 0 ? 'bg-[#22c55e] text-black shadow-[0_0_10px_rgba(34,197,94,0.4)]' : 'bg-black/40 text-white/50 border border-white/5'
+          }`}>
+            {j}
+          </button>
+        ))}
+      </div>
+
+      {/* 👥 LISTADO REAL: Muestra a todos los usuarios ordenados */}
+      <div className="space-y-2">
+        {leaderboard
+          .sort((a, b) => b.total - a.total)
+          .map((r, idx) => (
+            <div key={r.id} className="flex justify-between items-center bg-[#111827] border border-white/5 p-3 sm:p-4 rounded-xl hover:border-white/10 transition-colors">
+              <div className="flex items-center gap-4">
+                <span className={`font-black text-xl w-6 text-center ${
+                  idx === 0 ? 'text-[#eab308] drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]' : 'text-white/40'
+                }`}>
+                  {idx + 1}
+                </span>
+                <div className="flex flex-col">
+                  <span className={`font-black text-sm uppercase italic tracking-wide ${r.isMe ? 'text-[#22c55e]' : 'text-white'}`}>
+                    {r.name}
+                  </span>
+                  <span className="text-[9px] text-white/40 font-bold uppercase">{r.username}</span>
+                </div>
+              </div>
+              <span className="font-black text-[#22c55e] text-base">{r.total} PTS</span>
+            </div>
+          ))}
+      </div>
+    </div>
+
+  </div>
+)}
 
   {view === 'admin' && (
   <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
