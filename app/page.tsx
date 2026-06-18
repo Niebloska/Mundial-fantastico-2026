@@ -2729,6 +2729,8 @@ export default function MundialApp() {
 
   const [isEditingLineup, setIsEditingLineup] = useState(false);
 
+  const [selectedScoresMatchday, setSelectedScoresMatchday] = useState('J1');
+
   // Añade esto al inicio de tu componente Page
 const cleanKey = (str: string) => {
   if (!str) return "";
@@ -5306,19 +5308,30 @@ const resolveCaptain = (user: any, md: string) => {
       </h3>
       
       <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
-        {['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'].map((j, idx) => (
-          <button key={j} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
-            idx === 0 ? 'bg-[#22c55e] text-black shadow-[0_0_10px_rgba(34,197,94,0.4)]' : 'bg-black/40 text-white/50 border border-white/5'
-          }`}>
+        {['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => (
+          <button 
+            key={j} 
+            // 🚀 AQUÍ LE DAMOS VIDA AL BOTÓN
+            onClick={() => setSelectedScoresMatchday(j)}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
+              selectedScoresMatchday === j 
+                ? 'bg-[#22c55e] text-black shadow-[0_0_10px_rgba(34,197,94,0.4)]' 
+                : 'bg-black/40 text-white/50 border border-white/5 hover:bg-white/10'
+            }`}>
             {j}
           </button>
         ))}
       </div>
 
-      {/* 👥 LISTADO REAL: Muestra a todos los usuarios ordenados */}
+      {/* 👥 LISTADO REAL: Muestra a los usuarios ordenados por ESA jornada específica */}
       <div className="space-y-2">
         {leaderboard
-          .sort((a, b) => b.total - a.total)
+          .map(u => {
+             // 🚀 EL CÁLCULO MÁGICO: Sumamos solo los puntos de sus jugadores en esta jornada
+             const mdPoints = u.players.reduce((sum: number, p: any) => sum + (Number(p.puntos?.[selectedScoresMatchday]) || 0), 0);
+             return { ...u, matchdayPoints: mdPoints };
+          })
+          .sort((a, b) => b.matchdayPoints - a.matchdayPoints)
           .map((r, idx) => (
             <div key={r.id} className="flex justify-between items-center bg-[#111827] border border-white/5 p-3 sm:p-4 rounded-xl hover:border-white/10 transition-colors">
               <div className="flex items-center gap-4">
@@ -5334,7 +5347,8 @@ const resolveCaptain = (user: any, md: string) => {
                   <span className="text-[9px] text-white/40 font-bold uppercase">{r.username}</span>
                 </div>
               </div>
-              <span className="font-black text-[#22c55e] text-base">{r.total} PTS</span>
+              {/* Mostramos los puntos de la jornada, no el total */}
+              <span className="font-black text-[#22c55e] text-base">{r.matchdayPoints} PTS</span>
             </div>
           ))}
       </div>
