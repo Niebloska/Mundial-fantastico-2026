@@ -5127,16 +5127,13 @@ const resolveCaptain = (user: any, md: string) => {
                  <span>📈</span> Evolución del Ranking
                </h3>
                
-               {/* Contenedor principal de la gráfica con padding inferior para las etiquetas */}
-               <div className="relative w-full h-80 sm:h-96 rounded-xl border border-white/5 bg-[#0a101f] p-4 pb-8 flex items-end">
+               {/* 🚀 MEJORA: Altura del contenedor incrementada drásticamente (h-[500px] a h-[850px]) */}
+               <div className="relative w-full h-[500px] sm:h-[700px] lg:h-[850px] rounded-xl border border-white/5 bg-[#0a101f] p-4 pb-8 flex items-end">
                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full absolute inset-0 py-4 px-2 opacity-90 overflow-visible">
                     
-                    {/* 🧠 PINTAMOS UNA LÍNEA DINÁMICA POR CADA PARTICIPANTE BASADA EN SU POSICIÓN */}
                     {(() => {
-                      // ¡BUG SOLUCIONADO! Ahora sí están todas las jornadas.
                       const baseGraphMatchdays = ['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'];
                       
-                      // 1. Detectamos por qué jornada vamos
                       let lastActiveIdx = 0;
                       baseGraphMatchdays.forEach((j, idx) => {
                         const jornadaTienePuntos = leaderboard.some(u => 
@@ -5149,7 +5146,6 @@ const resolveCaptain = (user: any, md: string) => {
 
                       const activeMatchdays = baseGraphMatchdays.slice(0, lastActiveIdx + 1);
 
-                      // 2. Historial de puntos acumulados por usuario en cada jornada
                       const pointsHistory = leaderboard.map(u => {
                           let acc = 0;
                           const history = activeMatchdays.map(j => {
@@ -5160,41 +5156,36 @@ const resolveCaptain = (user: any, md: string) => {
                           return { id: u.id, history };
                       });
 
-                      // 3. Calcular la POSICIÓN (Ranking) de cada usuario en cada jornada
                       const ranksHistory: Record<string, number[]> = {};
                       leaderboard.forEach(u => ranksHistory[u.id] = []);
 
                       activeMatchdays.forEach((_, mIdx) => {
-                          // Extraemos las puntuaciones de todos en esta jornada concreta
                           const standingsAtM = pointsHistory.map(ph => ({ id: ph.id, pts: ph.history[mIdx] }));
-                          
-                          // Los ordenamos de mayor a menor puntuación
                           standingsAtM.sort((a, b) => b.pts - a.pts); 
-                          
-                          // Les asignamos su puesto (1, 2, 3...)
                           standingsAtM.forEach((st, rankIndex) => {
                               ranksHistory[st.id].push(rankIndex + 1); 
                           });
                       });
 
-                      // 4. Parámetros de dibujo de la gráfica
                       const numUsers = Math.max(leaderboard.length, 1);
-                      const numMatchdays = baseGraphMatchdays.length; // 8
+                      const numMatchdays = baseGraphMatchdays.length;
                       
-                      // Dejamos un 6% a la izquierda para los números del 1 al 29
-                      const startX = 6; 
-                      const endX = 100;
+                      // 🚀 MEJORA: Ajustamos márgenes para que quepan bien los números del 1 al 29
+                      const startX = 8; 
+                      const endX = 98;
                       const stepX = (endX - startX) / (numMatchdays - 1); 
 
                       const activeXCoords = activeMatchdays.map((_, i) => startX + (i * stepX));
 
                       // 🎨 DIBUJAR EJE Y (Posiciones y líneas de fondo)
                       const bgLines = Array.from({length: numUsers}).map((_, i) => {
-                         const y = 5 + (i / Math.max(numUsers - 1, 1)) * 90;
+                         // 🚀 MEJORA: Usamos del 3% al 97% del alto para espaciar más las filas
+                         const y = 3 + (i / Math.max(numUsers - 1, 1)) * 94;
                          return (
                            <g key={`bg-${i}`}>
-                             <text x="2" y={y} fill="rgba(255,255,255,0.4)" fontSize="2.5" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{i + 1}</text>
-                             <line x1={startX} y1={y} x2="100" y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
+                             {/* 🚀 MEJORA: Fuente más pequeña y proporcionada (1.8) */}
+                             <text x="3" y={y} fill="rgba(255,255,255,0.4)" fontSize="1.8" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{i + 1}</text>
+                             <line x1={startX} y1={y} x2="100" y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="0.3" />
                            </g>
                          )
                       });
@@ -5213,13 +5204,14 @@ const resolveCaptain = (user: any, md: string) => {
                                             GRAPH_COLORS[colorIndex];
                                             
                         const shadowColor = `${strokeColor}99`; 
-                        const strokeWidth = u.isMe ? "1.2" : "0.7"; 
+                        
+                        // 🚀 MEJORA: Líneas ligeramente más finas para que no se apelotonen
+                        const strokeWidth = u.isMe ? "0.9" : "0.5"; 
                         
                         const userRanks = ranksHistory[u.id] || [];
 
-                        // Convertir la posición (1 al 29) en coordenada Y
                         const yCoords = userRanks.map(rank => {
-                           return 5 + ((rank - 1) / Math.max(numUsers - 1, 1)) * 90;
+                           return 3 + ((rank - 1) / Math.max(numUsers - 1, 1)) * 94;
                         });
 
                         if (yCoords.length === 0) return null;
@@ -5228,7 +5220,6 @@ const resolveCaptain = (user: any, md: string) => {
                         const lastY = yCoords[yCoords.length - 1];
                         const extendedX = Math.min(100, lastX + 4); 
                         
-                        // Path de la línea principal
                         const dPath = yCoords.map((y, idx) => `${idx === 0 ? 'M' : 'L'}${activeXCoords[idx]},${y}`).join(' ') 
                                       + (activeXCoords.length < numMatchdays ? ` L${extendedX},${lastY}` : '');
 
@@ -5244,18 +5235,18 @@ const resolveCaptain = (user: any, md: string) => {
                               className="transition-all duration-1000" 
                               style={{ filter: u.isMe || i < 3 ? `drop-shadow(0 0 3px ${shadowColor})` : 'none', opacity: u.isMe ? 1 : 0.6 }} 
                             />
-                            {/* 🟢 MEJORA: Los "Puntitos" en cada intersección */}
+                            {/* 🚀 MEJORA: Nodos (puntitos) con radio adaptado a la nueva altura */}
                             {yCoords.map((y, idx) => (
                               <circle 
                                 key={idx} 
                                 cx={activeXCoords[idx]} 
                                 cy={y} 
-                                r={u.isMe ? "1.5" : "1"} 
+                                r={u.isMe ? "1.1" : "0.75"} 
                                 fill={strokeColor} 
                                 stroke="#0a101f" 
                                 strokeWidth="0.4"
                                 className="transition-all duration-1000" 
-                                style={{ filter: `drop-shadow(0 0 2px ${shadowColor})` }} 
+                                style={{ filter: `drop-shadow(0 0 2px ${shadowColor})`, zIndex: u.isMe ? 10 : 1 }} 
                               />
                             ))}
                           </g>
@@ -5271,10 +5262,10 @@ const resolveCaptain = (user: any, md: string) => {
                     })()}
                  </svg>
 
-                 {/* Etiquetas del Eje X (Alineadas perfectamente con los puntos) */}
+                 {/* Etiquetas del Eje X */}
                  {['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'].map((j, idx) => {
-                    const startX = 6; 
-                    const stepX = (100 - startX) / 7;
+                    const startX = 8; 
+                    const stepX = (98 - startX) / 7;
                     const leftPos = startX + (idx * stepX);
                     return (
                       <span key={j} className="absolute text-[8px] sm:text-[10px] text-white/40 font-bold tracking-widest uppercase transform -translate-x-1/2" style={{ left: `${leftPos}%`, bottom: '8px' }}>
