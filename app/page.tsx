@@ -3671,7 +3671,26 @@ const saveLineupHistoryToSupabase = async (newHistory: any) => {
     }
   };
   const changeMatchday = async (j: string) => {
-    /* ... lógica supabase ... */
+    // 1. Guardamos la jornada en la que estábamos por si algo falla
+    const previousMatchday = activeMatchday;
+  
+    // 2. Actualizamos la interfaz al instante (para que no haya "lag" al hacer clic)
+    setActiveMatchday(j);
+  
+    // 3. Mandamos la orden a Supabase
+    const { error } = await supabase
+      .from('app_settings')
+      .update({ active_matchday: j })
+      .eq('id', 1);
+  
+    if (error) {
+      console.error("Error al cambiar la jornada activa:", error.message);
+      // Si la base de datos falla, deshacemos el cambio visual
+      setActiveMatchday(previousMatchday);
+      alert('Error al actualizar la jornada en la base de datos: ' + error.message);
+    } else {
+      console.log(`Jornada cambiada con éxito a ${j} en la base de datos.`);
+    }
   };
   const handleScoreSaved = (playerId: string, finalValue: number | null) => {
     setScores((prev) => ({ ...prev, [playerId]: finalValue }));
