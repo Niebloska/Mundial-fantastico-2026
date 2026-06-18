@@ -5121,120 +5121,192 @@ const resolveCaptain = (user: any, md: string) => {
       })()}
     </div>
 
-    {/* 2. EVOLUCIÓN DEL RANKING (Dinámico y Conectado) */}
+    {/* 2. EVOLUCIÓN DEL RANKING (Posicional y Dinámico) */}
     <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-8">
-       <h3 className="text-lg font-black italic text-[#eab308] uppercase mb-6 flex items-center gap-2">
-         <span>📈</span> Evolución del Ranking
-       </h3>
-       <div className="relative w-full h-48 sm:h-64 rounded-xl border border-white/5 bg-[#0a101f] p-4 flex items-end">
-         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full absolute inset-0 py-6 px-4 opacity-80 overflow-visible">
-            {[10, 30, 50, 70, 90].map(y => <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />)}
-            
-            {/* 🧠 PINTAMOS UNA LÍNEA DINÁMICA POR CADA PARTICIPANTE */}
-            {(() => {
-              // 1. Buscamos al líder para saber el máximo de la gráfica
-              const maxPoints = Math.max(...leaderboard.map(u => u.total), 10); 
-              
-              const baseGraphMatchdays = ['J1', 'J2', 'J3', 'OCT', 'CUA', 'SEM'];
-              const baseXCoords = [0, 20, 40, 60, 80, 100];
-              
-              // 2. MAGIA: Detectamos por qué jornada vamos (buscando si ALGUIEN ha puntuado)
-              let lastActiveIdx = 0;
-              baseGraphMatchdays.forEach((j, idx) => {
-                const jornadaTienePuntos = leaderboard.some(u => 
-                  u.players.some((p: any) => (Number(p.puntos?.[j]) || 0) > 0)
-                );
-                if (jornadaTienePuntos) {
-                  lastActiveIdx = idx;
-                }
-              });
+               <h3 className="text-lg font-black italic text-[#eab308] uppercase mb-6 flex items-center gap-2">
+                 <span>📈</span> Evolución del Ranking
+               </h3>
+               
+               {/* Contenedor principal de la gráfica con padding inferior para las etiquetas */}
+               <div className="relative w-full h-80 sm:h-96 rounded-xl border border-white/5 bg-[#0a101f] p-4 pb-8 flex items-end">
+                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full absolute inset-0 py-4 px-2 opacity-90 overflow-visible">
+                    
+                    {/* 🧠 PINTAMOS UNA LÍNEA DINÁMICA POR CADA PARTICIPANTE BASADA EN SU POSICIÓN */}
+                    {(() => {
+                      // ¡BUG SOLUCIONADO! Ahora sí están todas las jornadas.
+                      const baseGraphMatchdays = ['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'];
+                      
+                      // 1. Detectamos por qué jornada vamos
+                      let lastActiveIdx = 0;
+                      baseGraphMatchdays.forEach((j, idx) => {
+                        const jornadaTienePuntos = leaderboard.some(u => 
+                          u.players.some((p: any) => (Number(p.puntos?.[j]) || 0) > 0)
+                        );
+                        if (jornadaTienePuntos) {
+                          lastActiveIdx = idx;
+                        }
+                      });
 
-              // 3. Recortamos las coordenadas a solo las jornadas disputadas
-              const activeMatchdays = baseGraphMatchdays.slice(0, lastActiveIdx + 1);
-              const activeXCoords = baseXCoords.slice(0, lastActiveIdx + 1);
-              
-              // 4. Ordenamos para que los colores correspondan al ranking real
-              const sortedBoard = [...leaderboard].sort((a, b) => b.total - a.total);
+                      const activeMatchdays = baseGraphMatchdays.slice(0, lastActiveIdx + 1);
 
-              return sortedBoard.map((u, i) => {
-                const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
-                const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
-                
-                const strokeColor = u.isMe ? '#22c55e' : 
-                                    i === 0 ? '#eab308' : 
-                                    i === 1 ? '#d1d5db' : 
-                                    i === 2 ? '#d97706' : 
-                                    GRAPH_COLORS[colorIndex];
-                                    
-                const shadowColor = `${strokeColor}99`; 
-                const strokeWidth = u.isMe ? "2.5" : "1.5"; 
-                
-                // Calculamos los puntos acumulados solo hasta la jornada actual
-                let acumulado = 0;
-                const yCoords = activeMatchdays.map(j => {
-                  const ptsJornada = u.players.reduce((sum: number, p: any) => sum + (Number(p.puntos?.[j]) || 0), 0);
-                  acumulado += ptsJornada;
-                  return 95 - (acumulado / maxPoints) * 90;
-                });
+                      // 2. Historial de puntos acumulados por usuario en cada jornada
+                      const pointsHistory = leaderboard.map(u => {
+                          let acc = 0;
+                          const history = activeMatchdays.map(j => {
+                              const jPts = u.players.reduce((sum: number, p: any) => sum + (Number(p.puntos?.[j]) || 0), 0);
+                              acc += jPts;
+                              return acc;
+                          });
+                          return { id: u.id, history };
+                      });
 
-                // 🚀 DIBUJAMOS LA LÍNEA: Extendemos el último punto 10 unidades (mitad de camino hacia la siguiente jornada)
-                const lastX = activeXCoords[activeXCoords.length - 1];
-                const lastY = yCoords[yCoords.length - 1];
-                const extendedX = Math.min(100, lastX + 10); // Aseguramos que no se salga en la final
-                
-                // Unimos todos los puntos reales y le añadimos el "bracito" extra al final
-                const dPath = yCoords.map((y, idx) => `${idx === 0 ? 'M' : 'L'}${activeXCoords[idx]},${y}`).join(' ') 
-                              + ` L${extendedX},${lastY}`;
+                      // 3. Calcular la POSICIÓN (Ranking) de cada usuario en cada jornada
+                      const ranksHistory: Record<string, number[]> = {};
+                      leaderboard.forEach(u => ranksHistory[u.id] = []);
 
-                return (
-                  <g key={u.id}>
-                    {/* Ahora la línea siempre se dibuja porque le hemos dado longitud */}
-                    <path 
-                      d={dPath} 
-                      fill="none" 
-                      stroke={strokeColor} 
-                      strokeWidth={strokeWidth} 
-                      strokeLinecap="round"
-                      className="transition-all duration-1000" 
-                      style={{ filter: `drop-shadow(0 0 3px ${shadowColor})` }} 
-                    />
-                    {/* Círculo en cada jornada exacta superpuesto */}
-                    {yCoords.map((y, idx) => (
-                      <circle key={idx} cx={activeXCoords[idx]} cy={y} r={u.isMe ? "1.5" : "1"} fill={strokeColor} className="transition-all duration-1000" />
-                    ))}
-                  </g>
-                );
-              });
-            })()}
-         </svg>
-         <div className="absolute bottom-2 left-0 right-0 flex justify-between px-6 text-[8px] sm:text-[10px] text-white/40 font-bold tracking-widest uppercase">
-           <span>J1</span><span>J2</span><span>J3</span><span>OCT</span><span>CUA</span><span>SEM</span>
-         </div>
-       </div>
-       
-       {/* 👥 LEYENDA DINÁMICA: Muestra a todos los rivales reales de la BD */}
-       <div className="flex flex-wrap gap-2 mt-6 justify-center">
-         {leaderboard.map((u, i) => {
-            const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
-            const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
-            
-            const bulletColor = u.isMe ? '#22c55e' : 
-                                i === 0 ? '#eab308' : 
-                                i === 1 ? '#d1d5db' : 
-                                i === 2 ? '#d97706' : 
-                                GRAPH_COLORS[colorIndex];
-                                
-            return (
-              <span key={u.id} className={`text-[9px] font-bold px-3 py-1.5 rounded-full border text-white flex items-center gap-1.5 ${
-                u.isMe ? 'bg-[#22c55e]/10 border-[#22c55e]/50' : 'bg-white/5 border-white/10'
-              }`}>
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: bulletColor, boxShadow: `0 0 5px ${bulletColor}` }}></div> 
-                {u.name}
-              </span>
-            );
-         })}
-       </div>
-    </div>
+                      activeMatchdays.forEach((_, mIdx) => {
+                          // Extraemos las puntuaciones de todos en esta jornada concreta
+                          const standingsAtM = pointsHistory.map(ph => ({ id: ph.id, pts: ph.history[mIdx] }));
+                          
+                          // Los ordenamos de mayor a menor puntuación
+                          standingsAtM.sort((a, b) => b.pts - a.pts); 
+                          
+                          // Les asignamos su puesto (1, 2, 3...)
+                          standingsAtM.forEach((st, rankIndex) => {
+                              ranksHistory[st.id].push(rankIndex + 1); 
+                          });
+                      });
+
+                      // 4. Parámetros de dibujo de la gráfica
+                      const numUsers = Math.max(leaderboard.length, 1);
+                      const numMatchdays = baseGraphMatchdays.length; // 8
+                      
+                      // Dejamos un 6% a la izquierda para los números del 1 al 29
+                      const startX = 6; 
+                      const endX = 100;
+                      const stepX = (endX - startX) / (numMatchdays - 1); 
+
+                      const activeXCoords = activeMatchdays.map((_, i) => startX + (i * stepX));
+
+                      // 🎨 DIBUJAR EJE Y (Posiciones y líneas de fondo)
+                      const bgLines = Array.from({length: numUsers}).map((_, i) => {
+                         const y = 5 + (i / Math.max(numUsers - 1, 1)) * 90;
+                         return (
+                           <g key={`bg-${i}`}>
+                             <text x="2" y={y} fill="rgba(255,255,255,0.4)" fontSize="2.5" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{i + 1}</text>
+                             <line x1={startX} y1={y} x2="100" y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
+                           </g>
+                         )
+                      });
+
+                      // 🎨 DIBUJAR LÍNEAS DE USUARIOS
+                      const sortedBoard = [...leaderboard].sort((a, b) => b.total - a.total);
+
+                      const userLines = sortedBoard.map((u, i) => {
+                        const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
+                        const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
+                        
+                        const strokeColor = u.isMe ? '#22c55e' : 
+                                            i === 0 ? '#eab308' : 
+                                            i === 1 ? '#d1d5db' : 
+                                            i === 2 ? '#d97706' : 
+                                            GRAPH_COLORS[colorIndex];
+                                            
+                        const shadowColor = `${strokeColor}99`; 
+                        const strokeWidth = u.isMe ? "1.2" : "0.7"; 
+                        
+                        const userRanks = ranksHistory[u.id] || [];
+
+                        // Convertir la posición (1 al 29) en coordenada Y
+                        const yCoords = userRanks.map(rank => {
+                           return 5 + ((rank - 1) / Math.max(numUsers - 1, 1)) * 90;
+                        });
+
+                        if (yCoords.length === 0) return null;
+
+                        const lastX = activeXCoords[activeXCoords.length - 1];
+                        const lastY = yCoords[yCoords.length - 1];
+                        const extendedX = Math.min(100, lastX + 4); 
+                        
+                        // Path de la línea principal
+                        const dPath = yCoords.map((y, idx) => `${idx === 0 ? 'M' : 'L'}${activeXCoords[idx]},${y}`).join(' ') 
+                                      + (activeXCoords.length < numMatchdays ? ` L${extendedX},${lastY}` : '');
+
+                        return (
+                          <g key={u.id}>
+                            <path 
+                              d={dPath} 
+                              fill="none" 
+                              stroke={strokeColor} 
+                              strokeWidth={strokeWidth} 
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="transition-all duration-1000" 
+                              style={{ filter: u.isMe || i < 3 ? `drop-shadow(0 0 3px ${shadowColor})` : 'none', opacity: u.isMe ? 1 : 0.6 }} 
+                            />
+                            {/* 🟢 MEJORA: Los "Puntitos" en cada intersección */}
+                            {yCoords.map((y, idx) => (
+                              <circle 
+                                key={idx} 
+                                cx={activeXCoords[idx]} 
+                                cy={y} 
+                                r={u.isMe ? "1.5" : "1"} 
+                                fill={strokeColor} 
+                                stroke="#0a101f" 
+                                strokeWidth="0.4"
+                                className="transition-all duration-1000" 
+                                style={{ filter: `drop-shadow(0 0 2px ${shadowColor})` }} 
+                              />
+                            ))}
+                          </g>
+                        );
+                      });
+
+                      return (
+                        <>
+                          {bgLines}
+                          {userLines}
+                        </>
+                      )
+                    })()}
+                 </svg>
+
+                 {/* Etiquetas del Eje X (Alineadas perfectamente con los puntos) */}
+                 {['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'].map((j, idx) => {
+                    const startX = 6; 
+                    const stepX = (100 - startX) / 7;
+                    const leftPos = startX + (idx * stepX);
+                    return (
+                      <span key={j} className="absolute text-[8px] sm:text-[10px] text-white/40 font-bold tracking-widest uppercase transform -translate-x-1/2" style={{ left: `${leftPos}%`, bottom: '8px' }}>
+                        {j}
+                      </span>
+                    );
+                 })}
+               </div>
+               
+               {/* 👥 LEYENDA DINÁMICA */}
+               <div className="flex flex-wrap gap-2 mt-6 justify-center">
+                 {leaderboard.map((u, i) => {
+                    const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
+                    const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
+                    
+                    const bulletColor = u.isMe ? '#22c55e' : 
+                                        i === 0 ? '#eab308' : 
+                                        i === 1 ? '#d1d5db' : 
+                                        i === 2 ? '#d97706' : 
+                                        GRAPH_COLORS[colorIndex];
+                                        
+                    return (
+                      <span key={u.id} className={`text-[9px] font-bold px-3 py-1.5 rounded-full border text-white flex items-center gap-1.5 ${
+                        u.isMe ? 'bg-[#22c55e]/10 border-[#22c55e]/50' : 'bg-white/5 border-white/10'
+                      }`}>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: bulletColor, boxShadow: `0 0 5px ${bulletColor}` }}></div> 
+                        {u.name}
+                      </span>
+                    );
+                 })}
+               </div>
+            </div>
 
     {/* 3. CLASIFICACIÓN POR JORNADA (Dinámica y Conectado) */}
     <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-6">
