@@ -2275,12 +2275,12 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
       (t) => (table[t] = { name: t, pts: 0, pj: 0, gf: 0, gc: 0, dif: 0 })
     );
 
-    groupMatches.forEach((match, index) => {
-      // 🧠 Traductor: Convertimos el índice (0-5) al ID que usa el Modo Dios (1-6)
-      const modoDiosId = `G_${activeGroup}_${index + 1}`;
-      const res = results[modoDiosId]; // <-- Usamos el ID traducido
+    groupMatches.forEach((match) => {
+      // 🚀 SOLUCIÓN 1: Adiós al traductor ciego. Usamos el ID oficial del partido.
+      const res = results[match.id]; 
 
       if (res && res.home_score !== null && res.away_score !== null) {
+        // ... (el resto del código de la tabla se queda IGUAL)
         const homeTeam = match.team1;
         const awayTeam = match.team2;
 
@@ -2417,10 +2417,8 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
           </div>
 
           <div className="space-y-3">
-  {groupMatches.map((m, index) => {
-    // 🧠 EL TRADUCTOR MAGICO: Convertimos el ID numérico del calendario al ID 'G_X_Y' del Modo Dios.
-    // Como groupMatches siempre tiene 6 partidos por grupo, usamos el index (del 0 al 5) para generar el sufijo (del 1 al 6).
-    const modoDiosId = `G_${activeGroup}_${index + 1}`;
+  {groupMatches.map((m) => {
+    // 🚀 ELIMINAMOS LA VARIABLE modoDiosId por completo.
 
     return (
       <div
@@ -2441,10 +2439,10 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
         </div>
         <div className="flex flex-col items-center justify-center w-1/3">
           <div className="bg-black/60 px-4 py-1.5 rounded-lg text-lg font-black text-white border border-white/10 shadow-inner group-hover:text-[#22c55e] transition-colors tabular-nums">
-            {/* 👇 AQUÍ USAMOS EL ID TRADUCIDO */}
-            {results[modoDiosId]?.home_score ?? '-'} :{' '}
-            {results[modoDiosId]?.away_score ?? '-'}
-          </div>
+            {/* 🚀 SOLUCIÓN 2: Usamos el ID oficial de ALL_MATCHES */}
+            {results[m.id]?.home_score ?? '-'} :{' '}
+            {results[m.id]?.away_score ?? '-'}
+          </div>          
           <div className="flex flex-col items-center mt-1.5 space-y-0.5">
             <span className="text-[10px] text-[#22c55e] font-black uppercase tracking-wide drop-shadow-[0_0_2px_rgba(34,197,94,0.3)]">
               {m.day}
@@ -5328,70 +5326,69 @@ const resolveCaptain = (user: any, md: string) => {
             {GROUPS_2026.map((g) => (<option key={g.id} value={g.id}>GRUPO {g.id}</option>))}
           </select>
           <div className="space-y-3">
-            {[1, 2, 3, 4, 5, 6].map((num) => {
-              const group = GROUPS_2026.find(g => g.id === (adminScoreCountry.length > 1 ? 'A' : adminScoreCountry));
-              if (!group) return null;
-              const order = [[0, 1], [2, 3], [0, 2], [3, 1], [3, 0], [1, 2]];
-              const home = group.teams[order[num - 1][0]];
-              const away = group.teams[order[num - 1][1]];
-              const mId = `G_${group.id}_${num}`;
-              return (
-                <MatchAdminRow 
-                key={`${mId}-${results[mId]?.home_score}-${results[mId]?.away_score}`} 
-                match={{
-                  id: mId, 
-                  home, 
-                  away, 
-                  home_score: results[mId]?.home_score, 
-                  away_score: results[mId]?.away_score
-                }}
-  // 👇 AQUÍ PONES LA NUEVA VERSIÓN BLINDADA
-  onSave={async (id: string, hs: number, as: number) => {
-    const homeScore = Number(hs) || 0;
-    const awayScore = Number(as) || 0;
-  
-    const { error } = await supabase
-      .from('match_results')
-      .upsert(
-        { match_id: id, group_id: group.id, home_score: homeScore, away_score: awayScore, updated_at: new Date().toISOString() },
-        { onConflict: 'match_id' }
-      );
-  
-    if (!error) {
-      // 1. Recargamos los datos frescos
-      const { data } = await supabase.from('match_results').select('*');
-      
-      // 2. CREAMOS UN NUEVO OBJETO (Para que React detecte el cambio)
-      const newMap: Record<string, any> = {};
-      data?.forEach((r) => (newMap[r.match_id] = r));
-      
-      // 3. ACTUALIZAMOS EL ESTADO
-      setResults({ ...newMap }); 
-      
-      console.log("Estado actualizado y refrescado");
-    } else {
-      alert('Error: ' + error.message);
-    }
-  }}
-  // 👇 AQUÍ SIGUE TU CÓDIGO DE BORRADO TAL CUAL
-  onDelete={async (id: string) => {
-    const { error } = await supabase
-      .from('match_results')
-      .delete()
-      .eq('match_id', id);
+            {(() => {
+              const activeGroupId = adminScoreCountry.length > 1 ? 'A' : adminScoreCountry;
+              const groupData = GROUPS_2026.find((g) => g.id === activeGroupId);
+              
+              if (!groupData) return null;
 
-    if (!error) {
-      const { data } = await supabase.from('match_results').select('*');
-      const map: any = {};
-      data?.forEach((r) => (map[r.match_id] = r));
-      setResults(map);
-    } else {
-      alert('Error al eliminar el marcador: ' + error.message);
-    }
-  }}
-/>
+              // 🚀 SOLUCIÓN 3: Filtramos de ALL_MATCHES igual que hace el Calendario
+              const adminMatches = ALL_MATCHES.filter(
+                (m) => groupData.teams.includes(m.team1) && groupData.teams.includes(m.team2)
               );
-            })}
+
+              return adminMatches.map((match) => {
+                const mId = match.id.toString(); // Forzamos que sea string para evitar errores
+
+                return (
+                  <MatchAdminRow 
+                    key={`${mId}-${results[mId]?.home_score}-${results[mId]?.away_score}`} 
+                    match={{
+                      id: mId, // Ahora el ID es "1", "2", "3", en vez de "G_C_2"
+                      home: match.team1, 
+                      away: match.team2, 
+                      home_score: results[mId]?.home_score, 
+                      away_score: results[mId]?.away_score
+                    }}
+                    onSave={async (id: string, hs: number, as: number) => {
+                      const homeScore = Number(hs) || 0;
+                      const awayScore = Number(as) || 0;
+                    
+                      const { error } = await supabase
+                        .from('match_results')
+                        .upsert(
+                          { match_id: id, group_id: activeGroupId, home_score: homeScore, away_score: awayScore, updated_at: new Date().toISOString() },
+                          { onConflict: 'match_id' }
+                        );
+                    
+                      if (!error) {
+                        const { data } = await supabase.from('match_results').select('*');
+                        const newMap: Record<string, any> = {};
+                        data?.forEach((r) => (newMap[r.match_id] = r));
+                        setResults({ ...newMap }); 
+                      } else {
+                        alert('Error: ' + error.message);
+                      }
+                    }}
+                    onDelete={async (id: string) => {
+                      const { error } = await supabase
+                        .from('match_results')
+                        .delete()
+                        .eq('match_id', id);
+
+                      if (!error) {
+                        const { data } = await supabase.from('match_results').select('*');
+                        const map: any = {};
+                        data?.forEach((r) => (map[r.match_id] = r));
+                        setResults(map);
+                      } else {
+                        alert('Error al eliminar el marcador: ' + error.message);
+                      }
+                    }}
+                  />
+                );
+              });
+            })()}
           </div>
         </div>
         </div>
