@@ -5279,14 +5279,18 @@ const resolveCaptain = (user: any, md: string) => {
                
                {/* 👥 LEYENDA DINÁMICA */}
                <div className="flex flex-wrap gap-2 mt-6 justify-center">
-                 {leaderboard.map((u, i) => {
+                 {/* 🚀 EL FIX: Ordenamos la leyenda EXACTAMENTE IGUAL que las líneas de la gráfica */}
+                 {[...leaderboard].sort((a, b) => b.total - a.total).map((u, i) => {
                     const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
+                    
+                    // El color aleatorio para el resto de mortales
                     const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
                     
+                    // Reparto de medallas basado en la clasificación real ordenada
                     const bulletColor = u.isMe ? '#22c55e' : 
-                                        i === 0 ? '#eab308' : 
-                                        i === 1 ? '#d1d5db' : 
-                                        i === 2 ? '#d97706' : 
+                                        i === 0 ? '#eab308' : // Oro al 1º
+                                        i === 1 ? '#d1d5db' : // Plata al 2º
+                                        i === 2 ? '#d97706' : // Bronce al 3º
                                         GRAPH_COLORS[colorIndex];
                                         
                     return (
