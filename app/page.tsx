@@ -2825,21 +2825,25 @@ useEffect(() => {
   fetchGlobalSettings();
 }, []);
 
-  useEffect(() => {
-    const loadScores = async () => {
-      const { data, error } = await supabase.from('player_scores').select('*');
-      if (data) {
-        const scoresMap: any = {};
-        data.forEach(row => {
-          // Guardamos la llave EXACTA sin tocar nada
-          const rawId = row.player_id; 
-          if (!scoresMap[rawId]) scoresMap[rawId] = {};
-          scoresMap[rawId][row.matchday] = row.points;
-        });
-        setGlobalScores(scoresMap);
-      }
-    };
-    loadScores();
+useEffect(() => {
+  const loadScores = async () => {
+    const { data, error } = await supabase
+      .from('player_scores')
+      .select('*')
+      .limit(10000); // 🚀 AQUÍ AÑADIMOS EL LÍMITE AMPLIADO
+      
+    if (data) {
+      const scoresMap: any = {};
+      data.forEach(row => {
+        // Guardamos la llave EXACTA sin tocar nada
+        const rawId = row.player_id; 
+        if (!scoresMap[rawId]) scoresMap[rawId] = {};
+        scoresMap[rawId][row.matchday] = row.points;
+      });
+      setGlobalScores(scoresMap);
+    }
+  };
+  loadScores();
   }, []);
   // 🛡️ VIGILANTE DE SEGURIDAD INTERNO
   const canNavigateAway = () => {
@@ -3549,7 +3553,8 @@ const saveLineupHistoryToSupabase = async (newHistory: any) => {
         const { data: scoresData } = await supabase
           .from('player_scores')
           .select('*')
-          .eq('matchday', config.active_matchday);
+          .eq('matchday', config.active_matchday)
+          .limit(10000);
         if (scoresData) {
           const scoreMap: Record<string, number | null> = {};
           scoresData.forEach((row) => (scoreMap[row.player_id] = row.points));
