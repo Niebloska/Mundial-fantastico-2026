@@ -2832,6 +2832,8 @@ useEffect(() => {
       .select('*')
       .limit(10000); // 🚀 AQUÍ AÑADIMOS EL LÍMITE AMPLIADO
       
+      if (data) console.log("🚨 FILAS DESCARGADAS DE SUPABASE:", data.length);
+
     if (data) {
       const scoresMap: any = {};
       data.forEach(row => {
