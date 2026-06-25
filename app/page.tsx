@@ -2252,63 +2252,45 @@ const formatMatchDate = (isoString: string) => {
 const CalendarView = ({ results }: { results: Record<string, any> }) => {
   const [activeTab, setActiveTab] = useState<'groups' | 'knockout'>('groups');
   const [activeGroup, setActiveGroup] = useState('A');
-  
   const activeGroupData = GROUPS_2026.find((g) => g.id === activeGroup);
 
-  // Filtramos los partidos exactos de este grupo
   const groupMatches = useMemo(() => {
     if (!activeGroupData) return [];
-    
     return ALL_MATCHES.filter(
       (m) => activeGroupData.teams.includes(m.team1) && activeGroupData.teams.includes(m.team2)
-    ).map(m => {
-      const { day, time } = formatMatchDate(m.date);
-      return { ...m, day, time };
-    });
+    ).map(m => ({ ...m, ...formatMatchDate(m.date) }));
   }, [activeGroupData]);
 
-  // Calculamos la clasificación con los partidos reales
-  const standings = useMemo(() => {
-    if (!activeGroupData) return [];
-    let table: any = {};
-    activeGroupData.teams.forEach(
-      (t) => (table[t] = { name: t, pts: 0, pj: 0, gf: 0, gc: 0, dif: 0 })
-    );
-
-    groupMatches.forEach((match) => {
-      // 🚀 SOLUCIÓN 1: Adiós al traductor ciego. Usamos el ID oficial del partido.
-      const res = results[match.id]; 
-
-      if (res && res.home_score !== null && res.away_score !== null) {
-        // ... (el resto del código de la tabla se queda IGUAL)
-        const homeTeam = match.team1;
-        const awayTeam = match.team2;
-
-        table[homeTeam].pj++;
-        table[awayTeam].pj++;
-        table[homeTeam].gf += res.home_score;
-        table[homeTeam].gc += res.away_score;
-        table[awayTeam].gf += res.away_score;
-        table[awayTeam].gc += res.home_score;
-
-        if (res.home_score > res.away_score) table[homeTeam].pts += 3;
-        else if (res.home_score < res.away_score) table[awayTeam].pts += 3;
-        else {
-          table[homeTeam].pts += 1;
-          table[awayTeam].pts += 1;
-        }
-
-        table[homeTeam].dif = table[homeTeam].gf - table[homeTeam].gc;
-        table[awayTeam].dif = table[awayTeam].gf - table[awayTeam].gc;
-      }
+  const allStandings = useMemo(() => {
+    const all: Record<string, any[]> = {};
+    GROUPS_2026.forEach(group => {
+      let table: any = {};
+      group.teams.forEach(t => (table[t] = { name: t, pts: 0, pj: 0, gf: 0, gc: 0, dif: 0 }));
+      ALL_MATCHES.filter(m => group.teams.includes(m.team1)).forEach(match => {
+        const res = results[match.id];
+        if (!res || res.home_score === null || res.away_score === null) return;
+        table[match.team1].pj++; table[match.team2].pj++;
+        table[match.team1].gf += res.home_score; table[match.team1].gc += res.away_score;
+        table[match.team2].gf += res.away_score; table[match.team2].gc += res.home_score;
+        if (res.home_score > res.away_score) table[match.team1].pts += 3;
+        else if (res.home_score < res.away_score) table[match.team2].pts += 3;
+        else { table[match.team1].pts += 1; table[match.team2].pts += 1; }
+        table[match.team1].dif = table[match.team1].gf - table[match.team1].gc;
+        table[match.team2].dif = table[match.team2].gf - table[match.team2].gc;
+      });
+      all[group.id] = Object.values(table).sort((a: any, b: any) => b.pts - a.pts || b.dif - a.dif || b.gf - a.gf);
     });
+    return all;
+  }, [results]);
 
-    return Object.values(table).sort(
-      (a: any, b: any) => b.pts - a.pts || b.dif - a.dif || b.gf - a.gf
-    );
-  }, [activeGroupData, groupMatches, results]);
+  const getTeamName = (code: string) => {
+    if (!code || code.length < 2) return code;
+    const pos = parseInt(code[0]) - 1;
+    const team = allStandings[code.slice(1)]?.[pos];
+    return team ? team.name : code;
+  };
 
-  // Mapeo dinámico de eliminatorias con sus ID oficiales
+  // ✅ DEFINICIÓN DE LAS ELIMINATORIAS (Lo que faltaba)
   const knockoutRounds = [
     { title: 'Dieciseisavos', matches: ALL_MATCHES.filter(m => m.id >= 73 && m.id <= 88) },
     { title: 'Octavos', matches: ALL_MATCHES.filter(m => m.id >= 89 && m.id <= 96) },
@@ -2320,96 +2302,34 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
 
   return (
     <div className="pb-32 animate-in fade-in duration-500 max-w-4xl mx-auto">
-      <div className="flex bg-white/5 p-1 rounded-2xl mb-8 border border-white/10 shadow-inner">
-        <button
-          onClick={() => setActiveTab('groups')}
-          className={`flex-1 py-3 rounded-xl font-black uppercase text-xs transition-all ${
-            activeTab === 'groups'
-              ? 'bg-[#22c55e] text-black shadow-lg scale-[1.02]'
-              : 'text-white/40 hover:text-white'
-          }`}
-        >
-          Fase de Grupos
-        </button>
-        <button
-          onClick={() => setActiveTab('knockout')}
-          className={`flex-1 py-3 rounded-xl font-black uppercase text-xs transition-all ${
-            activeTab === 'knockout'
-              ? 'bg-[#22c55e] text-black shadow-lg scale-[1.02]'
-              : 'text-white/40 hover:text-white'
-          }`}
-        >
-          Eliminatorias
-        </button>
+      <div className="flex bg-white/5 p-1 rounded-2xl mb-8 border border-white/10">
+        <button onClick={() => setActiveTab('groups')} className={`flex-1 py-3 rounded-xl font-black text-xs ${activeTab === 'groups' ? 'bg-[#22c55e] text-black' : 'text-white/40'}`}>FASE DE GRUPOS</button>
+        <button onClick={() => setActiveTab('knockout')} className={`flex-1 py-3 rounded-xl font-black text-xs ${activeTab === 'knockout' ? 'bg-[#22c55e] text-black' : 'text-white/40'}`}>ELIMINATORIAS</button>
       </div>
 
       {activeTab === 'groups' ? (
         <>
-          <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4">
+          <div className="flex gap-2 overflow-x-auto pb-4 mb-4">
             {GROUPS_2026.map((g) => (
-              <button
-                key={g.id}
-                onClick={() => setActiveGroup(g.id)}
-                className={`px-5 py-2.5 rounded-xl text-sm font-black uppercase whitespace-nowrap transition-all ${
-                  activeGroup === g.id
-                    ? 'bg-white/10 text-[#22c55e] border border-[#22c55e]/50 shadow-[0_0_15px_rgba(34,197,94,0.1)]'
-                    : 'bg-white/5 text-white/50 border border-transparent hover:bg-white/10'
-                }`}
-              >
-                G{g.id}
-              </button>
+              <button key={g.id} onClick={() => setActiveGroup(g.id)} className={`px-5 py-2.5 rounded-xl font-black ${activeGroup === g.id ? 'bg-white/10 text-[#22c55e]' : 'bg-white/5 text-white/50'}`}>G{g.id}</button>
             ))}
           </div>
 
-          <div className="bg-[#0a101f] border border-white/10 rounded-2xl overflow-hidden shadow-2xl mb-8">
-            <table className="w-full text-left text-xs whitespace-nowrap">
-              <thead className="bg-black/40 text-white/30 font-black uppercase tracking-tighter">
-                <tr>
-                  <th className="px-4 py-3 text-center w-8">#</th>
-                  <th className="px-4 py-3">Selección</th>
-                  <th className="px-3 py-3 text-center text-white">Pts</th>
-                  <th className="px-3 py-3 text-center">PJ</th>
-                  <th className="px-3 py-3 text-center">GF</th>
-                  <th className="px-3 py-3 text-center">GC</th>
-                  <th className="px-3 py-3 text-center">DF</th>
-                </tr>
+          <div className="bg-[#0a101f] border border-white/10 rounded-2xl overflow-hidden mb-8">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-black/40 text-white/30 font-black uppercase">
+                <tr><th className="px-4 py-3 text-center">#</th><th className="px-4 py-3">Selección</th><th className="px-3 py-3 text-center">Pts</th><th className="px-3 py-3 text-center">PJ</th><th className="px-3 py-3 text-center">GF</th><th className="px-3 py-3 text-center">GC</th><th className="px-3 py-3 text-center">DF</th></tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-              {standings.map((team: any, index: number) => (
-                  <tr
-                    key={team.name}
-                    className="hover:bg-white/5 transition-colors"
-                  >
-                    <td className="px-4 py-4 text-center font-black text-white/10">
-                      {index + 1}
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={getFlag(team.name)}
-                          alt={team.name}
-                          className="w-5 h-3.5 object-cover rounded-sm shadow-sm"
-                        />
-                        <span className="font-bold text-white uppercase tracking-tight">
-                          {team.name}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-4 text-center font-black text-[#22c55e] text-sm bg-[#22c55e]/5">
-                      {team.pts}
-                    </td>
-                    <td className="px-3 py-4 text-center text-white/70">
-                      {team.pj}
-                    </td>
-                    <td className="px-3 py-4 text-center text-white/70">
-                      {team.gf}
-                    </td>
-                    <td className="px-3 py-4 text-center text-white/70">
-                      {team.gc}
-                    </td>
-                    <td className="px-3 py-4 text-center text-white/70 font-bold">
-                      {team.dif}
-                    </td>
+                {allStandings[activeGroup]?.map((team: any, index: number) => (
+                  <tr key={team.name} className="hover:bg-white/5">
+                    <td className="px-4 py-4 text-center font-black text-white/10">{index + 1}</td>
+                    <td className="px-4 py-4 font-bold">{team.name}</td>
+                    <td className="px-3 py-4 text-center text-[#22c55e] font-black">{team.pts}</td>
+                    <td className="px-3 py-4 text-center">{team.pj}</td>
+                    <td className="px-3 py-4 text-center">{team.gf}</td>
+                    <td className="px-3 py-4 text-center">{team.gc}</td>
+                    <td className="px-3 py-4 text-center font-bold">{team.dif}</td>
                   </tr>
                 ))}
               </tbody>
@@ -2417,94 +2337,35 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
           </div>
 
           <div className="space-y-3">
-  {groupMatches.map((m) => {
-    // 🚀 ELIMINAMOS LA VARIABLE modoDiosId por completo.
-
-    return (
-      <div
-        key={m.id}
-        className="bg-[#0a101f] border border-white/5 rounded-xl p-4 flex items-center justify-between group hover:border-white/10 transition-all shadow-md relative"
-      >
-        <div className="absolute top-2 left-3 text-[7px] font-black text-white/20 uppercase tracking-widest">
-          P{m.id}
-        </div>
-        <div className="flex flex-col items-center gap-1 w-1/3">
-          <img
-            src={getFlag(m.team1)}
-            className="w-8 h-5 object-cover rounded-sm"
-          />
-          <span className="text-[10px] font-black uppercase text-center text-white/90">
-            {m.team1}
-          </span>
-        </div>
-        <div className="flex flex-col items-center justify-center w-1/3">
-          <div className="bg-black/60 px-4 py-1.5 rounded-lg text-lg font-black text-white border border-white/10 shadow-inner group-hover:text-[#22c55e] transition-colors tabular-nums">
-            {/* 🚀 SOLUCIÓN 2: Usamos el ID oficial de ALL_MATCHES */}
-            {results[m.id]?.home_score ?? '-'} :{' '}
-            {results[m.id]?.away_score ?? '-'}
-          </div>          
-          <div className="flex flex-col items-center mt-1.5 space-y-0.5">
-            <span className="text-[10px] text-[#22c55e] font-black uppercase tracking-wide drop-shadow-[0_0_2px_rgba(34,197,94,0.3)]">
-              {m.day}
-            </span>
-            <span className="text-[11px] text-[#eab308] font-black uppercase tracking-tight drop-shadow-[0_0_2px_rgba(234,179,8,0.3)]">
-              {m.time} h
-            </span>
+            {groupMatches.map((m) => (
+              <div key={m.id} className="bg-[#0a101f] border border-white/5 rounded-xl p-4 flex items-center justify-between">
+                <div className="w-1/3 text-center font-black uppercase text-[10px]">{m.team1}</div>
+                <div className="w-1/3 text-center font-black bg-black/60 py-1 rounded">
+                  {results[m.id] ? `${results[m.id].home_score} : ${results[m.id].away_score}` : '- : -'}
+                </div>
+                <div className="w-1/3 text-center font-black uppercase text-[10px]">{m.team2}</div>
+              </div>
+            ))}
           </div>
-        </div>
-        <div className="flex flex-col items-center gap-1 w-1/3">
-          <img
-            src={getFlag(m.team2)}
-            className="w-8 h-5 object-cover rounded-sm"
-          />
-          <span className="text-[10px] font-black uppercase text-center text-white/90">
-            {m.team2}
-          </span>
-        </div>
-      </div>
-    );
-  })}
-</div>
         </>
       ) : (
         <div className="flex flex-col gap-10 py-4">
           {knockoutRounds.map((round, rIdx) => (
             <div key={rIdx} className="space-y-6">
-              <h3 className="text-center text-[10px] font-black uppercase tracking-[0.4em] text-[#22c55e] opacity-60 flex items-center justify-center gap-4">
-                <span className="h-[1px] w-12 bg-gradient-to-r from-transparent to-[#22c55e]/30"></span>
-                {round.title}
-                <span className="h-[1px] w-12 bg-gradient-to-l from-transparent to-[#22c55e]/30"></span>
-              </h3>
-              
+              <h3 className="text-center text-[10px] font-black uppercase text-[#22c55e] opacity-60">{round.title}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-4">
                 {round.matches.map((match) => {
                   const { day, time } = formatMatchDate(match.date);
-                  
+                  const t1 = getTeamName(match.team1);
+                  const t2 = getTeamName(match.team2);
                   return (
-                    <div
-                      key={match.id}
-                      className="bg-[#0a101f] border border-white/5 p-4 rounded-2xl flex flex-col items-center justify-center relative shadow-xl hover:border-white/10 transition-all pt-5"
-                    >
+                    <div key={match.id} className="bg-[#0a101f] border border-white/5 p-4 rounded-2xl flex flex-col items-center">
                       <div className="flex w-full justify-around items-center">
-                        <div className="text-[10px] sm:text-[11px] font-black text-white uppercase tracking-tighter w-24 text-center truncate">
-                          {match.team1}
-                        </div>
-                        <div className="flex flex-col items-center justify-center mx-2">
-                          <span className={`text-base sm:text-lg font-black ${results[match.id] ? 'text-[#22c55e]' : 'text-white/20'}`}>
-                            {results[match.id] ? `${results[match.id].home_score} - ${results[match.id].away_score}` : 'VS'}
-                          </span>
-                        </div>
-                        <div className="text-[10px] sm:text-[11px] font-black text-white uppercase tracking-tighter w-24 text-center truncate">
-                          {match.team2}
-                        </div>
+                        <div className="text-[10px] font-black text-white uppercase w-24 text-center truncate">{t1}</div>
+                        <div className="text-base font-black text-[#22c55e]">{results[match.id] ? `${results[match.id].home_score} - ${results[match.id].away_score}` : 'VS'}</div>
+                        <div className="text-[10px] font-black text-white uppercase w-24 text-center truncate">{t2}</div>
                       </div>
-                      {/* 👇 CAMBIO: Cápsula con P(ID) en gris, Día en verde, Hora en amarillo */}
-                      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-black px-4 py-1.5 rounded-full border border-white/10 text-[9px] font-black text-white/40 uppercase tracking-widest shadow-lg whitespace-nowrap flex items-center gap-1.5">
-                        <span>P{match.id}</span> 
-                        <span className="text-white/20">•</span> 
-                        <span className="text-[#22c55e] text-[10px] font-black tracking-normal">{day}</span> 
-                        <span className="text-[#eab308] text-[11px] font-black tracking-normal">{time} h</span>
-                      </div>
+                      <div className="mt-2 text-[9px] text-white/40">{day} • {time} h</div>
                     </div>
                   );
                 })}
@@ -2516,6 +2377,7 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
     </div>
   );
 };
+
 
 const AuthScreen = ({
   onLoginSuccess,
