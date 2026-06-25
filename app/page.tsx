@@ -2366,30 +2366,37 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
         <div className="flex flex-col gap-10 py-4">
           {knockoutRounds.map((round, rIdx) => (
             <div key={rIdx} className="space-y-6">
-              <h3 className="text-center text-[10px] font-black uppercase text-[#22c55e] opacity-60 tracking-[0.4em]">{round.title}</h3>
+              {/* 🚀 ENCABEZADOS CON "GRACIA" */}
+              <h3 className="text-center text-sm font-black uppercase tracking-[0.4em] text-[#22c55e] flex items-center justify-center gap-6">
+                <span className="h-[2px] w-16 bg-gradient-to-r from-transparent to-[#22c55e]/50"></span>
+                {round.title}
+                <span className="h-[2px] w-16 bg-gradient-to-l from-transparent to-[#22c55e]/50"></span>
+              </h3>
+              
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-4">
                 {round.matches.map((match) => {
                   const { day, time } = formatMatchDate(match.date);
                   const t1 = getTeamName(match.team1);
                   const t2 = getTeamName(match.team2);
                   return (
-                    <div key={match.id} className="bg-[#0a101f] border border-white/5 p-4 rounded-2xl flex flex-col items-center shadow-xl">
+                    <div key={match.id} className="bg-[#0a101f] border border-white/5 p-4 rounded-2xl flex flex-col items-center shadow-xl hover:border-white/10 transition-all">
                       <div className="flex w-full justify-around items-center">
                         <div className="w-1/3 flex flex-col items-center gap-1">
-                            <img src={getFlag(t1)} className="w-8 h-5 object-cover rounded-sm" />
+                            <img src={getFlag(t1)} className="w-8 h-5 object-cover rounded-sm shadow-md" />
                             <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t1}</span>
                         </div>
-                        <div className="text-base font-black text-[#22c55e] bg-black/60 px-3 py-1 rounded border border-white/5">
+                        <div className="text-base font-black text-[#22c55e] bg-black/60 px-3 py-1 rounded-lg border border-white/5">
                           {results[match.id] ? `${results[match.id].home_score} - ${results[match.id].away_score}` : 'VS'}
                         </div>
                         <div className="w-1/3 flex flex-col items-center gap-1">
-                            <img src={getFlag(t2)} className="w-8 h-5 object-cover rounded-sm" />
+                            <img src={getFlag(t2)} className="w-8 h-5 object-cover rounded-sm shadow-md" />
                             <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t2}</span>
                         </div>
                       </div>
-                      <div className="mt-2 text-[10px] flex gap-1.5">
-                        <span className="text-[#22c55e] font-black">{day}</span>
-                        <span className="text-[#eab308] font-black">{time} h</span>
+                      <div className="mt-3 text-[10px] flex gap-2">
+                        <span className="text-[#22c55e] font-black tracking-wide">{day}</span>
+                        <span className="text-white/20 font-black">|</span>
+                        <span className="text-[#eab308] font-black tracking-wide">{time} h</span>
                       </div>
                     </div>
                   );
