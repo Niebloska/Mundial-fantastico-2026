@@ -2290,7 +2290,6 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
     return team ? team.name : code;
   };
 
-  // ✅ DEFINICIÓN DE LAS ELIMINATORIAS (Lo que faltaba)
   const knockoutRounds = [
     { title: 'Dieciseisavos', matches: ALL_MATCHES.filter(m => m.id >= 73 && m.id <= 88) },
     { title: 'Octavos', matches: ALL_MATCHES.filter(m => m.id >= 89 && m.id <= 96) },
@@ -2303,19 +2302,19 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
   return (
     <div className="pb-32 animate-in fade-in duration-500 max-w-4xl mx-auto">
       <div className="flex bg-white/5 p-1 rounded-2xl mb-8 border border-white/10">
-        <button onClick={() => setActiveTab('groups')} className={`flex-1 py-3 rounded-xl font-black text-xs ${activeTab === 'groups' ? 'bg-[#22c55e] text-black' : 'text-white/40'}`}>FASE DE GRUPOS</button>
-        <button onClick={() => setActiveTab('knockout')} className={`flex-1 py-3 rounded-xl font-black text-xs ${activeTab === 'knockout' ? 'bg-[#22c55e] text-black' : 'text-white/40'}`}>ELIMINATORIAS</button>
+        <button onClick={() => setActiveTab('groups')} className={`flex-1 py-3 rounded-xl font-black text-xs uppercase ${activeTab === 'groups' ? 'bg-[#22c55e] text-black shadow-lg' : 'text-white/40'}`}>Fase de Grupos</button>
+        <button onClick={() => setActiveTab('knockout')} className={`flex-1 py-3 rounded-xl font-black text-xs uppercase ${activeTab === 'knockout' ? 'bg-[#22c55e] text-black shadow-lg' : 'text-white/40'}`}>Eliminatorias</button>
       </div>
 
       {activeTab === 'groups' ? (
         <>
           <div className="flex gap-2 overflow-x-auto pb-4 mb-4">
             {GROUPS_2026.map((g) => (
-              <button key={g.id} onClick={() => setActiveGroup(g.id)} className={`px-5 py-2.5 rounded-xl font-black ${activeGroup === g.id ? 'bg-white/10 text-[#22c55e]' : 'bg-white/5 text-white/50'}`}>G{g.id}</button>
+              <button key={g.id} onClick={() => setActiveGroup(g.id)} className={`px-5 py-2.5 rounded-xl font-black uppercase text-sm ${activeGroup === g.id ? 'bg-white/10 text-[#22c55e]' : 'bg-white/5 text-white/50'}`}>G{g.id}</button>
             ))}
           </div>
 
-          <div className="bg-[#0a101f] border border-white/10 rounded-2xl overflow-hidden mb-8">
+          <div className="bg-[#0a101f] border border-white/10 rounded-2xl overflow-hidden mb-8 shadow-2xl">
             <table className="w-full text-left text-xs">
               <thead className="bg-black/40 text-white/30 font-black uppercase">
                 <tr><th className="px-4 py-3 text-center">#</th><th className="px-4 py-3">Selección</th><th className="px-3 py-3 text-center">Pts</th><th className="px-3 py-3 text-center">PJ</th><th className="px-3 py-3 text-center">GF</th><th className="px-3 py-3 text-center">GC</th><th className="px-3 py-3 text-center">DF</th></tr>
@@ -2324,12 +2323,15 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
                 {allStandings[activeGroup]?.map((team: any, index: number) => (
                   <tr key={team.name} className="hover:bg-white/5">
                     <td className="px-4 py-4 text-center font-black text-white/10">{index + 1}</td>
-                    <td className="px-4 py-4 font-bold">{team.name}</td>
+                    <td className="px-4 py-4 flex items-center gap-2">
+                        <img src={getFlag(team.name)} className="w-5 h-3.5 object-cover rounded-sm" />
+                        <span className="font-bold text-white uppercase">{team.name}</span>
+                    </td>
                     <td className="px-3 py-4 text-center text-[#22c55e] font-black">{team.pts}</td>
-                    <td className="px-3 py-4 text-center">{team.pj}</td>
-                    <td className="px-3 py-4 text-center">{team.gf}</td>
-                    <td className="px-3 py-4 text-center">{team.gc}</td>
-                    <td className="px-3 py-4 text-center font-bold">{team.dif}</td>
+                    <td className="px-3 py-4 text-center text-white/70">{team.pj}</td>
+                    <td className="px-3 py-4 text-center text-white/70">{team.gf}</td>
+                    <td className="px-3 py-4 text-center text-white/70">{team.gc}</td>
+                    <td className="px-3 py-4 text-center font-bold text-white/70">{team.dif}</td>
                   </tr>
                 ))}
               </tbody>
@@ -2338,12 +2340,24 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
 
           <div className="space-y-3">
             {groupMatches.map((m) => (
-              <div key={m.id} className="bg-[#0a101f] border border-white/5 rounded-xl p-4 flex items-center justify-between">
-                <div className="w-1/3 text-center font-black uppercase text-[10px]">{m.team1}</div>
-                <div className="w-1/3 text-center font-black bg-black/60 py-1 rounded">
-                  {results[m.id] ? `${results[m.id].home_score} : ${results[m.id].away_score}` : '- : -'}
+              <div key={m.id} className="bg-[#0a101f] border border-white/5 rounded-xl p-4 flex items-center justify-between hover:border-white/10 transition-all">
+                <div className="w-1/3 flex flex-col items-center gap-1">
+                    <img src={getFlag(m.team1)} className="w-8 h-5 object-cover rounded-sm" />
+                    <span className="font-black uppercase text-[10px] text-center">{m.team1}</span>
                 </div>
-                <div className="w-1/3 text-center font-black uppercase text-[10px]">{m.team2}</div>
+                <div className="w-1/3 text-center flex flex-col items-center">
+                  <div className="bg-black/60 px-4 py-1 rounded font-black text-white border border-white/10">
+                    {results[m.id] ? `${results[m.id].home_score} : ${results[m.id].away_score}` : '- : -'}
+                  </div>
+                  <div className="text-[10px] mt-1.5 flex gap-1.5">
+                    <span className="text-[#22c55e] font-black">{m.day}</span>
+                    <span className="text-[#eab308] font-black">{m.time} h</span>
+                  </div>
+                </div>
+                <div className="w-1/3 flex flex-col items-center gap-1">
+                    <img src={getFlag(m.team2)} className="w-8 h-5 object-cover rounded-sm" />
+                    <span className="font-black uppercase text-[10px] text-center">{m.team2}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -2352,20 +2366,31 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
         <div className="flex flex-col gap-10 py-4">
           {knockoutRounds.map((round, rIdx) => (
             <div key={rIdx} className="space-y-6">
-              <h3 className="text-center text-[10px] font-black uppercase text-[#22c55e] opacity-60">{round.title}</h3>
+              <h3 className="text-center text-[10px] font-black uppercase text-[#22c55e] opacity-60 tracking-[0.4em]">{round.title}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-4">
                 {round.matches.map((match) => {
                   const { day, time } = formatMatchDate(match.date);
                   const t1 = getTeamName(match.team1);
                   const t2 = getTeamName(match.team2);
                   return (
-                    <div key={match.id} className="bg-[#0a101f] border border-white/5 p-4 rounded-2xl flex flex-col items-center">
+                    <div key={match.id} className="bg-[#0a101f] border border-white/5 p-4 rounded-2xl flex flex-col items-center shadow-xl">
                       <div className="flex w-full justify-around items-center">
-                        <div className="text-[10px] font-black text-white uppercase w-24 text-center truncate">{t1}</div>
-                        <div className="text-base font-black text-[#22c55e]">{results[match.id] ? `${results[match.id].home_score} - ${results[match.id].away_score}` : 'VS'}</div>
-                        <div className="text-[10px] font-black text-white uppercase w-24 text-center truncate">{t2}</div>
+                        <div className="w-1/3 flex flex-col items-center gap-1">
+                            <img src={getFlag(t1)} className="w-8 h-5 object-cover rounded-sm" />
+                            <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t1}</span>
+                        </div>
+                        <div className="text-base font-black text-[#22c55e] bg-black/60 px-3 py-1 rounded border border-white/5">
+                          {results[match.id] ? `${results[match.id].home_score} - ${results[match.id].away_score}` : 'VS'}
+                        </div>
+                        <div className="w-1/3 flex flex-col items-center gap-1">
+                            <img src={getFlag(t2)} className="w-8 h-5 object-cover rounded-sm" />
+                            <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t2}</span>
+                        </div>
                       </div>
-                      <div className="mt-2 text-[9px] text-white/40">{day} • {time} h</div>
+                      <div className="mt-2 text-[10px] flex gap-1.5">
+                        <span className="text-[#22c55e] font-black">{day}</span>
+                        <span className="text-[#eab308] font-black">{time} h</span>
+                      </div>
                     </div>
                   );
                 })}
