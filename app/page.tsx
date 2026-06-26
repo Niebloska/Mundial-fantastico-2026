@@ -3086,6 +3086,38 @@ useEffect(() => {
 
   const [allProfiles, setAllProfiles] = useState<any[]>([]);
 
+  // 🚀 NUEVA FUNCIÓN: Manda al titular a la grada y deja el hueco libre
+// 🚀 NUEVA FUNCIÓN: Manda al titular a la grada y deja el hueco libre
+const handleSendToExtras = () => {
+  // 🛡️ CORRECCIÓN: Ahora comprobamos que NO venga del banquillo o grada
+  if (!activeSlot || activeSlot.type === 'bench' || activeSlot.type === 'extras') return;
+  
+  const playerToMove = selected[activeSlot.id];
+  if (!playerToMove) return; // Si ya estaba vacío, no hacemos nada
+
+  // Buscamos el primer hueco libre en la grada (NC1 a NC4)
+  const emptyExtraSlot = ['NC1', 'NC2', 'NC3', 'NC4'].find(id => !extras[id]);
+
+  if (!emptyExtraSlot) {
+    alert("No hay huecos libres en la grada (No Convocados) para sacar a este jugador.");
+    return;
+  }
+
+  // 1. Añadimos el jugador al hueco libre de la grada
+  setExtras({ ...extras, [emptyExtraSlot]: playerToMove });
+  
+  // 2. Vaciamos la posición en el campo
+  setSelected({ ...selected, [activeSlot.id]: null });
+  
+  // 3. Si por casualidad era el capitán, se lo quitamos
+  if (captain === (playerToMove.id || `${playerToMove.nombre.trim()}_${playerToMove.equipo.trim()}`)) {
+    setCaptain(null);
+  }
+
+  // Cerramos el modal
+  setActiveSlot(null);
+};
+
   useEffect(() => {
     const fetchUserProfile = async (sessionUser: any) => {
       const { data, error } = await supabase
@@ -3859,85 +3891,143 @@ if (!isInitialSetup && isSquadLocked) {
     return true;
   });
 
-  // 👇 FUNCIÓN DE SUSTITUCIONES (Nueva) 👇
+  // 👇 FUNCIÓN DE SUSTITUCIONES (Validación táctica estricta) 👇
   const renderSubstitutionOptions = () => {
     if (!activeSlot) return null;
 
-    const originPlayer = activeSlot.type === 'titular' ? selected[activeSlot.id] :
+    // 📋 TÁCTICAS PERMITIDAS EN EL FÚTBOL MODERNO
+    const validTactics = ['4-4-2', '4-3-3', '3-4-3', '3-5-2', '5-3-2', '5-4-1', '4-5-1'];
+
+    const isTitularSlot = activeSlot.type === 'titular' || activeSlot.type === 'field';
+    const originPlayer = isTitularSlot ? selected[activeSlot.id] :
                          activeSlot.type === 'bench' ? bench[activeSlot.id] : extras[activeSlot.id];
 
-    if (!originPlayer) {
+    const requiredPos = originPlayer ? originPlayer.posicion : activeSlot.pos;
+
+    if (isTitularSlot && !originPlayer && !requiredPos) {
        return <div className="text-center text-white/40 mt-10 text-xs font-bold uppercase bg-white/5 p-6 rounded-2xl">Este hueco está vacío. Ve a PLANTILLA para fichar.</div>;
     }
 
     let options: any[] = [];
-    if (activeSlot.type !== 'titular') {
+    
+    if (!isTitularSlot) {
       Object.entries(selected).forEach(([id, p]: any) => {
-        if (p && p.posicion === originPlayer.posicion) options.push({ slotId: id, type: 'titular', player: p });
+        if (p && (!originPlayer || p.posicion === originPlayer.posicion)) {
+          options.push({ slotId: id, type: 'titular', player: p });
+        }
       });
     }
+
     if (activeSlot.type !== 'bench') {
       Object.entries(bench).forEach(([id, p]: any) => {
-        if (p && p.posicion === originPlayer.posicion) options.push({ slotId: id, type: 'bench', player: p });
+        if (p && (!isTitularSlot || p.posicion === requiredPos)) {
+          options.push({ slotId: id, type: 'bench', player: p });
+        }
       });
     }
+
     if (activeSlot.type !== 'extras') {
       Object.entries(extras).forEach(([id, p]: any) => {
-        if (p && p.posicion === originPlayer.posicion) options.push({ slotId: id, type: 'extras', player: p });
+        if (p && (!isTitularSlot || p.posicion === requiredPos)) {
+          options.push({ slotId: id, type: 'extras', player: p });
+        }
       });
     }
 
     if (options.length === 0) {
-       return <div className="text-center text-white/40 mt-10 text-xs font-bold uppercase bg-white/5 p-6 rounded-2xl">No tienes más jugadores de posición {originPlayer.posicion} para realizar el cambio.</div>;
+       return <div className="text-center text-white/40 mt-10 text-xs font-bold uppercase bg-white/5 p-6 rounded-2xl">No hay jugadores disponibles para mover a este hueco.</div>;
     }
 
-    return options.map((opt) => (
-      <div key={opt.player.id} className="flex items-center justify-between bg-black/40 border border-white/10 p-3 rounded-xl hover:border-blue-500 transition-colors mb-2">
-        <div className="flex flex-col">
-          <span className="font-black text-sm uppercase">{opt.player.nombre}</span>
-          <div className="flex items-center gap-2 mt-1">
-            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded bg-gray-500 text-white`}>{opt.player.posicion}</span>
-            <span className="text-[10px] text-white/50">{opt.player.equipo} | En: {opt.type === 'titular' ? 'Campo 11' : opt.type === 'bench' ? 'Banquillo' : 'Grada'}</span>
+    return options.map((opt) => {
+      let locationText = 'Grada';
+      let locationColor = 'text-red-500';
+      
+      if (opt.type === 'titular' || opt.type === 'field') {
+        locationText = 'Campo 11';
+        locationColor = 'text-[#22c55e]';
+      } else if (opt.type === 'bench') {
+        locationText = 'Banquillo';
+        locationColor = 'text-yellow-400';
+      }
+
+      return (
+        <div key={opt.player.id} className="flex items-center justify-between bg-black/40 border border-white/10 p-3 rounded-xl hover:border-blue-500 transition-colors mb-2">
+          <div className="flex flex-col">
+            <span className="font-black text-sm uppercase">{opt.player.nombre}</span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded bg-gray-500 text-white`}>{opt.player.posicion}</span>
+              <span className="text-[10px] text-white/50">
+                {opt.player.equipo} | En: <span className={`font-black ${locationColor}`}>{locationText}</span>
+              </span>
+            </div>
           </div>
+          <button
+            onClick={() => {
+              // 1. CLONAMOS TODO Y SIMULAMOS EL MOVIMIENTO PRIMERO
+              const playerA = originPlayer ? JSON.parse(JSON.stringify(originPlayer)) : null;
+              const playerB = JSON.parse(JSON.stringify(opt.player));
+            
+              const newSelected = JSON.parse(JSON.stringify(selected));
+              const newBench = JSON.parse(JSON.stringify(bench));
+              const newExtras = JSON.parse(JSON.stringify(extras));
+            
+              if (opt.type === 'titular' || opt.type === 'field') newSelected[opt.slotId] = playerA;
+              else if (opt.type === 'bench') newBench[opt.slotId] = playerA;
+              else newExtras[opt.slotId] = playerA;
+            
+              if (isTitularSlot) newSelected[activeSlot.id] = playerB;
+              else if (activeSlot.type === 'bench') newBench[activeSlot.id] = playerB;
+              else newExtras[activeSlot.id] = playerB;
+            
+              // 🛡️ 2. EVALUAMOS EL TERRENO DE JUEGO RESULTANTE (SIMULADOR DE TÁCTICAS)
+              let counts = { POR: 0, DEF: 0, MED: 0, DEL: 0 };
+              let totalEnCampo = 0;
+              
+              Object.values(newSelected).forEach((p: any) => {
+                if (p) {
+                  counts[p.posicion as keyof typeof counts]++;
+                  totalEnCampo++;
+                }
+              });
+
+              // A) Límite máximo absoluto
+              if (totalEnCampo > 11) {
+                alert("⚠️ ¡Límite alcanzado! Ya tienes 11 jugadores en el campo. Para cambiar de táctica, primero debes enviar a un titular a No Convocados.");
+                return; 
+              }
+
+              // B) Límites por posición (evita que armen formaciones imposibles a medias)
+              if (counts.POR > 1) { alert("⚠️ Táctica no válida: No puedes tener más de 1 portero en el campo."); return; }
+              if (counts.DEF > 5) { alert("⚠️ Táctica no válida: No puedes tener más de 5 defensas."); return; }
+              if (counts.MED > 5) { alert("⚠️ Táctica no válida: No puedes tener más de 5 centrocampistas."); return; }
+              if (counts.DEL > 3) { alert("⚠️ Táctica no válida: No puedes tener más de 3 delanteros."); return; }
+
+              // C) Verificación estricta de la Táctica final (solo si la plantilla llega a 11)
+              if (totalEnCampo === 11) {
+                const tacticString = `${counts.DEF}-${counts.MED}-${counts.DEL}`;
+                if (!validTactics.includes(tacticString)) {
+                  alert(`⚠️ Táctica no permitida. El resultado sería un ${tacticString}.\nFormaciones permitidas: ${validTactics.join(', ')}.`);
+                  return;
+                }
+              }
+            
+              // 3. SI TODO ES VÁLIDO SEGÚN LA LEY, ACTUALIZAMOS LOS ESTADOS
+              setSelected(newSelected);
+              setBench(newBench);
+              setExtras(newExtras);
+            
+              if (originPlayer && captain === originPlayer.id && isTitularSlot && opt.type !== 'titular' && opt.type !== 'field') setCaptain(null);
+              if (captain === opt.player.id && (opt.type === 'titular' || opt.type === 'field') && !isTitularSlot) setCaptain(null);
+            
+              setActiveSlot(null);
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-black text-xs uppercase hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+          >
+            {originPlayer ? '🔄 Cambiar' : '➕ Añadir'}
+          </button>
         </div>
-        <button
-          onClick={() => {
-            // 1. CLONADO PROFUNDO INMEDIATO:
-            // Convertimos a string y volvemos a objeto para crear una instancia 100% nueva
-            const playerA = JSON.parse(JSON.stringify(originPlayer));
-            const playerB = JSON.parse(JSON.stringify(opt.player));
-          
-            // 2. CREAMOS COPIAS PROFUNDAS DE LOS ESTADOS TAMBIÉN:
-            const newSelected = JSON.parse(JSON.stringify(selected));
-            const newBench = JSON.parse(JSON.stringify(bench));
-            const newExtras = JSON.parse(JSON.stringify(extras));
-          
-            // 3. REALIZAMOS EL INTERCAMBIO CON LOS CLONES:
-            if (opt.type === 'titular') newSelected[opt.slotId] = playerA;
-            else if (opt.type === 'bench') newBench[opt.slotId] = playerA;
-            else newExtras[opt.slotId] = playerA;
-          
-            if (activeSlot.type === 'titular') newSelected[activeSlot.id] = playerB;
-            else if (activeSlot.type === 'bench') newBench[activeSlot.id] = playerB;
-            else newExtras[activeSlot.id] = playerB;
-          
-            // 4. ACTUALIZAMOS EL ESTADO CON LOS OBJETOS NUEVOS:
-            setSelected(newSelected);
-            setBench(newBench);
-            setExtras(newExtras);
-          
-            // Lógica del capitán (esto es seguro porque comparamos IDs, no objetos)
-            if (captain === originPlayer.id && activeSlot.type === 'titular' && opt.type !== 'titular') setCaptain(null);
-            if (captain === opt.player.id && opt.type === 'titular' && activeSlot.type !== 'titular') setCaptain(null);
-          
-            setActiveSlot(null);
-          }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg font-black text-xs uppercase hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
-        >
-          🔄 Cambiar
-        </button>
-      </div>
-    ));
+      );
+    });
   };
   // 👆 FIN DE LA FUNCIÓN DE SUSTITUCIONES 👆
 
@@ -4829,6 +4919,16 @@ if (!isInitialSetup && isSquadLocked) {
                 </div>
                 <button onClick={() => setActiveSlot(null)} className="bg-white/10 text-white border border-white/20 w-10 h-10 rounded-xl flex items-center justify-center font-black text-xl hover:bg-white hover:text-black transition-all active:scale-95">✕</button>
               </div>
+
+              {/* 🚀 BOTÓN CORREGIDO: Si NO es bench, NO es extras, y hay jugador seleccionado */}
+              {activeSlot.type !== 'bench' && activeSlot.type !== 'extras' && selected[activeSlot.id] && (
+                <button
+                  onClick={handleSendToExtras}
+                  className="mb-4 bg-[#2a0c0c] text-red-500 border border-red-500/30 p-4 rounded-2xl font-black uppercase text-[11px] tracking-widest flex items-center justify-center gap-2 hover:bg-red-500 hover:text-black transition-all shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+                >
+                  <span className="text-lg">⬇️</span> Enviar a No Convocados
+                </button>
+              )}
 
               <div className="flex-1 overflow-y-auto space-y-2 pb-4 scrollbar-hide">
                 {renderSubstitutionOptions()}
