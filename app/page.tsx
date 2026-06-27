@@ -2058,8 +2058,8 @@ const QuinielaView = ({ user, setHasUnsavedQuiniela, results }: { user: any, set
 
       // 🛡️ REGLA: Sólo confirmamos a los clasificados si el grupo está 100% finalizado
       if (totalMatchesPlayed === 12) {
-        qualified.push(sortedStandings[0].name); // El 1º del grupo
-        qualified.push(sortedStandings[1].name); // El 2º del grupo
+        qualified.push((sortedStandings[0] as any).name); // El 1º del grupo
+        qualified.push((sortedStandings[1] as any).name); // El 2º del grupo
       }
     });
 
