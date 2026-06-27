@@ -2132,9 +2132,27 @@ const QuinielaView = ({ user, setHasUnsavedQuiniela, results }: { user: any, set
   };
 
   const allPicks = Object.values(selections).flat();
+
+  // 1. ACIERTOS: Elegiste un equipo y ha clasificado
   const hitsCount = allPicks.filter((team) =>
     qualifiedTeams.includes(team)
   ).length;
+
+  // 2. FALLOS: Equipos que elegiste en grupos que YA HAN TERMINADO, pero que no clasificaron
+  const finishedGroups = GROUPS_2026.filter(g => {
+    // Calculamos si el grupo ha jugado sus 6 partidos
+    const groupMatches = ALL_MATCHES.filter(m => g.teams.includes(m.team1) || g.teams.includes(m.team2));
+    const played = groupMatches.reduce((acc, m) => acc + (results[m.id] && results[m.id].home_score !== null ? 1 : 0), 0);
+    return played === 6; 
+  }).flatMap(g => g.teams);
+
+  const missesCount = allPicks.filter(team => 
+    finishedGroups.includes(team) && !qualifiedTeams.includes(team)
+  ).length;
+
+  // 3. PENDIENTES: Total elegidos menos aciertos, menos fallos definitivos
+  const pendingCount = allPicks.length - hitsCount - missesCount;
+
   const totalSelected = allPicks.length;
   const isComplete = totalSelected === 24;
 
@@ -2171,29 +2189,30 @@ const QuinielaView = ({ user, setHasUnsavedQuiniela, results }: { user: any, set
 </div>
         
   
-        {/* LÍNEA DE RECUENTO COMPACTA */}
-      <div className="grid grid-cols-3 gap-3 mb-6 max-w-3xl mx-auto">
-        <div className="bg-[#1a0b0b] border border-green-500/20 rounded-xl p-3 text-center shadow-md">
-          <span className="block text-[9px] font-black text-green-500 uppercase tracking-widest mb-0.5">
-            Aciertos
-          </span>
-          <span className="text-2xl font-black text-white">{hitsCount}</span>
+        {/* LÍNEA DE RECUENTO: 4 COLUMNAS */}
+      <div className="grid grid-cols-4 gap-2 mb-6 max-w-4xl mx-auto">
+        {/* ACIERTOS */}
+        <div className="bg-[#1a0b0b] border border-green-500/20 rounded-xl p-2 sm:p-3 text-center shadow-md flex flex-col justify-center">
+          <span className="block text-[8px] sm:text-[9px] font-black text-green-500 uppercase tracking-widest mb-0.5">Aciertos</span>
+          <span className="text-xl sm:text-2xl font-black text-white">{hitsCount}</span>
         </div>
-        <div className="bg-[#1a0b0b] border border-white/5 rounded-xl p-3 text-center shadow-md">
-          <span className="block text-[9px] font-black text-white/30 uppercase tracking-widest mb-0.5">
-            Pendientes
-          </span>
-          <span className="text-2xl font-black text-white/60">
-            {24 - hitsCount}
-          </span>
+        
+        {/* FALLOS */}
+        <div className="bg-[#1a0b0b] border border-red-500/20 rounded-xl p-2 sm:p-3 text-center shadow-md flex flex-col justify-center">
+          <span className="block text-[8px] sm:text-[9px] font-black text-red-500 uppercase tracking-widest mb-0.5">Fallos</span>
+          <span className="text-xl sm:text-2xl font-black text-white">{missesCount}</span>
         </div>
-        <div className="bg-[#1a0b0b] border border-[#06b6d4]/20 rounded-xl p-3 text-center shadow-md">
-          <span className="block text-[9px] font-black text-[#06b6d4] uppercase tracking-widest mb-0.5">
-            Presupuesto
-          </span>
-          <span className="text-2xl font-black text-white">
-            {currentPrize}M
-          </span>
+        
+        {/* PENDIENTES */}
+        <div className="bg-[#1a0b0b] border border-yellow-500/20 rounded-xl p-2 sm:p-3 text-center shadow-md flex flex-col justify-center">
+          <span className="block text-[8px] sm:text-[9px] font-black text-yellow-500 uppercase tracking-widest mb-0.5">Pendientes</span>
+          <span className="text-xl sm:text-2xl font-black text-white">{pendingCount}</span>
+        </div>
+        
+        {/* PRESUPUESTO */}
+        <div className="bg-[#1a0b0b] border border-[#06b6d4]/20 rounded-xl p-2 sm:p-3 text-center shadow-md flex flex-col justify-center">
+          <span className="block text-[8px] sm:text-[9px] font-black text-[#06b6d4] uppercase tracking-widest mb-0.5">Presupuesto</span>
+          <span className="text-xl sm:text-2xl font-black text-white">{currentPrize}M</span>
         </div>
       </div>
 
@@ -3599,17 +3618,22 @@ const saveLineupHistoryToSupabase = async (newHistory: any) => {
     }
   }, [isAdmin]);
 
-  // --- AUTO-GUARDADO DE PLANTILLA BLINDADO POR JORNADA ---
+  // --- AUTO-GUARDADO DE PLANTILLA BLINDADO POR JORNADA Y MERCADO ---
   useEffect(() => {
     const saveSquadData = async () => {
       // 1. Escudo de carga: no hagas nada si no han llegado los datos
       if (!isInitialLoadComplete.current) return;
   
-      // 2. Escudo de jornada: no toques nada si es histórico
-      if (activeMatchday !== 'PRE') return;
+      // 2. 🛡️ ESCUDO DE JORNADA: (Ajusta esto según cómo llames a tu ventana de mercado)
+      // Permitimos guardar si es la fase PRE o si has creado un estado especial para el mercado.
+      // Si mañana la jornada será 'D16', debes quitar esta línea o adaptarla.
+      // Ejemplo: if (activeMatchday !== 'PRE' && activeMatchday !== 'MERCADO_OCTAVOS') return;
+      if (activeMatchday !== 'PRE') {
+         console.warn(`Guardado omitido: La jornada activa es ${activeMatchday}`);
+         return; 
+      }
   
       // 3. 🛡️ PROTECCIÓN ANTIBORRADO (La más importante)
-      // Contamos cuántos jugadores hay. Un equipo real mínimo tiene al menos 11 titulares.
       const totalPlayers = Object.keys(selected).length;
       if (totalPlayers < 11) {
         console.warn("⚠️ GUARDADO BLOQUEADO: El equipo tiene menos de 11 jugadores. Protegiendo datos.");
@@ -3618,7 +3642,31 @@ const saveLineupHistoryToSupabase = async (newHistory: any) => {
   
       // 4. Seguridad de ID
       if (!user?.id || user.id === '000-111') return;
+
+      // 🛑 5. LA ADUANA MAESTRA (Lectura en tiempo real)
+      const { data: config } = await supabase
+        .from('app_settings')
+        .select('is_market_open')
+        .single();
+
+      // Si NO estamos en 'PRE' y el mercado NO está abierto en la base de datos... ¡Bloqueo!
+      if (activeMatchday !== 'PRE' && !config?.is_market_open) {
+        console.error("⛔ OPERACIÓN DENEGADA: El mercado está cerrado en esta jornada.");
+        setIsSquadLocked(true); 
+        
+        // 🔄 EL ROLLBACK MÁGICO: Restauramos la pantalla al último estado guardado
+        if (snapshotSquad) {
+          setSelected(snapshotSquad.selected || {});
+          setBench(snapshotSquad.bench || {});
+          setExtras(snapshotSquad.extras || {});
+          setCaptain(snapshotSquad.captain || null);
+        }
+
+        alert("⏱️ ¡TIEMPO AGOTADO!\nEl mercado ha cerrado a las 21:00h y tus últimos cambios no han entrado a tiempo. Tu plantilla ha vuelto automáticamente a su última configuración válida.");
+        return;
+      }
   
+      // 6. Guardado real en Supabase (Solo si todo es legal)
       const { error } = await supabase
         .from('profiles')
         .upsert({
