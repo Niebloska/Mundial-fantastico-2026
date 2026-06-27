@@ -2001,7 +2001,8 @@ const PRIZE_SCALE = [
   { hits: 10, prize: 20, color: '#4b5563' }, // Gris oscuro
 ];
 
-const QuinielaView = ({ user, setHasUnsavedQuiniela }: { user: any, setHasUnsavedQuiniela?: any }) => {
+// Añadimos 'results' a las props
+const QuinielaView = ({ user, setHasUnsavedQuiniela, results }: { user: any, setHasUnsavedQuiniela?: any, results: Record<string, any> }) => {
   const [selections, setSelections] = useState<Record<string, string[]>>({});
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -2016,7 +2017,54 @@ const QuinielaView = ({ user, setHasUnsavedQuiniela }: { user: any, setHasUnsave
 
   
   // Equipos clasificados (esto se conectará al Modo Dios)
-  const qualifiedTeams: string[] = [];
+  // 🧠 CÁLCULO AUTOMÁTICO DE CLASIFICADOS
+  const qualifiedTeams = useMemo(() => {
+    // Si aún no han cargado los resultados, devolvemos un array vacío
+    if (!results) return [];
+
+    const qualified: string[] = [];
+
+    GROUPS_2026.forEach(group => {
+      let table: any = {};
+      group.teams.forEach(t => (table[t] = { name: t, pts: 0, pj: 0, gf: 0, gc: 0, dif: 0 }));
+
+      // Filtramos y calculamos solo los partidos de este grupo (asumiendo que tienes ALL_MATCHES disponible)
+      ALL_MATCHES.filter(m => group.teams.includes(m.team1)).forEach(match => {
+        const res = results[match.id];
+        // Si no hay resultado para este partido, lo saltamos
+        if (!res || res.home_score === null || res.away_score === null) return;
+
+        // Sumamos Partidos Jugados y Goles
+        table[match.team1].pj++; table[match.team2].pj++;
+        table[match.team1].gf += res.home_score; table[match.team1].gc += res.away_score;
+        table[match.team2].gf += res.away_score; table[match.team2].gc += res.home_score;
+
+        // Reparto de Puntos
+        if (res.home_score > res.away_score) table[match.team1].pts += 3;
+        else if (res.home_score < res.away_score) table[match.team2].pts += 3;
+        else { table[match.team1].pts += 1; table[match.team2].pts += 1; }
+
+        // Diferencia de Goles
+        table[match.team1].dif = table[match.team1].gf - table[match.team1].gc;
+        table[match.team2].dif = table[match.team2].gf - table[match.team2].gc;
+      });
+
+      // Ordenamos a los 4 equipos del grupo por Puntos, luego Diferencia de Goles, luego Goles a Favor
+      const sortedStandings = Object.values(table).sort((a: any, b: any) => b.pts - a.pts || b.dif - a.dif || b.gf - a.gf);
+
+      // Sumamos el total de Partidos Jugados en el grupo. 
+      // En un grupo de 4, cada uno juega 3 partidos. La suma total de PJ de los 4 equipos debe ser 12.
+      const totalMatchesPlayed = sortedStandings.reduce((sum: number, team: any) => sum + team.pj, 0);
+
+      // 🛡️ REGLA: Sólo confirmamos a los clasificados si el grupo está 100% finalizado
+      if (totalMatchesPlayed === 12) {
+        qualified.push(sortedStandings[0].name); // El 1º del grupo
+        qualified.push(sortedStandings[1].name); // El 2º del grupo
+      }
+    });
+
+    return qualified;
+  }, [results]);
 
   useEffect(() => {
     const loadPredictions = async () => {
@@ -4601,9 +4649,10 @@ if (!isInitialSetup && isSquadLocked) {
         {view === 'rules' && <FixedRulesView />}
         {view === 'quiniela' && (
   <QuinielaView 
-    user={user} 
-    setHasUnsavedQuiniela={setHasUnsavedQuiniela} // 👈 EL CABLE NUEVO
-  />
+  user={user} 
+  setHasUnsavedQuiniela={setHasUnsavedQuiniela} // 👈 EL CABLE NUEVO
+  results={results} // 👈 ¡EL NUEVO CABLE DE MARCADORES! 🏆
+/>
   )}
         {view === 'calendar' && <CalendarView results={results} />}
         {view === 'lineups' && (
