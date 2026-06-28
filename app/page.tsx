@@ -3490,7 +3490,8 @@ useEffect(() => {
               const getScoreKey = (p: any) => `${p.nombre.trim()}_${p.equipo.trim()}`;
               const getRawPoints = (p: any): any => {
                 const val = globalScores[getScoreKey(p)]?.[j];
-                return (val === undefined || val === '-') ? '-' : Number(val);
+                // Cambia la línea 3493 por esto:
+                return (val === undefined || val === '-') ? ('-' as any) : (Number(val) as any);
               };
   
               let activeStarters = [...mdSelected];
