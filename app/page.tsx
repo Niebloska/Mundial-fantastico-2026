@@ -3215,7 +3215,7 @@ useEffect(() => {
 
     // 🚨 CÁLCULO ESTRICTO DEL PREMIO
     if (predData && predData.selections) {
-      const allPicks = [...new Set(Object.values(predData.selections).flat())];
+      const allPicks = Array.from(new Set((Object.values(predData.selections) as any[]).flat()));
       // Nota: Al mover la constante fuera del componente, ya no da error aquí
       const aciertosArray = allPicks.filter((team: any) => EQUIPOS_ACIERTO_QUINIELA.includes(team));
       const hitsCount = aciertosArray.length;
