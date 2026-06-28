@@ -3564,7 +3564,8 @@ useEffect(() => {
                        const isCap = matchdayCaptainUid 
                          ? matchdayCaptainUid.trim().toLowerCase() === scoreKey.toLowerCase() 
                          : false;
-                         finalPoints = isCap ? (Number(rawVal) * 2) : Number(rawVal);
+                         // @ts-ignore
+                        finalPoints = isCap ? (Number(rawVal) * 2) : Number(rawVal);
                        totalPoints += finalPoints as number;
                        if (isCap) pRecord.isCaptain = true;
                    }
