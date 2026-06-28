@@ -2304,10 +2304,34 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
   }, [results]);
 
   const getTeamName = (code: string) => {
-    if (!code || code.length < 2) return code;
-    const pos = parseInt(code[0]) - 1;
-    const team = allStandings[code.slice(1)]?.[pos];
-    return team ? team.name : code;
+    if (!code) return code;
+
+    // 🚨 EL DICCIONARIO DE RESCATE OFICIAL PARA EL CALENDARIO
+    const officialThirds: Record<string, string> = {
+      '3-ABCDF': 'Paraguay',
+      '3-CDFGH': 'Suecia',
+      '3-CEFHI': 'Ecuador',
+      '3-EHIJK': 'Congo (RDC)',
+      '3-AEHIJ': 'Senegal',
+      '3-BEFIJ': 'Bosnia y Herzegovina',
+      '3-EFGIJ': 'Argelia',
+      '3-DEIJL': 'Ghana'
+    };
+
+    // Si es uno de los terceros "feos", lo cambiamos al instante
+    if (officialThirds[code]) {
+      return officialThirds[code];
+    }
+
+    // Si es un primero o segundo (ej: "1A"), calculamos la tabla normal
+    if (code.length >= 2 && !code.includes('-')) {
+        const pos = parseInt(code[0]) - 1;
+        const groupCode = code.slice(1);
+        const team = allStandings[groupCode]?.[pos];
+        return team ? team.name : code;
+    }
+    
+    return code;
   };
 
   const knockoutRounds = [
