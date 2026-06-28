@@ -2695,6 +2695,26 @@ const isInitialLoadComplete = useRef(false);
 
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
 
+  // 🚨 1. LISTA DE LAS 32 SELECCIONES CLASIFICADAS A DIECISEISAVOS
+// (Modifica los primeros de la lista si algún nombre varía en tu base de datos)
+const JUGANDO_DIECISEISAVOS = [
+  // 🥇 1ºs y 🥈 2ºs de Grupo
+  'Alemania', 'Francia', 'México', 'Inglaterra', 'Bélgica', 'Estados Unidos', 
+  'Suiza', 'Colombia', 'España', 'Argentina', 'Brasil', 'Portugal', 
+  'Italia', 'Países Bajos', 'Croacia', 'Uruguay', 'Dinamarca', 'Austria',
+  'Turquía', 'Rumanía', 'Eslovaquia', 'Ucrania', 'Eslovenia', 'Albania',
+
+  // 🏅 Los 8 mejores terceros oficiales (¡Con tus nombres exactos de countries.ts!)
+  'Paraguay',
+  'Suecia',
+  'Ecuador',
+  'Congo (RDC)',
+  'Senegal',
+  'Bosnia y Herzegovina',
+  'Argelia',
+  'Ghana'
+];
+
   // 💸 ESTADOS DEL MERCADO DE FICHAJES
   const [snapshotSquad, setSnapshotSquad] = useState<any>(null); // Aquí guardaremos la "Foto"
   const [transfersMade, setTransfersMade] = useState(0); // Contador de fichajes (Máx 6)
@@ -4604,37 +4624,51 @@ if (!isInitialSetup && isSquadLocked) {
                           (owned) => owned.id === p.id
                         );
 
+                        // 🛡️ FILTRO DE SUPERVIVENCIA: ¿Sigue en el mundial?
+                        const estaEliminado = !JUGANDO_DIECISEISAVOS.includes(p.equipo);
+
+                        // Un jugador está bloqueado si ya lo tienes O si está eliminado
+                        const isDisabled = (isAlreadyOwned && !isCurrentPlayer) || estaEliminado;
+
                         return (
                           <div
                             key={p.id}
                             className={`flex items-center justify-between p-3 rounded-xl transition-all duration-300 border 
-                              ${isAlreadyOwned && !isCurrentPlayer 
+                              ${estaEliminado 
+                                ? 'bg-red-950/10 border-red-900/20 grayscale opacity-60 cursor-not-allowed'
+                                : isAlreadyOwned && !isCurrentPlayer 
                                 ? 'bg-black/20 border-white/5 grayscale opacity-50 cursor-not-allowed' 
                                 : 'bg-black/40 border-white/10 hover:border-[#22c55e]'}
                             `}
                           >
                             <div className="flex flex-col">
-                              <span className={`font-black text-sm uppercase ${isAlreadyOwned && !isCurrentPlayer ? 'text-white/40' : 'text-white'}`}>
+                              <span className={`font-black text-sm uppercase flex items-center gap-2 ${isDisabled ? 'text-white/40' : 'text-white'}`}>
                                 {p.nombre}
+                                {/* ETIQUETA ROJA DE ELIMINADO */}
+                                {estaEliminado && (
+                                  <span className="bg-red-500/10 border border-red-500/20 text-red-500 text-[8px] px-1.5 py-0.5 rounded tracking-wider not-italic">
+                                    ELIMINADO
+                                  </span>
+                                )}
                               </span>
                               <div className="flex items-center gap-2 mt-1">
                                 <span
                                   className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
-                                    isAlreadyOwned && !isCurrentPlayer
+                                    isDisabled
                                       ? 'bg-white/10 text-white/30'
                                       : posColors[p.posicion] || 'bg-gray-500 text-white'
                                   }`}
                                 >
                                   {p.posicion}
                                 </span>
-                                <span className={`text-[10px] ${isAlreadyOwned && !isCurrentPlayer ? 'text-white/20' : 'text-white/50'}`}>
+                                <span className={`text-[10px] ${isDisabled ? 'text-white/20' : 'text-white/50'}`}>
                                   {p.equipo}
                                 </span>
                               </div>
                             </div>
                             
                             <div className="flex items-center gap-3">
-                              <span className={`font-black text-sm ${isAlreadyOwned && !isCurrentPlayer ? 'text-white/30' : 'text-white'}`}>
+                              <span className={`font-black text-sm ${isDisabled ? 'text-white/30' : 'text-white'}`}>
                                 {p.precio}M
                               </span>
                               <button
@@ -4642,15 +4676,19 @@ if (!isInitialSetup && isSquadLocked) {
                                   const playerToBuy = { ...p, posicion: getPosCode(p.posicion) };
                                   handleBuyPlayer(playerToBuy);
                                 }}
-                                disabled={!!isAlreadyOwned && !isCurrentPlayer}
+                                disabled={isDisabled}
                                 className={`px-4 py-2 rounded-lg font-black text-xs uppercase transition-all ${
-                                  isAlreadyOwned && !isCurrentPlayer
-                                    ? 'bg-white/5 text-white/20 cursor-not-allowed'
+                                  estaEliminado
+                                    ? 'bg-red-950/40 text-red-500/40 border border-red-900/30 cursor-not-allowed shadow-none'
+                                    : isAlreadyOwned && !isCurrentPlayer
+                                    ? 'bg-white/5 text-white/20 cursor-not-allowed shadow-none'
                                     : 'bg-[#22c55e] text-black hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
                                 }`}
                               >
                                 {isCurrentPlayer
                                   ? 'Actual'
+                                  : estaEliminado
+                                  ? 'Fuera'
                                   : isAlreadyOwned
                                   ? 'Fichado'
                                   : 'Fichar'}
