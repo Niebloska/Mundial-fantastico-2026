@@ -3619,7 +3619,7 @@ useEffect(() => {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-}, [view, isSquadLocked, isEditingLineup, hasUnsavedQuiniela]); // 👈 He añadido isEditingLineup aquí
+  }, [view, isSquadLocked, isEditingSquad, hasUnsavedQuiniela]); // 👈 He sustituido isEditingLineup por isEditingSquad
 
   useEffect(() => {
     // Si entra el administrador, fulminamos el tutorial para que no estorbe
@@ -3627,6 +3627,23 @@ useEffect(() => {
       setTutorialStep(0); 
     }
   }, [isAdmin]);
+
+  const saveSquadToSupabase = async (squadData: any) => {
+    if (!user?.id) return;
+    
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        squad_data: squadData,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' }); 
+  
+    if (error) {
+      console.error("Error al guardar plantilla:", error);
+      alert("Hubo un error al guardar en la base de datos.");
+    }
+  };
 
   // --- AUTO-GUARDADO DE PLANTILLA BLINDADO POR JORNADA Y MERCADO ---
   useEffect(() => {
@@ -3649,7 +3666,7 @@ useEffect(() => {
     };
     
     runAutoSave();
-  }, [selected, bench, extras, captain, user?.id, activeMatchday]);
+  }, [selected, bench, extras, captain, user?.id, activeMatchday]); // 👈 Añadido saveSquadToSupabase
 
   // --- 8. FUNCIONES DE GESTIÓN ---
   const toggleMarket = async () => {
@@ -3987,22 +4004,7 @@ const availableCountriesWithCount = useMemo(() => {
     }
   };
 
-  const saveSquadToSupabase = async (squadData) => {
-    if (!user?.id) return;
-    
-    const { error } = await supabase
-      .from('profiles')
-      .upsert({
-        id: user.id,
-        squad_data: squadData,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' }); 
   
-    if (error) {
-      console.error("Error al guardar plantilla:", error);
-      alert("Hubo un error al guardar en la base de datos.");
-    }
-  };
 
   const navItems = [
     { id: 'rules', label: 'REGLAS', icon: '📖' },
