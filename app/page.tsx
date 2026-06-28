@@ -4550,10 +4550,11 @@ const availableCountriesWithCount = useMemo(() => {
   canInteractField={
     (!isTutorialActive || tutorialStep >= 1) && 
     !isSquadLocked &&
-    isEditingSquad // 🛡️ ESCUDO: Solo interactuable si está en modo edición
+    isEditingSquad
   }
   activeSlot={activeSlot}
-  setActiveSlot={(slot) => {
+  // 👇 AQUÍ ESTÁ EL CAMBIO: añadimos : any a slot
+  setActiveSlot={(slot: any) => {
     // 🛡️ Doble seguridad: Bloqueo si el usuario intenta interactuar sin editar
     if (!isEditingSquad) {
       alert("¡Debes pulsar el botón 'EDITAR ALINEACIÓN' primero!");
