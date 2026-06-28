@@ -49,9 +49,10 @@ const getPosCode = (pos: string) => {
 
 // Esta función es la que YA tienes, simplemente la sacamos fuera
 // para poder llamarla tanto en QuinielaView como en la carga del perfil.
-const calcularPremio = (selections, qualifiedTeams) => {
+// Corregido: Añadimos los tipos (any para el objeto de selecciones y string[] para la lista de equipos)
+const calcularPremio = (selections: any, qualifiedTeams: string[]) => {
   const allPicks = Object.values(selections).flat();
-  const hitsCount = allPicks.filter(team => qualifiedTeams.includes(team)).length;
+  const hitsCount = allPicks.filter((team: any) => qualifiedTeams.includes(team)).length;
   const prize = [...PRIZE_SCALE].find((p) => hitsCount >= p.hits)?.prize || 0;
   return prize;
 };
