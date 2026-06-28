@@ -99,7 +99,7 @@ export const ALL_PLAYERS: Player[] = [
   { equipo: 'Argentina', posicion: 'POR', nombre: 'Juan Musso', precio: 20 },
   { equipo: 'Argentina', posicion: 'POR', nombre: 'Rulli', precio: 36 },
 
-  { equipo: 'Argentina', posicion: 'DEF', nombre: 'Balerdi', precio: 25 },
+  { equipo: 'Argentina', posicion: 'DEF', nombre: 'Marcos Senesi', precio: 25 },
   { equipo: 'Argentina', posicion: 'DEF', nombre: 'Montiel', precio: 25 },
   { equipo: 'Argentina', posicion: 'DEF', nombre: 'Cristian Romero', precio: 53 },
   { equipo: 'Argentina', posicion: 'DEF', nombre: 'Medina', precio: 25 },
