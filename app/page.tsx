@@ -3490,8 +3490,8 @@ useEffect(() => {
               const getScoreKey = (p: any) => `${p.nombre.trim()}_${p.equipo.trim()}`;
               const getRawPoints = (p: any): any => {
                 const val = globalScores[getScoreKey(p)]?.[j];
-                // Cambia la línea 3493 por esto:
-                return (val === undefined || val === '-') ? ('-' as any) : (Number(val) as any);
+                // @ts-ignore
+                return (val === undefined || val === '-') ? '-' : Number(val);
               };
   
               let activeStarters = [...mdSelected];
