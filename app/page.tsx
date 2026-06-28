@@ -3419,6 +3419,9 @@ useEffect(() => {
     const fetchLeaderboard = async () => {
       if (view !== 'scores') return;
       
+      // 🔥 1. AÑADIMOS LA DESCARGA DE LA TABLA TRANSFERS AL INICIO
+      const { data: transfersData } = await supabase.from('transfers').select('*');
+
       const { data, error } = await supabase
         .from('profiles')
         .select('id, team_name, username, squad_data, lineups_history, has_paid');
@@ -3435,6 +3438,16 @@ useEffect(() => {
           const b = u.squad_data?.bench || {};
           const e = u.squad_data?.extras || {};
           
+          // 🔥 2. MAPA RÁPIDO DE LA JORNADA EN LA QUE ENTRÓ CADA JUGADOR PARA ESTE USUARIO
+          const userTransfers = transfersData?.filter(t => t.user_id === u.id) || [];
+          const entryMatchdayMap: Record<string, number> = {};
+          userTransfers.forEach(t => {
+              if (t.transfer_type === 'BUY') {
+                  // Convierte 'D16' en índice para comparar con matchdays
+                  entryMatchdayMap[t.player_name] = t.matchday === 'D16' ? 3 : 0; // J1=0, J2=1, J3=2, 16V=3...
+              }
+          });
+
           const getUid = (p: any) => p?.id || p?.nombre;
   
           const activePlayerUids = new Set(
@@ -3458,7 +3471,9 @@ useEffect(() => {
                 ...player,
                 isActive: activePlayerUids.has(uid),
                 isCaptain: false,
-                puntosCalculados: emptyScores
+                puntosCalculados: emptyScores,
+                // 🔥 3. GUARDAMOS EL ÍNDICE DE ENTRADA EN EL JUGADOR PARA LUEGO USARLO EN LA VISTA
+                startingIndex: entryMatchdayMap[player.nombre] || 0
               });
             }
           };
@@ -3472,7 +3487,7 @@ useEffect(() => {
   
           let totalPoints = 0;
   
-          matchdays.forEach(j => {
+          matchdays.forEach((j, mdIdx) => { // 🔥 4. AÑADIDO mdIdx para saber en qué jornada estamos iterando
             const snapshot = history[j] || { selected: s, bench: b, captain: u.squad_data?.captain };
           
             if (snapshot && snapshot.selected) {
@@ -3559,7 +3574,10 @@ useEffect(() => {
                 let finalPoints = '-';
                 const isActiveStarter = activeStarters.some(st => getUid(st) === uid);
   
-                if (isActiveStarter) {
+                // 🔥 5. FILTRO DE FICHAJES: Solo suma puntos y asigna valor real si la jornada es válida para él
+                const isEligibleThisMatchday = mdIdx >= pRecord.startingIndex;
+
+                if (isActiveStarter && isEligibleThisMatchday) {
                    if (rawVal !== '-') {
                        const isCap = matchdayCaptainUid 
                          ? matchdayCaptainUid.trim().toLowerCase() === scoreKey.toLowerCase() 
@@ -3569,7 +3587,10 @@ useEffect(() => {
                         totalPoints += (finalPoints as unknown as number);
                        if (isCap) pRecord.isCaptain = true;
                    }
-                } 
+                } else if (!isEligibleThisMatchday) {
+                    // Si no es elegible, forzamos un valor para que el front lo pinte vacío o en 0
+                    finalPoints = '-'; 
+                }
                 
                 pRecord.puntosCalculados[j] = finalPoints;
               });
@@ -5375,55 +5396,65 @@ const resolveCaptain = (user: any, md: string) => {
                   </thead>
                   <tbody className="divide-y divide-white/5">
                   {u.players.length > 0 ? (
-                  u.players.map((p: any, idx: number) => {
-                    const matchdays = ['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'];
-                    const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
-                    const flagUrl = getFlag(p.equipo);
-                    const isSold = p.isActive === false;
-                  
-                    const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
-                    
-                    // 🚀 CORRECCIÓN DEFINITIVA: Usamos los puntos del historial (p.puntos)
-                    // Ignoramos completamente el globalScores aquí para que no arrastre puntos de jugadores no fichados
-                    const ptTot = matchdays.reduce((sum: number, j: string) => {
-                        const val = p.puntos?.[j];
-                        return sum + (val !== '-' && val !== undefined ? Number(val) : 0);
-                    }, 0);
-                  
-                    const isCapNow = resolveCaptain(u, u.snapshotMatchday || 'J1') === scoreKey;
-                  
-                    return (
-                      <tr key={p.id || `${scoreKey}-${idx}`} className={`transition-colors ${isSold ? 'bg-black/40 opacity-30 grayscale' : 'hover:bg-white/5 bg-[#0f172a]'}`}>
-                        <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/40' : 'bg-[#0f172a]'}`}>
-                          <div className="flex items-center justify-between min-w-[200px]">
-                            <div className="flex items-center gap-4">
-                              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${isSold ? 'bg-white/10 text-white/40' : (posColors[p.posicion] || 'bg-gray-500 text-white')}`}>{p.posicion}</span>
-                              <span className="w-6 flex justify-center items-center">
-                                {flagUrl ? <img src={flagUrl} alt={p.equipo} className="w-4 h-3 object-cover rounded-[2px]" /> : '🏳️'}
-                              </span>
-                              <span className={`font-bold truncate max-w-[100px] ${isSold ? 'line-through text-white/30' : 'text-white/90'}`}>
-                                {p.nombre} {isCapNow && !isSold && <span className="text-[#eab308] ml-1">C</span>}
-                              </span>
-                            </div>
-                            <span className={`font-black text-sm ml-4 ${isSold ? 'text-white/30' : 'text-white'}`}>{ptTot}</span>
-                          </div>
-                        </td>
-                        
-                        {matchdays.map((j: string) => {
-                          // Leemos DIRECTAMENTE lo que calculó la función fetchLeaderboard
-                          const showPts = p.puntos?.[j] !== undefined ? p.puntos[j] : '-';
-                          return (
-                              <td key={j} className="p-3 text-center text-white/90 font-bold">
-                                {showPts}
-                              </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">No hay jugadores.</td></tr>
-                )}
+  u.players.map((p: any, idx: number) => {
+    const matchdays = ['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'];
+    const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
+    const flagUrl = getFlag(p.equipo);
+    const isSold = p.isActive === false;
+  
+    const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
+    const isCapNow = resolveCaptain(u, u.snapshotMatchday || 'J1') === scoreKey;
+  
+    // 🏆 1. FILTRADO CON EL STARTING INDEX DEL PASO 1
+    // Recuperamos el índice de la jornada en la que se compró el jugador (0 para J1, 3 para 16V...)
+    const startIndex = p.startingIndex || 0;
+
+    // 🚀 2. RECALCULAMOS EL TOTAL DE LA FILA CONSIDERANDO EL FICHAJE
+    const ptTot = matchdays.reduce((sum: number, j: string, mIdx: number) => {
+        // Si la jornada actual que recorre el bucle es anterior al fichaje, NO SUMA
+        if (mIdx < startIndex) return sum; 
+        
+        const val = p.puntos?.[j];
+        return sum + (val !== '-' && val !== undefined ? Number(val) : 0);
+    }, 0);
+  
+    return (
+      <tr key={p.id || `${scoreKey}-${idx}`} className={`transition-colors ${isSold ? 'bg-black/40 opacity-30 grayscale' : 'hover:bg-white/5 bg-[#0f172a]'}`}>
+        <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/40' : 'bg-[#0f172a]'}`}>
+          <div className="flex items-center justify-between min-w-[200px]">
+            <div className="flex items-center gap-4">
+              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${isSold ? 'bg-white/10 text-white/40' : (posColors[p.posicion] || 'bg-gray-500 text-white')}`}>{p.posicion}</span>
+              <span className="w-6 flex justify-center items-center">
+                {flagUrl ? <img src={flagUrl} alt={p.equipo} className="w-4 h-3 object-cover rounded-[2px]" /> : '🏳️'}
+              </span>
+              <span className={`font-bold truncate max-w-[100px] ${isSold ? 'line-through text-white/30' : 'text-white/90'}`}>
+                {p.nombre} {isCapNow && !isSold && <span className="text-[#eab308] ml-1">C</span>}
+              </span>
+            </div>
+            <span className={`font-black text-sm ml-4 ${isSold ? 'text-white/30' : 'text-white'}`}>{ptTot}</span>
+          </div>
+        </td>
+        
+        {matchdays.map((j: string, mIdx: number) => {
+          const rawPts = p.puntos?.[j] !== undefined ? p.puntos[j] : '-';
+          
+          // 🚀 3. OCULTACIÓN VISUAL EN LAS CASILLAS
+          // Si el partido corresponde a una jornada anterior a su fichaje, forzamos un '0' text-white/20 tachado
+          const isBeforeTransfer = mIdx < startIndex;
+          const showPts = (isBeforeTransfer && rawPts !== '-') ? '0' : rawPts;
+
+          return (
+              <td key={j} className={`p-3 text-center font-bold ${isBeforeTransfer ? 'text-white/20 line-through' : 'text-white/90'}`}>
+                {showPts}
+              </td>
+          );
+        })}
+      </tr>
+    );
+  })
+) : (
+  <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">No hay jugadores.</td></tr>
+)}
                   </tbody>
                 </table>
                 </div>
