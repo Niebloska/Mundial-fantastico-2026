@@ -2673,17 +2673,19 @@ export default function MundialApp() {
   const [lineupsMatchday, setLineupsMatchday] = useState('J1');
 
   const [isEditingLineup, setIsEditingLineup] = useState(false);
+  
+  const [isEditingSquad, setIsEditingSquad] = useState(false);
 
   const [selectedScoresMatchday, setSelectedScoresMatchday] = useState('J1');
 
   // Añade esto al inicio de tu componente Page
-const cleanKey = (str: string) => {
+  const cleanKey = (str: string) => {
   if (!str) return "";
   return str.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-};
+  };
 
   // 🛡️ LOCK DE SEGURIDAD ABSOLUTA: Bloquea físicamente el auto-guardado en el arranque
-const isInitialLoadComplete = useRef(false);
+  const isInitialLoadComplete = useRef(false);
 
   // Estados para Intro y Música
   const [showWelcome, setShowWelcome] = useState(true);
@@ -2704,7 +2706,7 @@ const isInitialLoadComplete = useRef(false);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
 
   // 🚨 1. LISTA OFICIAL Y DEFINITIVA DE LAS 32 SELECCIONES EN DIECISEISAVOS
-const JUGANDO_DIECISEISAVOS = [
+  const JUGANDO_DIECISEISAVOS = [
   'Alemania', 'Paraguay', 
   'Francia', 'Suecia',
   'Sudáfrica', 'Canadá', 
@@ -2721,16 +2723,16 @@ const JUGANDO_DIECISEISAVOS = [
   'Australia', 'Egipto',
   'Suiza', 'Argelia', 
   'Colombia', 'Ghana'
-];
+  ];
 
-const EQUIPOS_ACIERTO_QUINIELA = [
+  const EQUIPOS_ACIERTO_QUINIELA = [
   'Alemania', 'Francia', 'Sudáfrica', 'Canadá', 
   'Países Bajos', 'Marruecos', 'Portugal', 'Croacia', 
   'España', 'Austria', 'Estados Unidos', 'Bélgica',
   'Brasil', 'Japón', 'Costa de Marfil', 'Noruega', 
   'México', 'Inglaterra', 'Argentina', 'Cabo Verde', 
   'Australia', 'Egipto', 'Suiza', 'Colombia'
-];
+  ];
 
   // 💸 ESTADOS DEL MERCADO DE FICHAJES
   const [snapshotSquad, setSnapshotSquad] = useState<any>(null); // Aquí guardaremos la "Foto"
@@ -3628,13 +3630,9 @@ const saveLineupHistoryToSupabase = async (newHistory: any) => {
     window.history.pushState(null, '', window.location.pathname);
     
     const handlePopState = () => {
-      if (view === 'squad' && !isSquadLocked) {
-        alert('⚠️ ACCIÓN BLOQUEADA: Debes validar la plantilla antes de salir de la app.');
-        window.history.pushState(null, '', window.location.pathname);
-        return;
-      }
-      if (view === 'quiniela' && hasUnsavedQuiniela) {
-        alert('⚠️ ACCIÓN BLOQUEADA: Debes guardar la quiniela antes de salir de la app.');
+      // 🚨 Solo bloqueamos si estamos en 'squad' Y realmente estamos editando
+      if (view === 'squad' && isEditingLineup) {
+        alert('⚠️ ¡Cuidado! Tienes cambios sin guardar. Valida tu plantilla o pulsa "Cancelar" para descartar.');
         window.history.pushState(null, '', window.location.pathname);
         return;
       }
@@ -3649,12 +3647,8 @@ const saveLineupHistoryToSupabase = async (newHistory: any) => {
     };
 
     window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, [view, isSquadLocked, hasUnsavedQuiniela]); // 👈 Añadido al array
+    return () => window.removeEventListener('popstate', handlePopState);
+}, [view, isSquadLocked, isEditingLineup, hasUnsavedQuiniela]); // 👈 He añadido isEditingLineup aquí
 
   useEffect(() => {
     // Si entra el administrador, fulminamos el tutorial para que no estorbe
@@ -3851,7 +3845,30 @@ const availableCountriesWithCount = useMemo(() => {
     });
   }, [searchTerm, filterCountry, sortOption, activeSlot, filterPosition]);
 
+  const handleCancelEdit = () => {
+    // 🚨 Aquí está tu mensaje solicitado:
+    const confirmMessage = "¿Seguro que quieres descartar los cambios y volver a tu plantilla previa a esta ventana de mercado?";
+    
+    if (window.confirm(confirmMessage)) {
+      // Restauramos desde el snapshot (la última foto guardada en BD)
+      if (snapshotSquad) {
+        setSelected(snapshotSquad.selected || {});
+        setBench(snapshotSquad.bench || {});
+        setExtras(snapshotSquad.extras || {});
+        setCaptain(snapshotSquad.captain || null);
+      }
+      // Salimos del modo edición
+      setIsEditingLineup(false);
+    }
+  };
+
   const handleBuyPlayer = (player: any) => {
+    // 🛡️ ESCUDO: Si no estamos editando, prohibimos fichar
+    if (!isEditingSquad) {
+      alert("¡Debes pulsar el botón 'EDITAR ALINEACIÓN' para poder fichar jugadores!");
+      return;
+    }
+
     // 🛡️ CONTROL CORONAVIRUS: ¿El mercado está abierto?
     if (!isMarketOpen) {
       return alert('❌ MERCADO CERRADO:\nNo se permiten realizar fichajes en este momento.');
@@ -3900,30 +3917,30 @@ const availableCountriesWithCount = useMemo(() => {
     }
 
     // 🔄 CONTROL INTELIGENTE DE LOS 6 CAMBIOS
-const isInitialSetup = Date.now() < JORNADAS_DEADLINES[0].date;
+    const isInitialSetup = Date.now() < JORNADAS_DEADLINES[0].date;
 
-// AÑADIMOS LA CONDICIÓN: Si el mercado está abierto (isSquadLocked es false), 
-// saltamos la lógica de bloqueo de cambios.
-if (!isInitialSetup && isSquadLocked) {
-    const isIncomingPlayerNew = !snapshotSquad || ![
-      ...Object.values(snapshotSquad.selected || {}),
-      ...Object.values(snapshotSquad.bench || {}),
-      ...Object.values(snapshotSquad.extras || {})
-    ].some((p: any) => p && p.nombre === player.nombre && p.equipo === player.equipo);
+    // AÑADIMOS LA CONDICIÓN: Si el mercado está abierto (isSquadLocked es false), 
+    // saltamos la lógica de bloqueo de cambios.
+    if (!isInitialSetup && isSquadLocked) {
+        const isIncomingPlayerNew = !snapshotSquad || ![
+          ...Object.values(snapshotSquad.selected || {}),
+          ...Object.values(snapshotSquad.bench || {}),
+          ...Object.values(snapshotSquad.extras || {})
+        ].some((p: any) => p && p.nombre === player.nombre && p.equipo === player.equipo);
 
-    const isCurrentPlayerNew = !snapshotSquad || (currentPlayerInSlot && ![
-      ...Object.values(snapshotSquad.selected || {}),
-      ...Object.values(snapshotSquad.bench || {}),
-      ...Object.values(snapshotSquad.extras || {})
-    ].some((p: any) => p && p.nombre === currentPlayerInSlot.nombre && p.equipo === currentPlayerInSlot.equipo));
+        const isCurrentPlayerNew = !snapshotSquad || (currentPlayerInSlot && ![
+          ...Object.values(snapshotSquad.selected || {}),
+          ...Object.values(snapshotSquad.bench || {}),
+          ...Object.values(snapshotSquad.extras || {})
+        ].some((p: any) => p && p.nombre === currentPlayerInSlot.nombre && p.equipo === currentPlayerInSlot.equipo));
 
-    // Si el jugador que entra es nuevo, ya llevas 6 cambios, Y NO estás sustituyendo a otro jugador nuevo... ¡BLOQUEO!
-    if (isIncomingPlayerNew && transfersMade >= 6 && !isCurrentPlayerNew) {
-      return alert(
-        `❌ LÍMITE DE CAMBIOS:\nHas agotado tus 6 cambios permitidos para esta ventana de mercado.`
-      );
+        // Si el jugador que entra es nuevo, ya llevas 6 cambios, Y NO estás sustituyendo a otro jugador nuevo... ¡BLOQUEO!
+        if (isIncomingPlayerNew && transfersMade >= 6 && !isCurrentPlayerNew) {
+          return alert(
+            `❌ LÍMITE DE CAMBIOS:\nHas agotado tus 6 cambios permitidos para esta ventana de mercado.`
+          );
+        }
     }
-}
 
     // 4. VALIDACIÓN: Presupuesto
     const futureBudget = currentBudget + currentSlotValue - player.precio;
@@ -3998,7 +4015,14 @@ if (!isInitialSetup && isSquadLocked) {
   }, [selected]);
 
   const handleSellPlayer = () => {
+    // 🛡️ ESCUDO: Si no estamos editando, prohibimos vender
+    if (!isEditingSquad) {
+      alert("¡Debes pulsar el botón 'EDITAR ALINEACIÓN' para poder vender jugadores!");
+      return;
+    }
+  
     if (!activeSlot) return;
+  
     if (activeSlot.type === 'titular') {
       const newObj = { ...selected };
       delete newObj[activeSlot.id];
@@ -4014,6 +4038,22 @@ if (!isInitialSetup && isSquadLocked) {
       setExtras(newObj);
     }
     setActiveSlot(null);
+  };
+
+  const handleCancelSquadEdit = () => {
+    const confirmMessage = "¿Seguro que quieres descartar los cambios y volver a tu plantilla previa a esta ventana de mercado?";
+    
+    if (window.confirm(confirmMessage)) {
+      // Restauramos el estado desde el último snapshot cargado al entrar en la app
+      if (snapshotSquad) {
+        setSelected(snapshotSquad.selected || {});
+        setBench(snapshotSquad.bench || {});
+        setExtras(snapshotSquad.extras || {});
+        setCaptain(snapshotSquad.captain || null);
+      }
+      // Salimos del modo edición de plantilla
+      setIsEditingSquad(false);
+    }
   };
 
   const navItems = [
@@ -4440,34 +4480,42 @@ if (!isInitialSetup && isSquadLocked) {
                     {formationInfo.count > 0 && `(${formationInfo.count}/11)`}
                   </div>
 
-                  {/* 👇 BOTÓN DE VALIDACIÓN DE PLANTILLA 👇 */}
-                  {!isSquadLocked && formationInfo.isValidTactic && (
-                    <div className="mt-4 flex justify-center">
-                      {isEditingLineup ? (
-                        <button
-                          onClick={() => {
-                            // 1. Guardamos en base de datos
-                            saveLineupHistoryToSupabase(snapshotSquad);
-                            
-                            // 2. 🚨 CLAVE: Apagamos el modo edición para romper el bucle "¡Cuidado!"
-                            setIsEditingLineup(false); 
-                            
-                            alert("¡Alineación validada correctamente! La foto ha sido guardada en la base de datos.");
-                          }}
-                          className="px-8 py-3 bg-green-500 hover:bg-green-600 text-black font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(34,197,94,0.4)] border-2 border-green-400 flex items-center justify-center gap-2 transform active:scale-95"
-                        >
-                          ✅ VALIDAR ALINEACIÓN
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => setIsEditingLineup(true)}
-                          className="px-8 py-3 bg-[#eab308] hover:bg-yellow-400 text-black font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(234,179,8,0.4)] border-2 border-yellow-300 flex items-center justify-center gap-2 transform active:scale-95"
-                        >
-                          ✏️ EDITAR ALINEACIÓN
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  {/* 👇 BOTÓN DE VALIDACIÓN Y CANCELACIÓN 👇 */}
+{!isSquadLocked && formationInfo.isValidTactic && (
+  <div className="mt-4 flex justify-center gap-2">
+    {isEditingLineup ? (
+      <>
+        {/* BOTÓN CANCELAR */}
+        <button
+          onClick={handleCancelEdit}
+          className="px-6 py-3 bg-red-600/20 hover:bg-red-600/40 text-red-500 font-black uppercase tracking-widest rounded-xl border border-red-500/30 transition-all transform active:scale-95"
+        >
+          CANCELAR
+        </button>
+
+        {/* BOTÓN VALIDAR */}
+        <button
+          onClick={() => {
+            saveLineupHistoryToSupabase(snapshotSquad);
+            setIsEditingLineup(false); 
+            alert("¡Alineación validada correctamente! La foto ha sido guardada.");
+          }}
+          className="px-8 py-3 bg-green-500 hover:bg-green-600 text-black font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(34,197,94,0.4)] border-2 border-green-400 flex items-center justify-center gap-2 transform active:scale-95"
+        >
+          ✅ VALIDAR
+        </button>
+      </>
+    ) : (
+      /* BOTÓN EDITAR (Estado inicial) */
+      <button
+        onClick={() => setIsEditingLineup(true)}
+        className="px-8 py-3 bg-[#eab308] hover:bg-yellow-400 text-black font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(234,179,8,0.4)] border-2 border-yellow-300 flex items-center justify-center gap-2 transform active:scale-95"
+      >
+        ✏️ EDITAR ALINEACIÓN
+      </button>
+    )}
+  </div>
+)}
                 </div>
 
                 {/* Presupuesto y Vender */}
@@ -4508,75 +4556,95 @@ if (!isInitialSetup && isSquadLocked) {
                 </div>
               </div>
 
-              {/* CAMPO DE FÚTBOL */}
-              <Field
-                selected={selected}
-                step={step}
-                canInteractField={
-                  (!isTutorialActive || tutorialStep >= 1) && 
-                  !isSquadLocked
-                }
-                activeSlot={activeSlot}
-                setActiveSlot={setActiveSlot}
-                captain={captain}
-                setCaptain={(id: any) => {
-                  if (isSquadLocked) return;
-                  setCaptain(id);
-                  if (tutorialStep === 2) nextStep();
-                }}
-              />
+{/* CAMPO DE FÚTBOL */}
+<Field
+  selected={selected}
+  step={step}
+  canInteractField={
+    (!isTutorialActive || tutorialStep >= 1) && 
+    !isSquadLocked &&
+    isEditingSquad // 🛡️ ESCUDO: Solo interactuable si está en modo edición
+  }
+  activeSlot={activeSlot}
+  setActiveSlot={(slot) => {
+    // 🛡️ Doble seguridad: Bloqueo si el usuario intenta interactuar sin editar
+    if (!isEditingSquad) {
+      alert("¡Debes pulsar el botón 'EDITAR ALINEACIÓN' primero!");
+      return;
+    }
+    setActiveSlot(slot);
+  }}
+  captain={captain}
+  setCaptain={(id: any) => {
+    // 🛡️ ESCUDO: Bloqueo de cambio de capitán
+    if (isSquadLocked || !isEditingSquad) {
+      if (!isEditingSquad) alert("¡Debes pulsar el botón 'EDITAR ALINEACIÓN' primero!");
+      return;
+    }
+    setCaptain(id);
+    if (tutorialStep === 2) nextStep();
+  }}
+/>
 
               {/* BANQUILLO Y GRADA */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-4">
-                  <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">
-                    Banquillo Oficial
-                  </h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].map((id) => (
-                      <BenchCard
-                      key={id}
-                      id={id}
-                      player={bench[id]}
-                      isActive={activeSlot?.id === id}
-                      onClick={() => {                                           
-                        if (!isSquadLocked) {
-                          setActiveSlot({
-                            id,
-                            type: 'bench',
-                            pos: bench[id]?.posicion,
-                          });
-                        }
-                      }}
-                    />
-                    ))}
-                  </div>
-                </div>
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-4">
-                  <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">
-                    No Convocados (Grada)
-                  </h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['NC1', 'NC2', 'NC3', 'NC4'].map((id) => (
-                      <BenchCard
-                      key={id}
-                      id={id}
-                      player={extras[id]}
-                      isActive={activeSlot?.id === id}
-                      onClick={() => {
-                        if (!isSquadLocked) {
-                          setActiveSlot({
-                            id,
-                            type: 'extras',
-                            pos: extras[id]?.posicion,
-                          });
-                        }
-                      }}
-                    />
-                    ))}
-                  </div>
-                </div>
-              </div>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+  <div className="bg-white/5 border border-white/10 rounded-3xl p-4">
+    <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">
+      Banquillo Oficial
+    </h3>
+    <div className="grid grid-cols-2 gap-2">
+      {['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].map((id) => (
+        <BenchCard
+          key={id}
+          id={id}
+          player={bench[id]}
+          isActive={activeSlot?.id === id}
+          onClick={() => {
+            // 🛡️ ESCUDO: Bloqueo de interacción si no está editando
+            if (isSquadLocked) return;
+            if (!isEditingSquad) {
+              alert("¡Debes pulsar el botón 'EDITAR ALINEACIÓN' primero!");
+              return;
+            }
+            setActiveSlot({
+              id,
+              type: 'bench',
+              pos: bench[id]?.posicion,
+            });
+          }}
+        />
+      ))}
+    </div>
+  </div>
+  <div className="bg-white/5 border border-white/10 rounded-3xl p-4">
+    <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">
+      No Convocados (Grada)
+    </h3>
+    <div className="grid grid-cols-2 gap-2">
+      {['NC1', 'NC2', 'NC3', 'NC4'].map((id) => (
+        <BenchCard
+          key={id}
+          id={id}
+          player={extras[id]}
+          isActive={activeSlot?.id === id}
+          onClick={() => {
+            // 🛡️ ESCUDO: Bloqueo de interacción si no está editando
+            if (isSquadLocked) return;
+            if (!isEditingSquad) {
+              alert("¡Debes pulsar el botón 'EDITAR ALINEACIÓN' primero!");
+              return;
+            }
+            setActiveSlot({
+              id,
+              type: 'extras',
+              pos: extras[id]?.posicion,
+            });
+          }}
+        />
+      ))}
+    </div>
+  </div>
+</div>
             </div>
 
             {/* 2. EL NUEVO MERCADO FLOTANTE */}
@@ -4977,7 +5045,7 @@ if (!isInitialSetup && isSquadLocked) {
                     Guardar Alineación
                   </button>
                 )
-             ) : (
+                ) : (
                 <div className="bg-white/5 border border-white/10 text-white/40 px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase flex items-center gap-2 cursor-not-allowed">
                   <span>🔒 Cerrado</span>
                 </div>
