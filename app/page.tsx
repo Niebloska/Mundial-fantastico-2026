@@ -4006,21 +4006,20 @@ const availableCountriesWithCount = useMemo(() => {
   }, [searchTerm, filterCountry, sortOption, activeSlot, filterPosition]);
 
   const handleCancelEdit = () => {
-    // 🚨 Aquí está tu mensaje solicitado:
     const confirmMessage = "¿Seguro que quieres descartar los cambios y volver a tu plantilla previa a esta ventana de mercado?";
     
     if (window.confirm(confirmMessage)) {
-      // Restauramos desde el snapshot (la última foto guardada en BD)
-      if (snapshotSquad) {
-        setSelected(snapshotSquad.selected || {});
-        setBench(snapshotSquad.bench || {});
-        setExtras(snapshotSquad.extras || {});
-        setCaptain(snapshotSquad.captain || null);
+      // Usamos el objeto 'snapshot' que ya tienes en tus datos
+      if (squadData.snapshot) {
+        setSelected(squadData.snapshot.selected || {});
+        setBench(squadData.snapshot.bench || {});
+        setExtras(squadData.snapshot.extras || {});
+        // Nota: Si el snapshot no guarda el capitán por separado, 
+        // puedes mantener el actual o buscarlo en el snapshot si lo tuvieras ahí.
       }
-      // Salimos del modo edición
       setIsEditingLineup(false);
     }
-  };
+};
 
   const handleBuyPlayer = (player: any) => {
     // 🛡️ ESCUDO: Si no estamos editando, prohibimos fichar
