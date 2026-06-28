@@ -47,7 +47,14 @@ const getPosCode = (pos: string) => {
   return pos; 
 };
 
-
+// Esta función es la que YA tienes, simplemente la sacamos fuera
+// para poder llamarla tanto en QuinielaView como en la carga del perfil.
+export const calcularPremio = (selections, qualifiedTeams) => {
+  const allPicks = Object.values(selections).flat();
+  const hitsCount = allPicks.filter(team => qualifiedTeams.includes(team)).length;
+  const prize = [...PRIZE_SCALE].find((p) => hitsCount >= p.hits)?.prize || 0;
+  return prize;
+};
 
 // ==========================================
 // 10. COMPONENTE TUTORIAL (ONBOARDING)
@@ -1954,6 +1961,7 @@ const PRIZE_SCALE = [
   { hits: 10, prize: 20, color: '#4b5563' }, // Gris oscuro
 ];
 
+
 // Añadimos 'results' a las props
 const QuinielaView = ({ user, setHasUnsavedQuiniela, results }: { user: any, setHasUnsavedQuiniela?: any, results: Record<string, any> }) => {
   const [selections, setSelections] = useState<Record<string, string[]>>({});
@@ -2181,7 +2189,7 @@ const QuinielaView = ({ user, setHasUnsavedQuiniela, results }: { user: any, set
             {PRIZE_SCALE.map((item) => {
               // Lógica de iluminación:
               const isHighestAchieved = currentPrize === item.prize && hitsCount > 0;
-              const isAchieved = hitsCount >= item.hits && hitsCount > 0;
+              const isAchieved = hitsCount === item.hits;
 
               return (
                 <div
@@ -2695,24 +2703,33 @@ const isInitialLoadComplete = useRef(false);
 
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
 
-  // 🚨 1. LISTA DE LAS 32 SELECCIONES CLASIFICADAS A DIECISEISAVOS
-// (Modifica los primeros de la lista si algún nombre varía en tu base de datos)
+  // 🚨 1. LISTA OFICIAL Y DEFINITIVA DE LAS 32 SELECCIONES EN DIECISEISAVOS
 const JUGANDO_DIECISEISAVOS = [
-  // 🥇 1ºs y 🥈 2ºs de Grupo
-  'Alemania', 'Francia', 'México', 'Inglaterra', 'Bélgica', 'Estados Unidos', 
-  'Suiza', 'Colombia', 'España', 'Argentina', 'Brasil', 'Portugal', 
-  'Italia', 'Países Bajos', 'Croacia', 'Uruguay', 'Dinamarca', 'Austria',
-  'Turquía', 'Rumanía', 'Eslovaquia', 'Ucrania', 'Eslovenia', 'Albania',
+  'Alemania', 'Paraguay', 
+  'Francia', 'Suecia',
+  'Sudáfrica', 'Canadá', 
+  'Países Bajos', 'Marruecos',
+  'Portugal', 'Croacia', 
+  'España', 'Austria',
+  'Estados Unidos', 'Bosnia y Herzegovina', 
+  'Bélgica', 'Senegal',
+  'Brasil', 'Japón', 
+  'Costa de Marfil', 'Noruega',
+  'México', 'Ecuador', 
+  'Inglaterra', 'Congo (RDC)',
+  'Argentina', 'Cabo Verde', 
+  'Australia', 'Egipto',
+  'Suiza', 'Argelia', 
+  'Colombia', 'Ghana'
+];
 
-  // 🏅 Los 8 mejores terceros oficiales (¡Con tus nombres exactos de countries.ts!)
-  'Paraguay',
-  'Suecia',
-  'Ecuador',
-  'Congo (RDC)',
-  'Senegal',
-  'Bosnia y Herzegovina',
-  'Argelia',
-  'Ghana'
+const EQUIPOS_ACIERTO_QUINIELA = [
+  'Alemania', 'Francia', 'Sudáfrica', 'Canadá', 
+  'Países Bajos', 'Marruecos', 'Portugal', 'Croacia', 
+  'España', 'Austria', 'Estados Unidos', 'Bélgica',
+  'Brasil', 'Japón', 'Costa de Marfil', 'Noruega', 
+  'México', 'Inglaterra', 'Argentina', 'Cabo Verde', 
+  'Australia', 'Egipto', 'Suiza', 'Colombia'
 ];
 
   // 💸 ESTADOS DEL MERCADO DE FICHAJES
@@ -3182,95 +3199,126 @@ const handleSendToExtras = () => {
   setActiveSlot(null);
 };
 
-  useEffect(() => {
-    const fetchUserProfile = async (sessionUser: any) => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('team_name, username, squad_data')
-        .eq('id', sessionUser.id)
-        .single();
+useEffect(() => {
+  const fetchUserProfile = async (sessionUser: any) => {
+    const [profileResult, predResult] = await Promise.all([
+      supabase.from('profiles').select('team_name, username, squad_data').eq('id', sessionUser.id).single(),
+      supabase.from('user_predictions').select('selections').eq('user_id', sessionUser.id).single()
+    ]);
+
+    const { data: profileData } = profileResult;
+    const { data: predData } = predResult;
+
+    // 🚨 CÁLCULO ESTRICTO DEL PREMIO (CON DEBUGGER)
+    if (predData && predData.selections) {
+      // Aplanamos y quitamos duplicados
+      const allPicks = [...new Set(Object.values(predData.selections).flat())];
+      
+      // Calculamos los aciertos usando la lista estricta de 1º y 2º puestos
+      const aciertosArray = allPicks.filter((team: any) => EQUIPOS_ACIERTO_QUINIELA.includes(team));
+      const hitsCount = aciertosArray.length;
     
-      if (data) {
-        setUser({
-          email: sessionUser.email,
-          teamName: data.team_name,
-          username: data.username,
-          id: sessionUser.id
-        });
+      // --- DEBUG ---
+      console.log("--- DEBUG QUINIELA ---");
+      console.log("Equipos elegidos (únicos):", allPicks);
+      console.log("Equipos que han acertado (en la lista estricta):", aciertosArray);
+      console.log("HitsCount calculado:", hitsCount);
+      // -------------
     
-        if (data.squad_data) {
-          const { 
-            selected: s, 
-            bench: b, 
-            extras: e, 
-            captain: c,
-            snapshot: savedSnapshot, 
-            snapshotMatchday: savedMatchday 
-          } = data.squad_data;
-    
-          setSelected(s || {});
-          setBench(b || {});
-          setExtras(e || {});
-          setCaptain(c || null);
-    
-          if (savedSnapshot && savedMatchday === activeMatchday) {
-            setSnapshotSquad(savedSnapshot);
-          } else {
-            const newSnapshot = {
-              selected: s || {},
-              bench: b || {},
-              extras: e || {}
-            };
-            setSnapshotSquad(newSnapshot);
-    
-            await supabase
-              .from('profiles')
-              .update({
-                squad_data: {
-                  ...data.squad_data,
-                  snapshot: newSnapshot,
-                  snapshotMatchday: activeMatchday 
-                }
-              })
-              .eq('id', sessionUser.id);
-          }
+      // Ordenamos los premios de mayor a menor y buscamos el primero que encaje con los aciertos
+      const mejorPremio = [...PRIZE_SCALE]
+        .sort((a, b) => b.hits - a.hits)
+        .find((p) => hitsCount >= p.hits);
+      
+      console.log("Premio encontrado:", mejorPremio ? mejorPremio.prize : 0);
+      
+      setQuinielaPrize(mejorPremio ? mejorPremio.prize : 0);
+    } else {
+      setQuinielaPrize(0);
+    }
+
+    // 3. CARGA DE DATOS DEL EQUIPO (Perfil)
+    if (profileData) {
+      setUser({
+        email: sessionUser.email,
+        teamName: profileData.team_name,
+        username: profileData.username,
+        id: sessionUser.id
+      });
+  
+      if (profileData.squad_data) {
+        const { 
+          selected: s, 
+          bench: b, 
+          extras: e, 
+          captain: c,
+          snapshot: savedSnapshot, 
+          snapshotMatchday: savedMatchday 
+        } = profileData.squad_data;
+  
+        setSelected(s || {});
+        setBench(b || {});
+        setExtras(e || {});
+        setCaptain(c || null);
+  
+        if (savedSnapshot && savedMatchday === activeMatchday) {
+          setSnapshotSquad(savedSnapshot);
+        } else {
+          const newSnapshot = {
+            selected: s || {},
+            bench: b || {},
+            extras: e || {}
+          };
+          setSnapshotSquad(newSnapshot);
+  
+          await supabase
+            .from('profiles')
+            .update({
+              squad_data: {
+                ...profileData.squad_data,
+                snapshot: newSnapshot,
+                snapshotMatchday: activeMatchday 
+              }
+            })
+            .eq('id', sessionUser.id);
         }
-    
-        // 🛡️ COJÍN DE SEGURIDAD: Damos 1 segundo de cortesía tras cargar los datos 
-        // para que la interfaz se asiente por completo antes de activar el auto-guardado.
-        setTimeout(() => {
-          isInitialLoadComplete.current = true;
-        }, 1000);
       }
-    };
+  
+      setTimeout(() => {
+        isInitialLoadComplete.current = true;
+      }, 1000);
+    }
+  };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) fetchUserProfile(session.user);
-    });
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    setSession(session);
+    if (session) fetchUserProfile(session.user);
+  });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) {
-        fetchUserProfile(session.user);
-      } else {
-        // 🧹 LIMPIEZA TOTAL AL SALIR
-        setUser({ email: '', username: 'Invitado', teamName: 'MI EQUIPO', id: '' });
-        setSelected({});
-        setBench({});
-        setExtras({});
-        setCaptain(null);
-        setSnapshotSquad(null);
-        if (typeof setSquadData === 'function') setSquadData({});
-        if (typeof setLineupsHistory === 'function') setLineupsHistory({});
-        
-        // Apagamos el interruptor al salir
-        isInitialLoadComplete.current = false;
-      }
-    });
+  const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    setSession(session);
+    if (session) {
+      fetchUserProfile(session.user);
+    } else {
+      // 🧹 LIMPIEZA TOTAL AL SALIR
+      setUser({ email: '', username: 'Invitado', teamName: 'MI EQUIPO', id: '' });
+      setSelected({});
+      setBench({});
+      setExtras({});
+      setCaptain(null);
+      setSnapshotSquad(null);
+      // 🚨 3. RESETEAMOS EL PREMIO AL SALIR
+      setQuinielaPrize(0);
+      if (typeof setSquadData === 'function') setSquadData({});
+      if (typeof setLineupsHistory === 'function') setLineupsHistory({});
+      
+      // Apagamos el interruptor al salir
+      isInitialLoadComplete.current = false;
+    }
+  });
 
-    return () => authListener.subscription.unsubscribe();
-  }, [activeMatchday]);
+  return () => authListener.subscription.unsubscribe();
+}, [activeMatchday]);
   // =========================================================================
   // 🏆 EFECTO NUEVO: Descarga las plantillas y lee el historial por NOMBRE
   // =========================================================================
@@ -4393,19 +4441,33 @@ if (!isInitialSetup && isSquadLocked) {
                   </div>
 
                   {/* 👇 BOTÓN DE VALIDACIÓN DE PLANTILLA 👇 */}
-{!isSquadLocked && formationInfo.isValidTactic && (
-  <div className="mt-4 flex justify-center">
-    <button
-      onClick={() => {
-        saveLineupHistoryToSupabase(snapshotSquad);
-        alert("¡Alineación validada correctamente! La foto ha sido guardada en la base de datos.");
-      }}
-      className="px-8 py-3 bg-green-500 hover:bg-green-600 text-black font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(34,197,94,0.4)] border-2 border-green-400 flex items-center justify-center gap-2 transform active:scale-95"
-    >
-      ✅ VALIDAR ALINEACIÓN
-    </button>
-  </div>
-)}
+                  {!isSquadLocked && formationInfo.isValidTactic && (
+                    <div className="mt-4 flex justify-center">
+                      {isEditingLineup ? (
+                        <button
+                          onClick={() => {
+                            // 1. Guardamos en base de datos
+                            saveLineupHistoryToSupabase(snapshotSquad);
+                            
+                            // 2. 🚨 CLAVE: Apagamos el modo edición para romper el bucle "¡Cuidado!"
+                            setIsEditingLineup(false); 
+                            
+                            alert("¡Alineación validada correctamente! La foto ha sido guardada en la base de datos.");
+                          }}
+                          className="px-8 py-3 bg-green-500 hover:bg-green-600 text-black font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(34,197,94,0.4)] border-2 border-green-400 flex items-center justify-center gap-2 transform active:scale-95"
+                        >
+                          ✅ VALIDAR ALINEACIÓN
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setIsEditingLineup(true)}
+                          className="px-8 py-3 bg-[#eab308] hover:bg-yellow-400 text-black font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(234,179,8,0.4)] border-2 border-yellow-300 flex items-center justify-center gap-2 transform active:scale-95"
+                        >
+                          ✏️ EDITAR ALINEACIÓN
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Presupuesto y Vender */}
@@ -4429,12 +4491,12 @@ if (!isInitialSetup && isSquadLocked) {
                         Presupuesto
                       </p>
                       <p
-                        className={`text-sm font-black ${
-                          isBudgetLow ? 'text-red-400' : 'text-[#22c55e]'
-                        }`}
-                      >
-                        {budgetSpent} / {MAX_BUDGET}M
-                      </p>
+  className={`text-sm font-black ${
+    isBudgetLow ? 'text-red-400' : 'text-[#22c55e]'
+  }`}
+>
+  {budgetSpent} / {MAX_BUDGET + (quinielaPrize || 0)}M
+</p>
                     </div>
                     <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                       <div
