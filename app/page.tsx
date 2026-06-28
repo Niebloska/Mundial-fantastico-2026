@@ -49,12 +49,21 @@ const getPosCode = (pos: string) => {
 
 // Esta función es la que YA tienes, simplemente la sacamos fuera
 // para poder llamarla tanto en QuinielaView como en la carga del perfil.
-export const calcularPremio = (selections, qualifiedTeams) => {
+const calcularPremio = (selections, qualifiedTeams) => {
   const allPicks = Object.values(selections).flat();
   const hitsCount = allPicks.filter(team => qualifiedTeams.includes(team)).length;
   const prize = [...PRIZE_SCALE].find((p) => hitsCount >= p.hits)?.prize || 0;
   return prize;
 };
+
+const EQUIPOS_ACIERTO_QUINIELA = [
+  'Alemania', 'Francia', 'Sudáfrica', 'Canadá', 
+  'Países Bajos', 'Marruecos', 'Portugal', 'Croacia', 
+  'España', 'Austria', 'Estados Unidos', 'Bélgica',
+  'Brasil', 'Japón', 'Costa de Marfil', 'Noruega', 
+  'México', 'Inglaterra', 'Argentina', 'Cabo Verde', 
+  'Australia', 'Egipto', 'Suiza', 'Colombia'
+  ];
 
 // ==========================================
 // 10. COMPONENTE TUTORIAL (ONBOARDING)
@@ -2725,14 +2734,6 @@ export default function MundialApp() {
   'Colombia', 'Ghana'
   ];
 
-  const EQUIPOS_ACIERTO_QUINIELA = [
-  'Alemania', 'Francia', 'Sudáfrica', 'Canadá', 
-  'Países Bajos', 'Marruecos', 'Portugal', 'Croacia', 
-  'España', 'Austria', 'Estados Unidos', 'Bélgica',
-  'Brasil', 'Japón', 'Costa de Marfil', 'Noruega', 
-  'México', 'Inglaterra', 'Argentina', 'Cabo Verde', 
-  'Australia', 'Egipto', 'Suiza', 'Colombia'
-  ];
 
   // 💸 ESTADOS DEL MERCADO DE FICHAJES
   const [snapshotSquad, setSnapshotSquad] = useState<any>(null); // Aquí guardaremos la "Foto"
@@ -3211,28 +3212,16 @@ useEffect(() => {
     const { data: profileData } = profileResult;
     const { data: predData } = predResult;
 
-    // 🚨 CÁLCULO ESTRICTO DEL PREMIO (CON DEBUGGER)
+    // 🚨 CÁLCULO ESTRICTO DEL PREMIO
     if (predData && predData.selections) {
-      // Aplanamos y quitamos duplicados
       const allPicks = [...new Set(Object.values(predData.selections).flat())];
-      
-      // Calculamos los aciertos usando la lista estricta de 1º y 2º puestos
+      // Nota: Al mover la constante fuera del componente, ya no da error aquí
       const aciertosArray = allPicks.filter((team: any) => EQUIPOS_ACIERTO_QUINIELA.includes(team));
       const hitsCount = aciertosArray.length;
     
-      // --- DEBUG ---
-      console.log("--- DEBUG QUINIELA ---");
-      console.log("Equipos elegidos (únicos):", allPicks);
-      console.log("Equipos que han acertado (en la lista estricta):", aciertosArray);
-      console.log("HitsCount calculado:", hitsCount);
-      // -------------
-    
-      // Ordenamos los premios de mayor a menor y buscamos el primero que encaje con los aciertos
       const mejorPremio = [...PRIZE_SCALE]
         .sort((a, b) => b.hits - a.hits)
         .find((p) => hitsCount >= p.hits);
-      
-      console.log("Premio encontrado:", mejorPremio ? mejorPremio.prize : 0);
       
       setQuinielaPrize(mejorPremio ? mejorPremio.prize : 0);
     } else {
@@ -3302,25 +3291,22 @@ useEffect(() => {
     if (session) {
       fetchUserProfile(session.user);
     } else {
-      // 🧹 LIMPIEZA TOTAL AL SALIR
       setUser({ email: '', username: 'Invitado', teamName: 'MI EQUIPO', id: '' });
       setSelected({});
       setBench({});
       setExtras({});
       setCaptain(null);
       setSnapshotSquad(null);
-      // 🚨 3. RESETEAMOS EL PREMIO AL SALIR
       setQuinielaPrize(0);
       if (typeof setSquadData === 'function') setSquadData({});
       if (typeof setLineupsHistory === 'function') setLineupsHistory({});
-      
-      // Apagamos el interruptor al salir
       isInitialLoadComplete.current = false;
     }
   });
 
   return () => authListener.subscription.unsubscribe();
-}, [activeMatchday]);
+// 🚀 AQUÍ ESTÁ LA CORRECCIÓN: Añadimos las dependencias necesarias
+}, [activeMatchday, snapshotSquad]);
   // =========================================================================
   // 🏆 EFECTO NUEVO: Descarga las plantillas y lee el historial por NOMBRE
   // =========================================================================
