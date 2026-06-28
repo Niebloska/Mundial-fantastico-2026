@@ -3566,7 +3566,7 @@ useEffect(() => {
                          : false;
                          // @ts-ignore
                         finalPoints = isCap ? (Number(rawVal) * 2) : Number(rawVal);
-                       totalPoints += finalPoints as number;
+                        totalPoints += (finalPoints as unknown as number);
                        if (isCap) pRecord.isCaptain = true;
                    }
                 } 
