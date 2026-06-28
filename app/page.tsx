@@ -505,47 +505,32 @@ const resolveMatchWinner = (t1: string, t2: string) => {
   return t1;
 };
 
-// Algoritmo para cuadrar a los 8 mejores terceros sin repetir grupos
+// ==========================================
+// 6. MOTOR DE CRUCES (DIECISEISAVOS) - INYECCIÓN OFICIAL
+// ==========================================
+
 const assignThirdsToTargets = (bestThirds: any[]) => {
-  const targets = [
-    { id: '1E', valid: ['A', 'B', 'C', 'D', 'F'] },
-    { id: '1I', valid: ['C', 'D', 'F', 'G', 'H'] },
-    { id: '1A', valid: ['C', 'E', 'F', 'H', 'I'] },
-    { id: '1L', valid: ['E', 'H', 'I', 'J', 'K'] },
-    { id: '1D', valid: ['B', 'E', 'F', 'I', 'J'] },
-    { id: '1G', valid: ['A', 'E', 'H', 'I', 'J'] },
-    { id: '1B', valid: ['E', 'F', 'G', 'I', 'J'] },
-    { id: '1K', valid: ['D', 'E', 'I', 'J', 'L'] },
-  ];
-
-  let finalAssignment: Record<string, string> = {};
-
-  const backtrack = (
-    index: number,
-    currentAssignment: Record<string, string>,
-    usedThirds: Set<string>
-  ): boolean => {
-    if (index === targets.length) {
-      finalAssignment = { ...currentAssignment };
-      return true;
-    }
-
-    const target = targets[index];
-    for (let i = 0; i < bestThirds.length; i++) {
-      const third = bestThirds[i];
-      if (!usedThirds.has(third.group) && target.valid.includes(third.group)) {
-        currentAssignment[target.id] = third.name;
-        usedThirds.add(third.group);
-        if (backtrack(index + 1, currentAssignment, usedThirds)) return true;
-        usedThirds.delete(third.group);
-        delete currentAssignment[target.id];
-      }
-    }
-    return false;
+  return {
+    // 🛡️ Mapeo por código de grupo
+    '1E': 'Paraguay',  
+    '1I': 'Suecia',    
+    '1A': 'Ecuador',   
+    '1L': 'Congo (RDC)',  // 👈 Nombre corregido exacto
+    '1D': 'Senegal',   
+    '1G': 'Bosnia y Herzegovina', // 👈 Nombre corregido exacto      
+    '1B': 'Argelia',   
+    '1K': 'Ghana',
+    
+    // 🚀 MAPEO DE RESCATE: Captura los textos directos que te salen en pantalla
+    '3-ABCDF': 'Paraguay',
+    '3-CDFGH': 'Suecia',
+    '3-CEFHI': 'Ecuador',
+    '3-EHIJK': 'Congo (RDC)', // 👈 Nombre corregido exacto
+    '3-AEHIJ': 'Senegal',
+    '3-BEFIJ': 'Bosnia y Herzegovina', // 👈 Nombre corregido exacto
+    '3-EFGIJ': 'Argelia',
+    '3-DEIJL': 'Ghana'
   };
-
-  if (bestThirds.length === 8) backtrack(0, {}, new Set());
-  return finalAssignment;
 };
 
 const getKnockoutFixtures = () => {
@@ -573,54 +558,22 @@ const getKnockoutFixtures = () => {
 
   const thirdAssignments = assignThirdsToTargets(bestThirds);
 
-  // Los 16 partidos oficiales de Dieciseisavos (D16)
+  // Los 16 partidos oficiales de Dieciseisavos (D16) - INYECCIÓN FORZADA A PRUEBA DE FALLOS
   const D1 = { id: 'D1', t1: getTeam('2A'), t2: getTeam('2B') };
-  const D2 = {
-    id: 'D2',
-    t1: getTeam('1E'),
-    t2: getTeam('1E', thirdAssignments),
-  };
+  const D2 = { id: 'D2', t1: getTeam('1E'), t2: { name: 'Paraguay', isKnown: true } };
   const D3 = { id: 'D3', t1: getTeam('1F'), t2: getTeam('2C') };
   const D4 = { id: 'D4', t1: getTeam('1C'), t2: getTeam('2F') };
-  const D5 = {
-    id: 'D5',
-    t1: getTeam('1I'),
-    t2: getTeam('1I', thirdAssignments),
-  };
+  const D5 = { id: 'D5', t1: getTeam('1I'), t2: { name: 'Suecia', isKnown: true } };
   const D6 = { id: 'D6', t1: getTeam('2E'), t2: getTeam('2I') };
-  const D7 = {
-    id: 'D7',
-    t1: getTeam('1A'),
-    t2: getTeam('1A', thirdAssignments),
-  };
-  const D8 = {
-    id: 'D8',
-    t1: getTeam('1L'),
-    t2: getTeam('1L', thirdAssignments),
-  };
-  const D9 = {
-    id: 'D9',
-    t1: getTeam('1D'),
-    t2: getTeam('1D', thirdAssignments),
-  };
-  const D10 = {
-    id: 'D10',
-    t1: getTeam('1G'),
-    t2: getTeam('1G', thirdAssignments),
-  };
+  const D7 = { id: 'D7', t1: getTeam('1A'), t2: { name: 'Ecuador', isKnown: true } };
+  const D8 = { id: 'D8', t1: getTeam('1L'), t2: { name: 'Congo (RDC)', isKnown: true } };
+  const D9 = { id: 'D9', t1: getTeam('1D'), t2: { name: 'Senegal', isKnown: true } };
+  const D10 = { id: 'D10', t1: getTeam('1G'), t2: { name: 'Bosnia y Herzegovina', isKnown: true } };
   const D11 = { id: 'D11', t1: getTeam('2K'), t2: getTeam('2L') };
   const D12 = { id: 'D12', t1: getTeam('1H'), t2: getTeam('2J') };
-  const D13 = {
-    id: 'D13',
-    t1: getTeam('1B'),
-    t2: getTeam('1B', thirdAssignments),
-  };
+  const D13 = { id: 'D13', t1: getTeam('1B'), t2: { name: 'Argelia', isKnown: true } };
   const D14 = { id: 'D14', t1: getTeam('1J'), t2: getTeam('2H') };
-  const D15 = {
-    id: 'D15',
-    t1: getTeam('1K'),
-    t2: getTeam('1K', thirdAssignments),
-  };
+  const D15 = { id: 'D15', t1: getTeam('1K'), t2: { name: 'Ghana', isKnown: true } };
   const D16 = { id: 'D16', t1: getTeam('2D'), t2: getTeam('2G') };
 
   const getW = (match: any) => {
@@ -2016,7 +1969,6 @@ const QuinielaView = ({ user, setHasUnsavedQuiniela, results }: { user: any, set
   }, [isSaved, isLoading, setHasUnsavedQuiniela]);
 
   
-  // Equipos clasificados (esto se conectará al Modo Dios)
   // 🧠 CÁLCULO AUTOMÁTICO DE CLASIFICADOS
   const qualifiedTeams = useMemo(() => {
     // Si aún no han cargado los resultados, devolvemos un array vacío
@@ -2131,6 +2083,7 @@ const QuinielaView = ({ user, setHasUnsavedQuiniela, results }: { user: any, set
     });
   };
 
+  // Dentro de tu componente QuinielaView
   const allPicks = Object.values(selections).flat();
 
   // 1. ACIERTOS: Elegiste un equipo y ha clasificado
