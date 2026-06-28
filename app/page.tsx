@@ -738,6 +738,8 @@ const Field = ({
             // 🛡️ PARCHE DE SEGURIDAD: Inyectamos el ID si falta
             const playerWithId = p ? { ...p, id: p.id || `${p.nombre}_${p.equipo}` } : null;
             const pFinal = playerWithId; // Usaremos esto para todo ahora
+            // 🕵️ ESTE ES EL CHIVATO:
+            console.log("Field recibiendo evaluados:", evaluatedPlayers);
 
             // 🧠 LEEMOS LOS STATS DEL JUGADOR CON TRIM()
             const stats = (p && evaluatedPlayers) 
@@ -2657,7 +2659,7 @@ const JORNADAS_DEADLINES = [
   { id: 'J1', label: 'EL MUNDIAL', date: new Date('2026-06-11T21:00:00+02:00').getTime() },
   { id: 'J2', label: 'ALINEACIÓN J2', date: new Date('2026-06-18T16:00:00+02:00').getTime() },
   { id: 'J3', label: 'ALINEACIÓN J3', date: new Date('2026-06-24T16:00:00+02:00').getTime() },
-  { id: 'D16', label: 'DIECISEISAVOS', date: new Date('2026-06-28T19:00:00+02:00').getTime() },
+  { id: 'D16', label: 'DIECISEISAVOS', date: new Date('2026-06-29T19:00:00+02:00').getTime() },
   { id: 'OCT', label: 'OCTAVOS', date: new Date('2026-07-04T19:00:00+02:00').getTime() },
   { id: 'CUA', label: 'CUARTOS', date: new Date('2026-07-09T19:00:00+02:00').getTime() },
   { id: 'SEM', label: 'SEMIFINALES', date: new Date('2026-07-14T21:00:00+02:00').getTime() },
@@ -2993,6 +2995,93 @@ useEffect(() => {
 
   const [isSquadLocked, setIsSquadLocked] = useState(true);
 
+      // 🧠 SANEAMIENTO Y SUSTITUCIONES DE ALINEACIONES
+      const currentLineupsPoints = useMemo(() => {
+        const map: any = {};
+        const startersMissing: string[] = [];
+        const benchAvailable: string[] = [];
+        let currentActivePositions = { POR: 0, DEF: 0, MED: 0, DEL: 0 };
+  
+        // 1. Evaluamos a los Titulares
+        Object.entries(selected || {}).forEach(([slotId, p]: any) => {
+          if (!p) return;
+          const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
+          let pts: any = globalScores[scoreKey]?.[lineupsMatchday];
+          
+          if (pts === undefined) pts = '-';
+  
+          // 🛡️ CORRECCIÓN: ID Robusto para asegurar que el Capitán puntúa doble
+          const pid = p.id || scoreKey; 
+          if (pid === captain && pts !== '-') {
+             pts = pts * 2;
+          }
+  
+          const didNotPlay = pts === '-'; 
+          map[scoreKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
+          
+          if (didNotPlay) {
+            startersMissing.push(scoreKey);
+          } else {
+            currentActivePositions[p.posicion as keyof typeof currentActivePositions]++;
+          }
+        });
+  
+        // 2. Evaluamos al Banquillo
+        ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].forEach(slotId => {
+          const p = (bench || {})[slotId];
+          if (!p) return;
+          const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
+          let pts: any = globalScores[scoreKey]?.[lineupsMatchday];
+          if (pts === undefined) pts = '-';
+          
+          map[scoreKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
+          if (pts !== '-') benchAvailable.push(scoreKey);
+        });
+  
+        // 3. Evaluamos Extras
+        Object.values(extras || {}).forEach((p: any) => {
+          if (!p) return;
+          const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
+          let pts: any = globalScores[scoreKey]?.[lineupsMatchday];
+          if (pts === undefined) pts = '-';
+          map[scoreKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
+        });
+  
+        // 4. Lógica de sustituciones
+        const isValidFormation = (counts: any) => {
+           return counts.POR === 1 &&
+                  counts.DEF >= 3 && counts.DEF <= 5 &&
+                  counts.MED >= 3 && counts.MED <= 5 &&
+                  counts.DEL >= 1 && counts.DEL <= 3;
+        };
+  
+        for (const subKey of benchAvailable) {
+          if (startersMissing.length === 0) break;
+          const [subName, subTeam] = subKey.split('_');
+          const subPlayer = Object.values(bench || {}).find((p: any) => 
+             p && p.nombre.trim() === subName && p.equipo.trim() === subTeam
+          ) as any;
+  
+          if (!subPlayer) continue;
+  
+          for (let i = 0; i < startersMissing.length; i++) {
+            const missingId = startersMissing[i];
+            const testCounts = { ...currentActivePositions };
+            testCounts[subPlayer.posicion as keyof typeof testCounts]++; 
+  
+            if (isValidFormation(testCounts)) {
+               map[missingId].isSubbedOut = true;
+               map[subKey].isSubbedIn = true;
+               currentActivePositions = testCounts; 
+               startersMissing.splice(i, 1); 
+               break; 
+            }
+          }
+        }
+        console.log(`DEBUG Jornada ${lineupsMatchday}:`, map); // 👈 AQUÍ SÍ VERÁS LOS DATOS
+        return map;
+  }, [selected, bench, extras, lineupsMatchday, globalScores, captain]);
+
   // 🧠 CEREBRO DEL MERCADO: Calcula los cambios y el presupuesto en tiempo real
   useEffect(() => {
     // 🛡️ CONTROL DE USUARIOS NUEVOS: Si no hay foto (porque es un usuario limpio sin datos), 
@@ -3204,84 +3293,97 @@ const handleSendToExtras = () => {
   setActiveSlot(null);
 };
 
-useEffect(() => {
-  const fetchUserProfile = async (sessionUser: any) => {
-    const [profileResult, predResult] = await Promise.all([
-      supabase.from('profiles').select('team_name, username, squad_data').eq('id', sessionUser.id).single(),
-      supabase.from('user_predictions').select('selections').eq('user_id', sessionUser.id).single()
-    ]);
+const fetchUserProfile = async (sessionUser: any) => {
+  const [profileResult, predResult] = await Promise.all([
+    supabase.from('profiles').select('team_name, username, squad_data').eq('id', sessionUser.id).single(),
+    supabase.from('user_predictions').select('selections').eq('user_id', sessionUser.id).single()
+  ]);
 
-    const { data: profileData } = profileResult;
-    const { data: predData } = predResult;
+  const { data: profileData } = profileResult;
+  const { data: predData } = predResult;
 
-    // 🚨 CÁLCULO ESTRICTO DEL PREMIO
-    if (predData && predData.selections) {
-      const allPicks = Array.from(new Set((Object.values(predData.selections) as any[]).flat()));
-      // Nota: Al mover la constante fuera del componente, ya no da error aquí
-      const aciertosArray = allPicks.filter((team: any) => EQUIPOS_ACIERTO_QUINIELA.includes(team));
-      const hitsCount = aciertosArray.length;
+  // 🚨 CÁLCULO ESTRICTO DEL PREMIO
+  if (predData && predData.selections) {
+    const allPicks = Array.from(new Set((Object.values(predData.selections) as any[]).flat()));
+    // Nota: Al mover la constante fuera del componente, ya no da error aquí
+    const aciertosArray = allPicks.filter((team: any) => EQUIPOS_ACIERTO_QUINIELA.includes(team));
+    const hitsCount = aciertosArray.length;
+  
+    const mejorPremio = [...PRIZE_SCALE]
+      .sort((a, b) => b.hits - a.hits)
+      .find((p) => hitsCount >= p.hits);
     
-      const mejorPremio = [...PRIZE_SCALE]
-        .sort((a, b) => b.hits - a.hits)
-        .find((p) => hitsCount >= p.hits);
-      
-      setQuinielaPrize(mejorPremio ? mejorPremio.prize : 0);
+    setQuinielaPrize(mejorPremio ? mejorPremio.prize : 0);
+  } else {
+    setQuinielaPrize(0);
+  }
+
+  // 3. CARGA DE DATOS DEL EQUIPO (Perfil)
+  if (profileData) {
+    setUser({
+      email: sessionUser.email,
+      teamName: profileData.team_name,
+      username: profileData.username,
+      id: sessionUser.id
+    });
+
+    if (profileData && profileData.squad_data) {
+      const { 
+        selected: s, 
+        bench: b, 
+        extras: e, 
+        captain: c,
+        snapshot: savedSnapshot, 
+        snapshotMatchday: savedMatchday 
+      } = profileData.squad_data;
+    
+      // 1. FORZAMOS LA ACTUALIZACIÓN DE ESTADOS
+      // Usamos el operador || {} para asegurar que nunca sea undefined
+      setSelected(s || {});
+      setBench(b || {});
+      setExtras(e || {});
+      setCaptain(c || null);
+    
+      // 2. Lógica de Snapshot (sin bloquear la ejecución)
+      if (savedSnapshot && savedMatchday === activeMatchday) {
+        setSnapshotSquad(savedSnapshot);
+      } else {
+        const newSnapshot = {
+          selected: s || {},
+          bench: b || {},
+          extras: e || {}
+        };
+        setSnapshotSquad(newSnapshot);
+    
+        // Actualizamos el snapshot en DB de forma asíncrona
+        supabase
+          .from('profiles')
+          .update({
+            squad_data: {
+              ...profileData.squad_data,
+              snapshot: newSnapshot,
+              snapshotMatchday: activeMatchday 
+            }
+          })
+          .eq('id', sessionUser.id)
+          .then(({ error }) => {
+             if (error) console.error("Error actualizando snapshot:", error);
+          });
+      }
     } else {
-      setQuinielaPrize(0);
+      // 🚨 IMPORTANTE: Si el usuario no tiene datos en DB, asegúrate de 
+      // que aquí se limpien los estados por defecto si fuera necesario
+      console.log("No hay squad_data en este perfil, cargando configuración base.");
     }
 
-    // 3. CARGA DE DATOS DEL EQUIPO (Perfil)
-    if (profileData) {
-      setUser({
-        email: sessionUser.email,
-        teamName: profileData.team_name,
-        username: profileData.username,
-        id: sessionUser.id
-      });
+    setTimeout(() => {
+      isInitialLoadComplete.current = true;
+    }, 1000);
+  }
+};
+
+useEffect(() => {
   
-      if (profileData.squad_data) {
-        const { 
-          selected: s, 
-          bench: b, 
-          extras: e, 
-          captain: c,
-          snapshot: savedSnapshot, 
-          snapshotMatchday: savedMatchday 
-        } = profileData.squad_data;
-  
-        setSelected(s || {});
-        setBench(b || {});
-        setExtras(e || {});
-        setCaptain(c || null);
-  
-        if (savedSnapshot && savedMatchday === activeMatchday) {
-          setSnapshotSquad(savedSnapshot);
-        } else {
-          const newSnapshot = {
-            selected: s || {},
-            bench: b || {},
-            extras: e || {}
-          };
-          setSnapshotSquad(newSnapshot);
-  
-          await supabase
-            .from('profiles')
-            .update({
-              squad_data: {
-                ...profileData.squad_data,
-                snapshot: newSnapshot,
-                snapshotMatchday: activeMatchday 
-              }
-            })
-            .eq('id', sessionUser.id);
-        }
-      }
-  
-      setTimeout(() => {
-        isInitialLoadComplete.current = true;
-      }, 1000);
-    }
-  };
 
   supabase.auth.getSession().then(({ data: { session } }) => {
     setSession(session);
@@ -3320,96 +3422,163 @@ useEffect(() => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, team_name, username, squad_data, lineups_history, has_paid');
-
+  
       if (data) {
         const matchdays = ['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'];
         
         const formattedUsers = data.map((u: any) => {
-          const history = u.lineups_history || {};
+          const history = typeof u.lineups_history === 'string' 
+              ? JSON.parse(u.lineups_history) 
+              : (u.lineups_history || {});
+              
           const s = u.squad_data?.selected || {};
           const b = u.squad_data?.bench || {};
           const e = u.squad_data?.extras || {};
           
-          // 🧠 HELPER: Si no hay ID, usamos el nombre del jugador como llave única
           const getUid = (p: any) => p?.id || p?.nombre;
-
+  
           const activePlayerUids = new Set(
             [...Object.values(s), ...Object.values(b), ...Object.values(e)]
               .filter(Boolean)
               .map(getUid)
           );
-
+  
           const allPlayersMap = new Map();
-
+  
           const addPlayer = (player: any) => {
             if (!player) return;
             const uid = getUid(player);
             if (!uid) return;
-
+  
             if (!allPlayersMap.has(uid)) {
+              const emptyScores: Record<string, any> = {};
+              matchdays.forEach(m => emptyScores[m] = '-');
+              
               allPlayersMap.set(uid, {
                 ...player,
                 isActive: activePlayerUids.has(uid),
                 isCaptain: false,
-                puntosCalculados: {}
+                puntosCalculados: emptyScores
               });
             }
           };
-
+  
+          // Registramos jugadores actuales e históricos
           [...Object.values(s), ...Object.values(b), ...Object.values(e)].forEach(addPlayer);
-
+          Object.values(history).forEach((snap: any) => {
+             if (snap && snap.selected) Object.values(snap.selected).forEach(addPlayer);
+             if (snap && snap.bench) Object.values(snap.bench).forEach(addPlayer);
+          });
+  
           let totalPoints = 0;
-
+  
           matchdays.forEach(j => {
-            // 🚀 EL FALLBACK: Si el historial está en blanco, usamos la alineación actual ('s')
-            const snapshot = history[j] || { selected: s, captain: u.squad_data?.captain };
+            const snapshot = history[j] || { selected: s, bench: b, captain: u.squad_data?.captain };
           
             if (snapshot && snapshot.selected) {
+              const mdSelected = Object.values(snapshot.selected).filter(Boolean);
+              const mdBenchObj = snapshot.bench || {};
+              
+              // Suplentes ordenados estrictamente de S1 a S6
+              const mdBench = Object.keys(mdBenchObj)
+                                    .sort()
+                                    .map(k => mdBenchObj[k])
+                                    .filter(Boolean);
+              
               const matchdayCaptainUid = snapshot.captain;
-          
-              Object.values(snapshot.selected).forEach((player: any) => {
-                if (!player) return;
+  
+              const getScoreKey = (p: any) => `${p.nombre.trim()}_${p.equipo.trim()}`;
+              const getRawPoints = (p: any) => {
+                const val = globalScores[getScoreKey(p)]?.[j];
+                return (val === undefined || val === '-') ? '-' : Number(val);
+              };
+  
+              let activeStarters = [...mdSelected];
+              let subbedOut: any[] = [];
+  
+              // A) Titulares que no jugaron o hicieron 0
+              const missingStarters = activeStarters.filter(p => {
+                const pts = getRawPoints(p);
+                return pts === '-' || pts === 0;
+              });
+  
+              // B) Suplentes que sí puntuaron
+              const availableSubs = mdBench.filter(p => {
+                const pts = getRawPoints(p);
+                return pts !== '-' && pts !== 0; 
+              });
+  
+              // C) Procesar sustituciones con lista estricta de tácticas permitidas
+              availableSubs.forEach(sub => {
+                for (let i = 0; i < missingStarters.length; i++) {
+                  const starter = missingStarters[i];
+                  if (subbedOut.includes(starter)) continue;
+  
+                  // Creamos el 11 provisional simulando el cambio
+                  const tempStarters = activeStarters.map(p => p === starter ? sub : p);
+                  
+                  // Contamos las posiciones del nuevo 11
+                  const counts: any = { POR: 0, DEF: 0, MED: 0, DEL: 0 };
+                  tempStarters.forEach(p => counts[p.posicion] = (counts[p.posicion] || 0) + 1);
+  
+                  // 🚀 CAMBIO CRÍTICO: Comprobación estricta de formato táctico
+                  const formationStr = `${counts.POR || 0}-${counts.DEF || 0}-${counts.MED || 0}-${counts.DEL || 0}`;
+                  const validFormations = ['1-5-3-2', '1-4-4-2', '1-4-5-1', '1-4-3-3', '1-3-4-3'];
+                  
+                  const isValid = validFormations.includes(formationStr);
+  
+                  if (isValid) {
+                    subbedOut.push(starter);
+                    activeStarters = tempStarters; // Confirmamos cambio táctico
+
+                    // ✅ AQUÍ ESTÁ LA CORRECCIÓN: Marcamos el estado en el mapa para el front
+                    const starterRecord = allPlayersMap.get(getUid(starter));
+                    const subRecord = allPlayersMap.get(getUid(sub));
+                    
+                    if (starterRecord) starterRecord.isSubbedOut = true;
+                    if (subRecord) subRecord.isSubbedIn = true;
+                    
+                    break; 
+                  }
+                }
+              });
+  
+              // D) Asignar puntos y aplicar multiplicador de capitán si corresponde
+              const allMdPlayers = [...mdSelected, ...mdBench];
+              allMdPlayers.forEach(player => {
                 const uid = getUid(player);
                 if (!uid) return;
-          
-                addPlayer(player);
-          
-                const fullPlayer = allPlayersMap.get(uid);
-                if (!fullPlayer) return;
-          
-                // ESTA ES LA CLAVE DE BÚSQUEDA DEFINITIVA
-                const scoreKey = `${fullPlayer.nombre.trim()}_${fullPlayer.equipo.trim()}`;
-          
-                // Buscamos los puntos en globalScores
-                const rawPoints = Number(globalScores[scoreKey]?.[j] || 0);
-          
-                // 🛠️ ¡CORRECCIÓN CRÍTICA! 
-                // Antes comparaba "Messi" (uid) con "Messi_Argentina" (matchdayCaptainUid).
-                // Ahora compara "Messi_Argentina" con "Messi_Argentina".
-                const isCap = matchdayCaptainUid 
-                  ? matchdayCaptainUid.trim().toLowerCase() === scoreKey.toLowerCase() 
-                  : false;
-
-                const earnedPoints = isCap ? rawPoints * 2 : rawPoints;
                 
-                totalPoints += earnedPoints;
-          
                 const pRecord = allPlayersMap.get(uid);
-                if (pRecord) {
-                  pRecord.puntosCalculados[j] = earnedPoints;
-                  if (isCap) pRecord.isCaptain = true;
-                }
+                if (!pRecord) return;
+  
+                const scoreKey = getScoreKey(player);
+                const rawVal = getRawPoints(player);
+                
+                let finalPoints = '-';
+                const isActiveStarter = activeStarters.some(st => getUid(st) === uid);
+  
+                if (isActiveStarter) {
+                   if (rawVal !== '-') {
+                       const isCap = matchdayCaptainUid 
+                         ? matchdayCaptainUid.trim().toLowerCase() === scoreKey.toLowerCase() 
+                         : false;
+                       finalPoints = isCap ? (rawVal as number) * 2 : (rawVal as number);
+                       totalPoints += finalPoints as number;
+                       if (isCap) pRecord.isCaptain = true;
+                   }
+                } 
+                
+                pRecord.puntosCalculados[j] = finalPoints;
               });
             }
           });
-          
-          console.log(`DEBUG: Usuario ${u.team_name} calculado. Puntos totales: ${totalPoints}`);
           
           const finalPlayers = Array.from(allPlayersMap.values()).map(p => ({
             ...p,
             puntos: p.puntosCalculados 
           }));
-
+  
           return {
             id: u.id,
             name: u.team_name || 'SIN NOMBRE',
@@ -3417,7 +3586,6 @@ useEffect(() => {
             total: totalPoints,
             isMe: u.id === session?.user?.id,
             hasPaid: u.has_paid ?? false,
-            // 🛠️ ¡ESTO FALTABA! Sin esto, el frontend no podía leer las alineaciones
             squad_data: u.squad_data,
             lineups_history: u.lineups_history,
             players: finalPlayers.sort((a: any, b: any) => {
@@ -3428,14 +3596,14 @@ useEffect(() => {
             })
           };
         });
-
-        console.log("¿Hay totales calculados?", formattedUsers.map(u => ({ name: u.name, total: u.total })));
+  
         setLeaderboard(formattedUsers);
       }
     };
-
+  
     fetchLeaderboard();
-  }, [view, session, selected, bench, extras, captain, snapshotSquad, globalScores]);
+  // Añade lineupsMatchday a la lista de dependencias del useEffect
+}, [view, session, selected, bench, extras, captain, snapshotSquad, globalScores, lineupsMatchday]);
 
   const fetchAllProfiles = async () => {
     const { data, error } = await supabase
@@ -3630,20 +3798,62 @@ useEffect(() => {
 
   const saveSquadToSupabase = async (squadData: any) => {
     if (!user?.id) return;
+
+    // 1. Obtenemos el perfil ANTES de sobrescribir
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('squad_data')
+      .eq('id', user.id)
+      .single();
+
+    const oldSquad = currentProfile?.squad_data || { selected: {}, bench: {}, extras: {}, sold_players: [] };
+    
+    // Función auxiliar local para identificar jugadores de forma única
+    const getPlayerKey = (p: any) => p.id || `${p.nombre?.trim()}_${p.equipo?.trim()}`;
+
+    // 2. Identificamos jugadores antiguos activos
+    const oldActivePlayers = [
+        ...Object.values(oldSquad.selected || {}), 
+        ...Object.values(oldSquad.bench || {})
+    ].filter(Boolean);
+
+    // Los jugadores nuevos
+    const newActivePlayers = [
+        ...Object.values(squadData.selected || {}), 
+        ...Object.values(squadData.bench || {})
+    ].filter(Boolean);
+
+    // 3. Detectamos las bajas usando la función local
+    const newlySold = oldActivePlayers.filter(oldP => 
+        !newActivePlayers.some((newP: any) => getPlayerKey(newP) === getPlayerKey(oldP))
+    );
+
+    // 4. Actualizamos el objeto
+    const dataToSave = {
+      ...squadData,
+      sold_players: [
+        ...(oldSquad.sold_players || []),
+        ...newlySold.map((p: any) => ({ ...p, fecha_venta: new Date().toISOString() }))
+      ]
+    };
+    
+    console.log("📤 Guardando equipo y registrando ventas:", newlySold);
     
     const { error } = await supabase
       .from('profiles')
       .upsert({
         id: user.id,
-        squad_data: squadData,
+        squad_data: dataToSave,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' }); 
   
     if (error) {
-      console.error("Error al guardar plantilla:", error);
-      alert("Hubo un error al guardar en la base de datos.");
+      console.error("❌ Error al guardar:", error);
+    } else {
+      console.log("✅ Guardado con éxito. Bajas registradas:", newlySold.length);
+      setSquadData(dataToSave); // Esto refresca tu UI al instante
     }
-  };
+};
 
   // --- AUTO-GUARDADO DE PLANTILLA BLINDADO POR JORNADA Y MERCADO ---
   useEffect(() => {
@@ -4538,12 +4748,10 @@ const availableCountriesWithCount = useMemo(() => {
   }}
 />
 
-              {/* BANQUILLO Y GRADA */}
+  {/* 3. BANQUILLO Y GRADA */}
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
   <div className="bg-white/5 border border-white/10 rounded-3xl p-4">
-    <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">
-      Banquillo Oficial
-    </h3>
+    <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Banquillo Oficial</h3>
     <div className="grid grid-cols-2 gap-2">
       {['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].map((id) => (
         <BenchCard
@@ -4552,26 +4760,16 @@ const availableCountriesWithCount = useMemo(() => {
           player={bench[id]}
           isActive={activeSlot?.id === id}
           onClick={() => {
-            // 🛡️ ESCUDO: Bloqueo de interacción si no está editando
             if (isSquadLocked) return;
-            if (!isEditingSquad) {
-              alert("¡Debes pulsar el botón 'EDITAR ALINEACIÓN' primero!");
-              return;
-            }
-            setActiveSlot({
-              id,
-              type: 'bench',
-              pos: bench[id]?.posicion,
-            });
+            if (!isEditingSquad) { alert("¡Debes pulsar 'EDITAR ALINEACIÓN'!"); return; }
+            setActiveSlot({ id, type: 'bench', pos: bench[id]?.posicion });
           }}
         />
       ))}
     </div>
   </div>
   <div className="bg-white/5 border border-white/10 rounded-3xl p-4">
-    <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">
-      No Convocados (Grada)
-    </h3>
+    <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">No Convocados (Grada)</h3>
     <div className="grid grid-cols-2 gap-2">
       {['NC1', 'NC2', 'NC3', 'NC4'].map((id) => (
         <BenchCard
@@ -4580,24 +4778,33 @@ const availableCountriesWithCount = useMemo(() => {
           player={extras[id]}
           isActive={activeSlot?.id === id}
           onClick={() => {
-            // 🛡️ ESCUDO: Bloqueo de interacción si no está editando
             if (isSquadLocked) return;
-            if (!isEditingSquad) {
-              alert("¡Debes pulsar el botón 'EDITAR ALINEACIÓN' primero!");
-              return;
-            }
-            setActiveSlot({
-              id,
-              type: 'extras',
-              pos: extras[id]?.posicion,
-            });
+            if (!isEditingSquad) { alert("¡Debes pulsar 'EDITAR ALINEACIÓN'!"); return; }
+            setActiveSlot({ id, type: 'extras', pos: extras[id]?.posicion });
           }}
         />
       ))}
     </div>
   </div>
 </div>
-            </div>
+
+{/* 4. JUGADORES VENDIDOS (CORREGIDO) */}
+{squadData?.sold_players && squadData.sold_players.length > 0 && (
+  <div className="mt-4 bg-red-900/10 border border-red-500/20 rounded-3xl p-4">
+    <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-red-400 mb-3">
+      Jugadores Vendidos
+    </h3>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      {squadData.sold_players.map((player: any, index: number) => (
+        <div key={`sold-${index}`} className="flex items-center justify-between p-2 rounded-xl border border-red-500/10 bg-black/20 opacity-70">
+          <span className="text-[10px] font-bold text-white truncate w-16">{player.nombre.split(' ').pop()}</span>
+          <span className="text-[9px] text-red-400 font-black">VENDIDO</span>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+      </div>
 
             {/* 2. EL NUEVO MERCADO FLOTANTE */}
             {activeSlot && (
@@ -4802,91 +5009,7 @@ const availableCountriesWithCount = useMemo(() => {
         {view === 'calendar' && <CalendarView results={results} />}
         {view === 'lineups' && (
   (() => {
-    // 🧠 SANEAMIENTO Y SUSTITUCIONES DE ALINEACIONES
-    const currentLineupsPoints = (() => {
-      const map: any = {};
-      const startersMissing: string[] = [];
-      const benchAvailable: string[] = [];
-      let currentActivePositions = { POR: 0, DEF: 0, MED: 0, DEL: 0 };
 
-      // 1. Evaluamos a los Titulares
-      Object.entries(selected || {}).forEach(([slotId, p]: any) => {
-        if (!p) return;
-        const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
-        let pts: any = globalScores[scoreKey]?.[lineupsMatchday];
-        
-        if (pts === undefined) pts = '-';
-
-        // 🛡️ CORRECCIÓN: ID Robusto para asegurar que el Capitán puntúa doble
-        const pid = p.id || scoreKey; 
-        if (pid === captain && pts !== '-') {
-           pts = pts * 2;
-        }
-
-        const didNotPlay = pts === '-'; 
-        map[scoreKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
-        
-        if (didNotPlay) {
-          startersMissing.push(scoreKey);
-        } else {
-          currentActivePositions[p.posicion as keyof typeof currentActivePositions]++;
-        }
-      });
-
-      // 2. Evaluamos al Banquillo
-      ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].forEach(slotId => {
-        const p = (bench || {})[slotId];
-        if (!p) return;
-        const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
-        let pts: any = globalScores[scoreKey]?.[lineupsMatchday];
-        if (pts === undefined) pts = '-';
-        
-        map[scoreKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
-        if (pts !== '-') benchAvailable.push(scoreKey);
-      });
-
-      // 3. Evaluamos Extras
-      Object.values(extras || {}).forEach((p: any) => {
-        if (!p) return;
-        const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
-        let pts: any = globalScores[scoreKey]?.[lineupsMatchday];
-        if (pts === undefined) pts = '-';
-        map[scoreKey] = { points: pts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
-      });
-
-      // 4. Lógica de sustituciones
-      const isValidFormation = (counts: any) => {
-         return counts.POR === 1 &&
-                counts.DEF >= 3 && counts.DEF <= 5 &&
-                counts.MED >= 3 && counts.MED <= 5 &&
-                counts.DEL >= 1 && counts.DEL <= 3;
-      };
-
-      for (const subKey of benchAvailable) {
-        if (startersMissing.length === 0) break;
-        const [subName, subTeam] = subKey.split('_');
-        const subPlayer = Object.values(bench || {}).find((p: any) => 
-           p && p.nombre.trim() === subName && p.equipo.trim() === subTeam
-        ) as any;
-
-        if (!subPlayer) continue;
-
-        for (let i = 0; i < startersMissing.length; i++) {
-          const missingId = startersMissing[i];
-          const testCounts = { ...currentActivePositions };
-          testCounts[subPlayer.posicion as keyof typeof testCounts]++; 
-
-          if (isValidFormation(testCounts)) {
-             map[missingId].isSubbedOut = true;
-             map[subKey].isSubbedIn = true;
-             currentActivePositions = testCounts; 
-             startersMissing.splice(i, 1); 
-             break; 
-          }
-        }
-      }
-      return map;
-    })();
 
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
@@ -4899,21 +5022,21 @@ const availableCountriesWithCount = useMemo(() => {
               <button
                 key={j}
                 onClick={() => {
-                  // 🛡️ BLOQUEO: No dejar cambiar de jornada si estamos editando
-                  if (isEditingLineup) {
-                    alert("Debes guardar tu alineación para continuar");
-                    return;
-                  }
+  if (isEditingLineup) {
+    alert("Debes guardar tu alineación para continuar");
+    return;
+  }
 
-                  setLineupsMatchday(j);
-                  const snapshot = lineupsHistory[j];
-                
-                  if (snapshot) {
-                     setSelected(JSON.parse(JSON.stringify(snapshot.selected || {})));
-                     setBench(JSON.parse(JSON.stringify(snapshot.bench || {})));
-                     setExtras(JSON.parse(JSON.stringify(snapshot.extras || {})));
-                     setCaptain(snapshot.captain || null);
-                  } else {
+  setLineupsMatchday(j); // 1. Cambias la jornada
+  
+  // 2. FORZAS la carga del snapshot histórico en el estado
+  const snapshot = lineupsHistory[j];
+  if (snapshot) {
+     setSelected(JSON.parse(JSON.stringify(snapshot.selected || {})));
+     setBench(JSON.parse(JSON.stringify(snapshot.bench || {})));
+     setExtras(JSON.parse(JSON.stringify(snapshot.extras || {})));
+     setCaptain(snapshot.captain || null);
+  } else {
                      setSelected(JSON.parse(JSON.stringify(squadData.selected || {})));
                      setBench(JSON.parse(JSON.stringify(squadData.bench || {})));
                      setExtras(JSON.parse(JSON.stringify(squadData.extras || {})));
@@ -5004,94 +5127,95 @@ const availableCountriesWithCount = useMemo(() => {
              )}
           </div>
 
-          <div className="relative z-10">
-            <Field
-              selected={selected}
-              step={2}
-              evaluatedPlayers={currentLineupsPoints}
-              canInteractField={countdown.targetId === lineupsMatchday}
-              activeSlot={activeSlot}
-              setActiveSlot={(slot: any) => {
-                // 🛡️ BLOQUEO EN EL CAMPO
-                if (countdown.targetId === lineupsMatchday) {
-                  if (!isEditingLineup) {
-                    alert("Pulsa el botón EDITAR ALINEACIÓN para hacer cambios.");
-                    return;
-                  }
-                  setActiveSlot(slot);
-                }
-              }}
-              captain={captain}
-              setCaptain={(id: any) => {
-                // 🛡️ BLOQUEO DE CAPITÁN
-                if (countdown.targetId === lineupsMatchday) {
-                  if (!isEditingLineup) {
-                    alert("Pulsa el botón EDITAR ALINEACIÓN para hacer cambios.");
-                    return;
-                  }
-                  setCaptain(id);
-                }
-              }}
-            />
-          </div>
+{/* 1. CAMPO DE JUEGO */}
+<div className="relative z-10">
+  <Field
+    key={`field-${lineupsMatchday}`} // 👈 PASO 2: Forzamos repintado del campo
+    selected={selected}
+    step={2}
+    evaluatedPlayers={currentLineupsPoints || {}} // 👈 PASO 3: Pasamos el dato calculado
+    canInteractField={countdown.targetId === lineupsMatchday}
+    activeSlot={activeSlot}
+    setActiveSlot={(slot: any) => {
+      if (countdown.targetId === lineupsMatchday) {
+        if (!isEditingLineup) {
+          alert("Pulsa el botón EDITAR ALINEACIÓN para hacer cambios.");
+          return;
+        }
+        setActiveSlot(slot);
+      }
+    }}
+    captain={captain}
+    setCaptain={(id: any) => {
+      if (countdown.targetId === lineupsMatchday) {
+        if (!isEditingLineup) {
+          alert("Pulsa el botón EDITAR ALINEACIÓN para hacer cambios.");
+          return;
+        }
+        setCaptain(id);
+      }
+    }}
+  />
+</div>
 
-          <div className="relative z-10 mt-2 mb-6 bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
-            <p className="text-[10px] sm:text-xs font-black text-blue-400 uppercase text-center leading-relaxed">
-              ⚠️ Los puntos de los suplentes, aunque se muestren aquí, no serán efectivos hasta cerrar la jornada.
-            </p>
-          </div>
+<div className="relative z-10 mt-2 mb-6 bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+  <p className="text-[10px] sm:text-xs font-black text-blue-400 uppercase text-center leading-relaxed">
+    ⚠️ Los puntos de los suplentes, aunque se muestren aquí, no serán efectivos hasta cerrar la jornada.
+  </p>
+</div>
 
-          {/* 3. BANQUILLO Y GRADA EN ALINEACIONES */}
-          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            <div className="bg-black/40 border border-white/10 rounded-3xl p-4">
-              <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Banquillo Oficial</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].map((id) => (
-                  <BenchCard
-                    key={id}
-                    id={id}
-                    player={bench[id]}
-                    evaluatedPlayers={currentLineupsPoints}
-                    isActive={activeSlot?.id === id}
-                    onClick={() => {
-                      // 🛡️ BLOQUEO EN EL BANQUILLO
-                      if (countdown.targetId === lineupsMatchday) {
-                        if (!isEditingLineup) {
-                          alert("Pulsa el botón EDITAR ALINEACIÓN para hacer cambios.");
-                          return;
-                        }
-                        setActiveSlot({ id, type: 'bench', pos: bench[id]?.posicion });
-                      }
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="bg-black/40 border border-white/10 rounded-3xl p-4">
-              <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Grada (No Convocados)</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {['NC1', 'NC2', 'NC3', 'NC4'].map((id) => (
-                  <BenchCard
-                    key={id}
-                    id={id}
-                    player={extras[id]}
-                    evaluatedPlayers={currentLineupsPoints}
-                    isActive={activeSlot?.id === id}
-                    onClick={() => {
-                      // 🛡️ BLOQUEO EN LA GRADA
-                      if (countdown.targetId === lineupsMatchday) {
-                        if (!isEditingLineup) {
-                          alert("Pulsa el botón EDITAR ALINEACIÓN para hacer cambios.");
-                          return;
-                        }
-                        setActiveSlot({ id, type: 'extras', pos: extras[id]?.posicion });
-                      }
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
+{/* 2. BANQUILLO Y GRADA */}
+<div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  {/* Banquillo Oficial */}
+  <div className="bg-black/40 border border-white/10 rounded-3xl p-4">
+    <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Banquillo Oficial</h3>
+    <div className="grid grid-cols-2 gap-2">
+      {['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].map((id) => (
+        <BenchCard
+          key={`bench-${id}-${lineupsMatchday}`} // 👈 PASO 2: Key única por jornada
+          id={id}
+          player={bench[id]}
+          evaluatedPlayers={currentLineupsPoints || {}} // 👈 PASO 3: Dato protegido
+          isActive={activeSlot?.id === id}
+          onClick={() => {
+            if (countdown.targetId === lineupsMatchday) {
+              if (!isEditingLineup) {
+                alert("Pulsa el botón EDITAR ALINEACIÓN para hacer cambios.");
+                return;
+              }
+              setActiveSlot({ id, type: 'bench', pos: bench[id]?.posicion });
+            }
+          }}
+        />
+      ))}
+    </div>
+  </div>
+
+  {/* Grada (No Convocados) */}
+  <div className="bg-black/40 border border-white/10 rounded-3xl p-4">
+    <h3 className="text-center font-black text-[10px] uppercase tracking-widest text-white/50 mb-3">Grada (No Convocados)</h3>
+    <div className="grid grid-cols-2 gap-2">
+      {['NC1', 'NC2', 'NC3', 'NC4'].map((id) => (
+        <BenchCard
+          key={`extras-${id}-${lineupsMatchday}`} // 👈 PASO 2: Key única por jornada
+          id={id}
+          player={extras[id]}
+          evaluatedPlayers={currentLineupsPoints || {}} // 👈 PASO 3: Dato protegido
+          isActive={activeSlot?.id === id}
+          onClick={() => {
+            if (countdown.targetId === lineupsMatchday) {
+              if (!isEditingLineup) {
+                alert("Pulsa el botón EDITAR ALINEACIÓN para hacer cambios.");
+                return;
+              }
+              setActiveSlot({ id, type: 'extras', pos: extras[id]?.posicion });
+            }
+          }}
+        />
+      ))}
+    </div>
+  </div>
+</div>
           
           <div className="relative z-10 mt-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4">
             <p className="text-[9px] sm:text-[10px] font-black text-yellow-500 uppercase text-center leading-relaxed">
@@ -5255,24 +5379,18 @@ const resolveCaptain = (user: any, md: string) => {
                     const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
                     const flagUrl = getFlag(p.equipo);
                     const isSold = p.isActive === false;
-
+                  
                     const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
-                    const playerPoints = globalScores[scoreKey] || {}; 
-                  
-                    // 🚀 3. CÁLCULO DE LA FILA (Usa exactamente el mismo resolveCaptain)
-                    const calculatePointsForMatchday = (md: string, rawPoints: any) => {
-                        const val = (rawPoints === undefined || rawPoints === '-') ? 0 : Number(rawPoints);
-                        
-                        const capStr = resolveCaptain(u, md);
-                        const isCap = capStr ? (capStr.trim().toLowerCase() === scoreKey.trim().toLowerCase()) : false;
-
-                        return (isCap && !isSold) ? val * 2 : val;
-                    };
-                  
-                    const ptTot = matchdays.reduce((sum: number, j: string) => sum + calculatePointsForMatchday(j, playerPoints[j]), 0);
+                    
+                    // 🚀 CORRECCIÓN DEFINITIVA: Usamos los puntos del historial (p.puntos)
+                    // Ignoramos completamente el globalScores aquí para que no arrastre puntos de jugadores no fichados
+                    const ptTot = matchdays.reduce((sum: number, j: string) => {
+                        const val = p.puntos?.[j];
+                        return sum + (val !== '-' && val !== undefined ? Number(val) : 0);
+                    }, 0);
                   
                     const isCapNow = resolveCaptain(u, u.snapshotMatchday || 'J1') === scoreKey;
-
+                  
                     return (
                       <tr key={p.id || `${scoreKey}-${idx}`} className={`transition-colors ${isSold ? 'bg-black/40 opacity-30 grayscale' : 'hover:bg-white/5 bg-[#0f172a]'}`}>
                         <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/40' : 'bg-[#0f172a]'}`}>
@@ -5291,9 +5409,8 @@ const resolveCaptain = (user: any, md: string) => {
                         </td>
                         
                         {matchdays.map((j: string) => {
-                          const rawPts = playerPoints[j];
-                          const finalPts = calculatePointsForMatchday(j, rawPts);
-                          const showPts = (rawPts === undefined || String(rawPts) === '-') ? '-' : finalPts;
+                          // Leemos DIRECTAMENTE lo que calculó la función fetchLeaderboard
+                          const showPts = p.puntos?.[j] !== undefined ? p.puntos[j] : '-';
                           return (
                               <td key={j} className="p-3 text-center text-white/90 font-bold">
                                 {showPts}
@@ -5302,7 +5419,7 @@ const resolveCaptain = (user: any, md: string) => {
                         })}
                       </tr>
                     );
-                })
+                  })
                 ) : (
                   <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">No hay jugadores.</td></tr>
                 )}
@@ -5895,12 +6012,13 @@ const resolveCaptain = (user: any, md: string) => {
       ? posColors[player.posicion]
       : 'bg-white/10 text-white/30';
     
-    // 🧠 LEEMOS LOS STATS USANDO EL FORMATO EXACTO DE LA BD (CON TRIM)
+    // 🧠 LEEMOS LOS STATS USANDO EL FORMATO EXACTO DE LA BD
     const stats = (player && evaluatedPlayers) 
       ? evaluatedPlayers[`${player.nombre.trim()}_${player.equipo.trim()}`] 
       : null;
   
-    const isSubbedIn = stats?.isSubbedIn; // ¿Entró al campo como salvador?
+    const isSubbedIn = stats?.isSubbedIn; // ¿Entró al campo?
+    const isSubbedOut = stats?.isSubbedOut; // ¿Ausencia?
   
     // 🎨 ESTILOS DINÁMICOS
     let cardStyle = isActive
@@ -5911,15 +6029,19 @@ const resolveCaptain = (user: any, md: string) => {
       cardStyle = 'border-[#22c55e] bg-[#22c55e]/10 hover:bg-[#22c55e]/20 shadow-[0_0_10px_rgba(34,197,94,0.3)]';
     }
   
+    // 🛡️ CORRECCIÓN: Si el jugador se quedó fuera (Ausencia), aplicamos gris y opacidad
+    if (isSubbedOut) {
+      cardStyle = 'opacity-50 grayscale border-white/5 bg-black/20';
+    }
+  
     if (!player) cardStyle += ' border-dashed';
   
     return (
       <div
         onClick={onClick}
-        // 👇 AQUÍ ESTÁ TU MAGIA 3D INTACTA
         className={`relative flex items-center justify-between p-2 rounded-xl border-2 transition-all duration-300 hover:z-50 hover:-translate-y-2 hover:scale-105 hover:[transform:perspective(800px)_rotateX(10deg)_rotateY(-10deg)] active:[transform:perspective(800px)_rotateX(-10deg)_rotateY(10deg)_scale(0.95)] hover:shadow-[0_20px_30px_rgba(34,197,94,0.4)] cursor-pointer ${cardStyle}`}
       >
-        {/* 🔄 ICONO DE SUSTITUCIÓN (Estilo EF24: SVG flecha arriba con borde blanco) */}
+        {/* 🔄 ICONO DE ENTRADA */}
         {isSubbedIn && (
           <div className="absolute -top-2 -right-2 bg-[#22c55e] text-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-white z-20 shadow-[0_0_8px_#22c55e]">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
@@ -5928,15 +6050,20 @@ const resolveCaptain = (user: any, md: string) => {
           </div>
         )}
   
+        {/* 🔻 ICONO DE AUSENCIA */}
+        {isSubbedOut && (
+          <div className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center border-2 border-white z-20">
+              <span className="text-[10px] font-black">x</span>
+          </div>
+        )}
+  
         <div className="flex items-center gap-2">
-          <div
-            className={`w-6 h-6 rounded flex items-center justify-center text-[8px] font-black ${posColor}`}
-          >
+          <div className={`w-6 h-6 rounded flex items-center justify-center text-[8px] font-black ${posColor}`}>
             {player ? player.posicion : id}
           </div>
           {player ? (
             <div className="flex flex-col">
-              <span className="text-[10px] font-black uppercase leading-tight truncate w-16">
+              <span className="text-[10px] font-black uppercase leading-tight truncate w-16 text-white">
                 {player.nombre.split(' ').pop()}
               </span>
               <div className="flex items-center gap-1 mt-0.5">
@@ -5957,16 +6084,14 @@ const resolveCaptain = (user: any, md: string) => {
           )}
         </div>
   
-        {/* ⭐ PUNTUACIÓN OBTENIDA (Ocultamos si es '-') */}
-        {stats && stats.points !== undefined && stats.points !== '-' && (
-          <div className={`text-[11px] font-black mr-1 ${
-            stats.points > 0 ? 'text-[#22c55e]' : 
-            stats.points < 0 ? 'text-red-500' : 
-            'text-white/50'
-          }`}>
-             {stats.points > 0 ? `+${stats.points}` : stats.points} pts
-          </div>
-        )}
+        {/* ⭐ PUNTUACIÓN (Muestra '-' si es undefined o vacío) */}
+        <div className={`text-[11px] font-black mr-1 ${
+          stats?.points > 0 ? 'text-[#22c55e]' : 
+          stats?.points < 0 ? 'text-red-500' : 
+          'text-white/50'
+        }`}>
+           {stats?.points !== undefined && stats.points !== '-' ? (stats.points > 0 ? `+${stats.points}` : stats.points) + ' pts' : '-'}
+        </div>
       </div>
     );
   };
