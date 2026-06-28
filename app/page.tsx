@@ -3488,7 +3488,7 @@ useEffect(() => {
               const matchdayCaptainUid = snapshot.captain;
   
               const getScoreKey = (p: any) => `${p.nombre.trim()}_${p.equipo.trim()}`;
-              const getRawPoints = (p: any) => {
+              const getRawPoints = (p: any): any => {
                 const val = globalScores[getScoreKey(p)]?.[j];
                 return (val === undefined || val === '-') ? '-' : Number(val);
               };
