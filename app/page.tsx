@@ -3427,7 +3427,7 @@ useEffect(() => {
         .select('id, team_name, username, squad_data, lineups_history, has_paid');
   
       if (data) {
-        const matchdays = ['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'];
+        const matchdays = ['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'];
         
         const formattedUsers = data.map((u: any) => {
           const history = typeof u.lineups_history === 'string' 
@@ -5445,7 +5445,7 @@ const resolveCaptain = (user: any, md: string) => {
                   <tbody className="divide-y divide-white/5">
                   {u.players.length > 0 ? (
   u.players.map((p: any, idx: number) => {
-    const matchdays = ['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'];
+    const matchdays = ['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'];
     const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
     const flagUrl = getFlag(p.equipo);
     const isSold = p.isActive === false;
