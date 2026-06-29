@@ -3437,6 +3437,7 @@ useEffect(() => {
           const s = u.squad_data?.selected || {};
           const b = u.squad_data?.bench || {};
           const e = u.squad_data?.extras || {};
+          const sold = u.squad_data?.sold_players || []; // 👈 1. AÑADIR ESTO: Extraemos los vendidos
           
           // 🔥 2. MAPA RÁPIDO DE LA JORNADA EN LA QUE ENTRÓ CADA JUGADOR PARA ESTE USUARIO
           const userTransfers = transfersData?.filter(t => t.user_id === u.id) || [];
@@ -3477,9 +3478,12 @@ useEffect(() => {
               });
             }
           };
+          
   
-          // Registramos jugadores actuales e históricos
-          [...Object.values(s), ...Object.values(b), ...Object.values(e)].forEach(addPlayer);
+          // 👈 2. AÑADIR LOS VENDIDOS AL BUCLE DE REGISTRO
+          // Registramos jugadores actuales, LOS VENDIDOS, y luego los históricos
+          [...Object.values(s), ...Object.values(b), ...Object.values(e), ...sold].forEach(addPlayer);
+          
           Object.values(history).forEach((snap: any) => {
              if (snap && snap.selected) Object.values(snap.selected).forEach(addPlayer);
              if (snap && snap.bench) Object.values(snap.bench).forEach(addPlayer);
