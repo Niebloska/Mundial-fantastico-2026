@@ -3559,37 +3559,43 @@ useEffect(() => {
               });
           
               // D) Asignar puntos
-              const allMdPlayers = [...mdSelected, ...mdBench];
-              allMdPlayers.forEach(player => {
-                const uid = getUid(player);
-                if (!uid) return;
-                
-                const pRecord = allPlayersMap.get(uid);
-                if (!pRecord) return;
+const allMdPlayers = [...mdSelected, ...mdBench];
+allMdPlayers.forEach(player => {
+  const uid = getUid(player);
+  if (!uid) return;
+  
+  const pRecord = allPlayersMap.get(uid);
+  if (!pRecord) return;
+
+  const scoreKey = getScoreKey(player);
+  const rawVal = getRawPoints(player);
+  
+  // CORRECCIÓN: Definimos que puede ser string o number
+  let finalPoints: string | number = '-';
+  const isActiveStarter = activeStarters.some(st => getUid(st) === uid);
+
+  const isEligibleThisMatchday = mdIdx >= pRecord.startingIndex;
+
+  if (isActiveStarter && isEligibleThisMatchday) {
+     if (rawVal !== '-') {
+         const isCap = matchdayCaptainUid 
+           ? matchdayCaptainUid.trim().toLowerCase() === scoreKey.toLowerCase() 
+           : false;
           
-                const scoreKey = getScoreKey(player);
-                const rawVal = getRawPoints(player);
-                
-                let finalPoints = '-';
-                const isActiveStarter = activeStarters.some(st => getUid(st) === uid);
+          // Calculamos los puntos como número primero
+          const calculatedPoints = isCap ? (Number(rawVal) * 2) : Number(rawVal);
           
-                const isEligibleThisMatchday = mdIdx >= pRecord.startingIndex;
+          finalPoints = calculatedPoints; // Asignamos el número
+          totalPoints += calculatedPoints; // Sumamos el número directamente
           
-                if (isActiveStarter && isEligibleThisMatchday) {
-                   if (rawVal !== '-') {
-                       const isCap = matchdayCaptainUid 
-                         ? matchdayCaptainUid.trim().toLowerCase() === scoreKey.toLowerCase() 
-                         : false;
-                        finalPoints = isCap ? (Number(rawVal) * 2) : Number(rawVal);
-                        totalPoints += (finalPoints as unknown as number);
-                       if (isCap) pRecord.isCaptain = true;
-                   }
-                } else if (!isEligibleThisMatchday) {
-                    finalPoints = '-'; 
-                }
-                
-                pRecord.puntosCalculados[j] = finalPoints;
-              });
+         if (isCap) pRecord.isCaptain = true;
+     }
+  } else if (!isEligibleThisMatchday) {
+      finalPoints = '-'; 
+  }
+  
+  pRecord.puntosCalculados[j] = finalPoints;
+});
             }
           });
           
