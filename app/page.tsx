@@ -5453,53 +5453,52 @@ const resolveCaptain = (user: any, md: string) => {
     const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
     const isCapNow = resolveCaptain(u, u.snapshotMatchday || 'J1') === scoreKey;
   
-    // 🏆 1. FILTRADO CON EL STARTING INDEX DEL PASO 1
-    // Recuperamos el índice de la jornada en la que se compró el jugador (0 para J1, 3 para 16V...)
     const startIndex = p.startingIndex || 0;
 
-    // 🚀 2. RECALCULAMOS EL TOTAL DE LA FILA CONSIDERANDO EL FICHAJE
     const ptTot = matchdays.reduce((sum: number, j: string, mIdx: number) => {
-        // Si la jornada actual que recorre el bucle es anterior al fichaje, NO SUMA
         if (mIdx < startIndex) return sum; 
-        
         const val = p.puntos?.[j];
         return sum + (val !== '-' && val !== undefined ? Number(val) : 0);
     }, 0);
   
     return (
-      <tr key={p.id || `${scoreKey}-${idx}`} className={`transition-colors ${isSold ? 'bg-black/40 opacity-30 grayscale' : 'hover:bg-white/5 bg-[#0f172a]'}`}>
-        <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/40' : 'bg-[#0f172a]'}`}>
+      // Ajuste: Subimos la opacidad a 60 (más legible) y forzamos grayscale
+      <tr key={p.id || `${scoreKey}-${idx}`} className={`transition-colors ${isSold ? 'bg-black/60 opacity-60 grayscale' : 'hover:bg-white/5 bg-[#0f172a]'}`}>
+        <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/60' : 'bg-[#0f172a]'}`}>
           <div className="flex items-center justify-between min-w-[200px]">
             <div className="flex items-center gap-4">
-              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${isSold ? 'bg-white/10 text-white/40' : (posColors[p.posicion] || 'bg-gray-500 text-white')}`}>{p.posicion}</span>
-              <span className="w-6 flex justify-center items-center">
-                {flagUrl ? <img src={flagUrl} alt={p.equipo} className="w-4 h-3 object-cover rounded-[2px]" /> : '🏳️'}
+              {/* Ajuste: Si es sold, bajamos el contraste del badge de posición */}
+              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${isSold ? 'bg-white/5 text-white/20' : (posColors[p.posicion] || 'bg-gray-500 text-white')}`}>
+                {p.posicion}
               </span>
-              <span className={`font-bold truncate max-w-[100px] ${isSold ? 'line-through text-white/30' : 'text-white/90'}`}>
+              <span className="w-6 flex justify-center items-center">
+                {flagUrl ? <img src={flagUrl} alt={p.equipo} className={`w-4 h-3 object-cover rounded-[2px] ${isSold ? 'opacity-50' : ''}`} /> : '🏳️'}
+              </span>
+              {/* Ajuste: Añadido italic, strikethrough y un gris sólido para mejorar contraste */}
+              <span className={`font-bold truncate max-w-[100px] ${isSold ? 'line-through italic text-gray-500' : 'text-white/90'}`}>
                 {p.nombre} {isCapNow && !isSold && <span className="text-[#eab308] ml-1">C</span>}
               </span>
             </div>
-            <span className={`font-black text-sm ml-4 ${isSold ? 'text-white/30' : 'text-white'}`}>{ptTot}</span>
+            {/* Ajuste: El total de puntos también se aclara pero se mantiene visible */}
+            <span className={`font-black text-sm ml-4 ${isSold ? 'text-gray-500' : 'text-white'}`}>{ptTot}</span>
           </div>
         </td>
         
         {matchdays.map((j: string, mIdx: number) => {
           const rawPts = p.puntos?.[j] !== undefined ? p.puntos[j] : '-';
-          
-          // 🚀 3. OCULTACIÓN VISUAL EN LAS CASILLAS
-          // Si el partido corresponde a una jornada anterior a su fichaje, forzamos un '0' text-white/20 tachado
           const isBeforeTransfer = mIdx < startIndex;
           const showPts = (isBeforeTransfer && rawPts !== '-') ? '0' : rawPts;
 
+          // Ajuste: Las casillas de puntos siguen la lógica de isSold
           return (
-              <td key={j} className={`p-3 text-center font-bold ${isBeforeTransfer ? 'text-white/20 line-through' : 'text-white/90'}`}>
+              <td key={j} className={`p-3 text-center font-bold ${isBeforeTransfer ? 'text-white/10 line-through' : isSold ? 'text-gray-600' : 'text-white/90'}`}>
                 {showPts}
               </td>
           );
         })}
       </tr>
     );
-  })
+})
 ) : (
   <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">No hay jugadores.</td></tr>
 )}
