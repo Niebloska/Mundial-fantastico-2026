@@ -4708,12 +4708,13 @@ const handleBuyPlayer = (player: any) => {
         ].filter(Boolean);
 
         // 3. Contamos cuántas caras nuevas hay respecto al equipo original
-        const newPlayersCount = currentPlayers.reduce((count, currentPlayer) => {
-            const wasInOldTeam = oldPlayers.some(oldPlayer => 
-                oldPlayer.nombre === currentPlayer.nombre && oldPlayer.equipo === currentPlayer.equipo
-            );
-            return wasInOldTeam ? count : count + 1;
-        }, 0);
+        // 3. Contamos cuántos jugadores del equipo actual NO estaban en el original
+const newPlayersCount = currentPlayers.reduce((count, currentPlayer: any) => {
+  const wasInOldTeam = oldPlayers.some((oldPlayer: any) => 
+      oldPlayer.nombre === currentPlayer.nombre && oldPlayer.equipo === currentPlayer.equipo
+  );
+  return wasInOldTeam ? count : count + 1;
+}, 0);
 
         // 4. Bloqueo si superan el límite de 6 fichajes
         if (newPlayersCount > 6) {
