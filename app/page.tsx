@@ -3491,9 +3491,11 @@ useEffect(() => {
   
           let totalPoints = 0;
   
-          matchdays.forEach((j, mdIdx) => { // 🔥 4. AÑADIDO mdIdx para saber en qué jornada estamos iterando
-            const snapshot = history[j] || { selected: s, bench: b, captain: u.squad_data?.captain };
-          
+          matchdays.forEach((j, mdIdx) => { 
+            // 🔥 CORRECCIÓN: Solo leemos el historial real. Si no existe, snapshot será null.
+            const snapshot = history[j] || null; 
+            
+            // ✅ Solo ejecutamos el cálculo si existe un snapshot válido para esa jornada
             if (snapshot && snapshot.selected) {
               const mdSelected = Object.values(snapshot.selected).filter(Boolean);
               const mdBenchObj = snapshot.bench || {};
@@ -3505,65 +3507,58 @@ useEffect(() => {
                                     .filter(Boolean);
               
               const matchdayCaptainUid = snapshot.captain;
-  
+          
               const getScoreKey = (p: any) => `${p.nombre.trim()}_${p.equipo.trim()}`;
               const getRawPoints = (p: any): any => {
                 const val = globalScores[getScoreKey(p)]?.[j];
                 // @ts-ignore
                 return (val === undefined || val === '-') ? '-' : Number(val);
               };
-  
+          
               let activeStarters = [...mdSelected];
               let subbedOut: any[] = [];
-  
+          
               // A) Titulares que no jugaron o hicieron 0
               const missingStarters = activeStarters.filter(p => {
                 const pts = getRawPoints(p);
                 return pts === '-' || pts === 0;
               });
-  
+          
               // B) Suplentes que sí puntuaron
               const availableSubs = mdBench.filter(p => {
                 const pts = getRawPoints(p);
                 return pts !== '-' && pts !== 0; 
               });
-  
-              // C) Procesar sustituciones con lista estricta de tácticas permitidas
+          
+              // C) Procesar sustituciones
               availableSubs.forEach(sub => {
                 for (let i = 0; i < missingStarters.length; i++) {
                   const starter = missingStarters[i];
                   if (subbedOut.includes(starter)) continue;
-  
-                  // Creamos el 11 provisional simulando el cambio
+          
                   const tempStarters = activeStarters.map(p => p === starter ? sub : p);
                   
-                  // Contamos las posiciones del nuevo 11
                   const counts: any = { POR: 0, DEF: 0, MED: 0, DEL: 0 };
                   tempStarters.forEach(p => counts[p.posicion] = (counts[p.posicion] || 0) + 1);
-  
-                  // 🚀 CAMBIO CRÍTICO: Comprobación estricta de formato táctico
+          
                   const formationStr = `${counts.POR || 0}-${counts.DEF || 0}-${counts.MED || 0}-${counts.DEL || 0}`;
                   const validFormations = ['1-5-3-2', '1-4-4-2', '1-4-5-1', '1-4-3-3', '1-3-4-3'];
                   
-                  const isValid = validFormations.includes(formationStr);
-  
-                  if (isValid) {
+                  if (validFormations.includes(formationStr)) {
                     subbedOut.push(starter);
-                    activeStarters = tempStarters; // Confirmamos cambio táctico
-
-                    // ✅ AQUÍ ESTÁ LA CORRECCIÓN: Marcamos el estado en el mapa para el front
+                    activeStarters = tempStarters;
+          
                     const starterRecord = allPlayersMap.get(getUid(starter));
                     const subRecord = allPlayersMap.get(getUid(sub));
                     
                     if (starterRecord) starterRecord.isSubbedOut = true;
                     if (subRecord) subRecord.isSubbedIn = true;
-                    
                     break; 
                   }
                 }
               });
-  
-              // D) Asignar puntos y aplicar multiplicador de capitán si corresponde
+          
+              // D) Asignar puntos
               const allMdPlayers = [...mdSelected, ...mdBench];
               allMdPlayers.forEach(player => {
                 const uid = getUid(player);
@@ -3571,28 +3566,25 @@ useEffect(() => {
                 
                 const pRecord = allPlayersMap.get(uid);
                 if (!pRecord) return;
-  
+          
                 const scoreKey = getScoreKey(player);
                 const rawVal = getRawPoints(player);
                 
                 let finalPoints = '-';
                 const isActiveStarter = activeStarters.some(st => getUid(st) === uid);
-  
-                // 🔥 5. FILTRO DE FICHAJES: Solo suma puntos y asigna valor real si la jornada es válida para él
+          
                 const isEligibleThisMatchday = mdIdx >= pRecord.startingIndex;
-
+          
                 if (isActiveStarter && isEligibleThisMatchday) {
                    if (rawVal !== '-') {
                        const isCap = matchdayCaptainUid 
                          ? matchdayCaptainUid.trim().toLowerCase() === scoreKey.toLowerCase() 
                          : false;
-                         // @ts-ignore
                         finalPoints = isCap ? (Number(rawVal) * 2) : Number(rawVal);
                         totalPoints += (finalPoints as unknown as number);
                        if (isCap) pRecord.isCaptain = true;
                    }
                 } else if (!isEligibleThisMatchday) {
-                    // Si no es elegible, forzamos un valor para que el front lo pinte vacío o en 0
                     finalPoints = '-'; 
                 }
                 
