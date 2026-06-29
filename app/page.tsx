@@ -4709,7 +4709,8 @@ const handleBuyPlayer = (player: any) => {
 
         // 3. Contamos cuántas caras nuevas hay respecto al equipo original
         // 3. Contamos cuántos jugadores del equipo actual NO estaban en el original
-const newPlayersCount = currentPlayers.reduce((count, currentPlayer: any) => {
+// 3. Contamos cuántas caras nuevas hay respecto al equipo original
+const newPlayersCount = currentPlayers.reduce((count: number, currentPlayer: any) => {
   const wasInOldTeam = oldPlayers.some((oldPlayer: any) => 
       oldPlayer.nombre === currentPlayer.nombre && oldPlayer.equipo === currentPlayer.equipo
   );
