@@ -4042,104 +4042,115 @@ const availableCountriesWithCount = useMemo(() => {
     }
 };
 
-  const handleBuyPlayer = (player: any) => {
-    // 🛡️ ESCUDO: Si no estamos editando, prohibimos fichar
-    if (!isEditingSquad) {
-      alert("¡Debes pulsar el botón 'EDITAR ALINEACIÓN' para poder fichar jugadores!");
-      return;
+const handleBuyPlayer = (player: any) => {
+  // 🛡️ ESCUDO: Si no estamos editando, prohibimos fichar
+  if (!isEditingSquad) {
+    alert("¡Debes pulsar el botón 'EDITAR ALINEACIÓN' para poder fichar jugadores!");
+    return;
+  }
+
+  // 🛡️ CONTROL CORONAVIRUS: ¿El mercado está abierto?
+  if (!isMarketOpen) {
+    return alert('❌ MERCADO CERRADO:\nNo se permiten realizar fichajes en este momento.');
+  }
+
+  if (!activeSlot) return alert('⚠️ Selecciona primero un hueco vacío.');
+
+  // --- HUELLA DIGITAL (Para evitar duplicados) ---
+  const playerUniqueId = `${player.nombre.trim().toLowerCase()}_${player.equipo.trim().toLowerCase()}`;
+
+  // Identificar si estamos reemplazando a alguien y cuánto vale
+  const currentPlayerInSlot =
+    activeSlot.type === 'titular' ? selected[activeSlot.id] : 
+    activeSlot.type === 'bench' ? bench[activeSlot.id] : 
+    extras[activeSlot.id];
+    
+  const currentSlotValue = currentPlayerInSlot ? currentPlayerInSlot.precio : 0;
+
+  // 1. BLOQUEO DE 12º JUGADOR
+  if (activeSlot.type === 'titular') {
+    const currentTitulars = Object.values(selected).filter(Boolean).length;
+    if (currentTitulars >= 11 && !currentPlayerInSlot) {
+      return alert('❌ Ya tienes 11 titulares. Primero debes vender a uno.');
     }
+  }
 
-    // 🛡️ CONTROL CORONAVIRUS: ¿El mercado está abierto?
-    if (!isMarketOpen) {
-      return alert('❌ MERCADO CERRADO:\nNo se permiten realizar fichajes en este momento.');
-    }
+  // 2. Comprobar si ya está fichado (en OTRO hueco) - USANDO HUELLA DIGITAL
+  const allSquadPlayers = [
+    ...Object.values(selected),
+    ...Object.values(bench),
+    ...Object.values(extras)
+  ].filter(Boolean);
 
-    if (!activeSlot) return alert('⚠️ Selecciona primero un hueco vacío.');
+  const isAlreadyInTeam = allSquadPlayers.some((p: any) => `${p.nombre.trim().toLowerCase()}_${p.equipo.trim().toLowerCase()}` === playerUniqueId);
+  
+  const isReplacingSamePlayer = currentPlayerInSlot && 
+                               currentPlayerInSlot.nombre === player.nombre && 
+                               currentPlayerInSlot.equipo === player.equipo;
 
-    // --- HUELLA DIGITAL (Para evitar duplicados) ---
-    const playerUniqueId = `${player.nombre.trim().toLowerCase()}_${player.equipo.trim().toLowerCase()}`;
+  if (isAlreadyInTeam && !isReplacingSamePlayer) {
+    return alert('⚠️ Este jugador ya está en tu equipo.');
+  }
 
-    // Identificar si estamos reemplazando a alguien y cuánto vale
-    const currentPlayerInSlot =
-      activeSlot.type === 'titular' ? selected[activeSlot.id] : 
-      activeSlot.type === 'bench' ? bench[activeSlot.id] : 
-      extras[activeSlot.id];
-      
-    const currentSlotValue = currentPlayerInSlot ? currentPlayerInSlot.precio : 0;
+  // 3. VALIDACIÓN: Límite de jugadores misma selección
+  const isGroupStage = ['J1', 'J2', 'J3'].includes(activeMatchday);
+  const maxPlayersPerCountry = isGroupStage ? 7 : 8;
 
-    // 1. BLOQUEO DE 12º JUGADOR
-    if (activeSlot.type === 'titular') {
-      const currentTitulars = Object.values(selected).filter(Boolean).length;
-      if (currentTitulars >= 11 && !currentPlayerInSlot) {
-        return alert('❌ Ya tienes 11 titulares. Primero debes vender a uno.');
+  const otherPlayers = allSquadPlayers.filter((p: any) => p.nombre !== currentPlayerInSlot?.nombre);
+  const playersFromSameCountry = otherPlayers.filter((p: any) => p.equipo === player.equipo).length;
+
+  if (playersFromSameCountry >= maxPlayersPerCountry) {
+    return alert(`❌ LÍMITE ALCANZADO: Max ${maxPlayersPerCountry} jugadores de ${player.equipo}.`);
+  }
+
+  // 🔄 CONTROL INTELIGENTE DE LOS 6 CAMBIOS
+  const isInitialSetup = Date.now() < JORNADAS_DEADLINES[0].date;
+
+  // 🔥 EL FIX: Solo comprobamos que no sea el setup inicial.
+  if (!isInitialSetup) {
+      // Agrupamos el snapshot una sola vez para no repetir código
+      const snapshotPlayers = snapshotSquad ? [
+        ...Object.values(snapshotSquad.selected || {}),
+        ...Object.values(snapshotSquad.bench || {}),
+        ...Object.values(snapshotSquad.extras || {})
+      ] : [];
+
+      // Comprobamos si el jugador que quieres fichar NO estaba en la jornada anterior
+      const isIncomingPlayerNew = !snapshotPlayers.some((p: any) => 
+          p && p.nombre === player.nombre && p.equipo === player.equipo
+      );
+
+      // Comprobamos si al jugador que estás vendiendo tampoco estaba en la jornada anterior (cambio revertido)
+      const isCurrentPlayerNew = currentPlayerInSlot && !snapshotPlayers.some((p: any) => 
+          p && p.nombre === currentPlayerInSlot.nombre && p.equipo === currentPlayerInSlot.equipo
+      );
+
+      // Si metes a alguien nuevo, ya has gastado tus 6 balas, y no estás sacando a otro nuevo (que no gastaría cambio)... BLOQUEO
+      if (isIncomingPlayerNew && transfersMade >= 6 && !isCurrentPlayerNew) {
+        return alert(
+          `❌ LÍMITE DE CAMBIOS:\nHas agotado tus 6 cambios permitidos para esta ventana de mercado.`
+        );
       }
-    }
+  }
 
-    // 2. Comprobar si ya está fichado (en OTRO hueco) - USANDO HUELLA DIGITAL
-    const isAlreadyInTeam = allSquadPlayers.some(p => `${p.nombre}_${p.equipo}` === `${player.nombre}_${player.equipo}`);
-    const isReplacingSamePlayer = currentPlayerInSlot && 
-                                 currentPlayerInSlot.nombre === player.nombre && 
-                                 currentPlayerInSlot.equipo === player.equipo;
+  // 4. VALIDACIÓN: Presupuesto
+  const futureBudget = currentBudget + currentSlotValue - player.precio;
+  if (futureBudget < 0) {
+    return alert(`⚠️ PRESUPUESTO INSUFICIENTE.`);
+  }
 
-    if (isAlreadyInTeam && !isReplacingSamePlayer) {
-      return alert('⚠️ Este jugador ya está en tu equipo.');
-    }
+  // 5. VALIDACIÓN: Posición
+  if (activeSlot.type === 'titular' && activeSlot.pos !== player.posicion) {
+    return alert(`⚠️ Posición incorrecta.`);
+  }
 
-    // 3. VALIDACIÓN: Límite de jugadores misma selección
-    const isGroupStage = ['J1', 'J2', 'J3'].includes(activeMatchday);
-    const maxPlayersPerCountry = isGroupStage ? 7 : 8;
+  // ASIGNACIÓN DEL JUGADOR
+  const newPlayer = { ...player };
+  if (activeSlot.type === 'titular') setSelected({ ...selected, [activeSlot.id]: newPlayer });
+  else if (activeSlot.type === 'bench') setBench({ ...bench, [activeSlot.id]: newPlayer });
+  else setExtras({ ...extras, [activeSlot.id]: newPlayer });
 
-    const otherPlayers = allSquadPlayers.filter((p) => p.nombre !== currentPlayerInSlot?.nombre);
-    const playersFromSameCountry = otherPlayers.filter((p) => p.equipo === player.equipo).length;
-
-    if (playersFromSameCountry >= maxPlayersPerCountry) {
-      return alert(`❌ LÍMITE ALCANZADO: Max ${maxPlayersPerCountry} jugadores de ${player.equipo}.`);
-    }
-
-    // 🔄 CONTROL INTELIGENTE DE LOS 6 CAMBIOS
-    const isInitialSetup = Date.now() < JORNADAS_DEADLINES[0].date;
-
-    // AÑADIMOS LA CONDICIÓN: Si el mercado está abierto (isSquadLocked es false), 
-    // saltamos la lógica de bloqueo de cambios.
-    if (!isInitialSetup && isSquadLocked) {
-        const isIncomingPlayerNew = !snapshotSquad || ![
-          ...Object.values(snapshotSquad.selected || {}),
-          ...Object.values(snapshotSquad.bench || {}),
-          ...Object.values(snapshotSquad.extras || {})
-        ].some((p: any) => p && p.nombre === player.nombre && p.equipo === player.equipo);
-
-        const isCurrentPlayerNew = !snapshotSquad || (currentPlayerInSlot && ![
-          ...Object.values(snapshotSquad.selected || {}),
-          ...Object.values(snapshotSquad.bench || {}),
-          ...Object.values(snapshotSquad.extras || {})
-        ].some((p: any) => p && p.nombre === currentPlayerInSlot.nombre && p.equipo === currentPlayerInSlot.equipo));
-
-        // Si el jugador que entra es nuevo, ya llevas 6 cambios, Y NO estás sustituyendo a otro jugador nuevo... ¡BLOQUEO!
-        if (isIncomingPlayerNew && transfersMade >= 6 && !isCurrentPlayerNew) {
-          return alert(
-            `❌ LÍMITE DE CAMBIOS:\nHas agotado tus 6 cambios permitidos para esta ventana de mercado.`
-          );
-        }
-    }
-
-    // 4. VALIDACIÓN: Presupuesto
-    const futureBudget = currentBudget + currentSlotValue - player.precio;
-    if (futureBudget < 0) {
-      return alert(`⚠️ PRESUPUESTO INSUFICIENTE.`);
-    }
-
-    // 5. VALIDACIÓN: Posición
-    if (activeSlot.type === 'titular' && activeSlot.pos !== player.posicion) {
-      return alert(`⚠️ Posición incorrecta.`);
-    }
-
-    // ASIGNACIÓN DEL JUGADOR
-    const newPlayer = { ...player };
-    if (activeSlot.type === 'titular') setSelected({ ...selected, [activeSlot.id]: newPlayer });
-    else if (activeSlot.type === 'bench') setBench({ ...bench, [activeSlot.id]: newPlayer });
-    else setExtras({ ...extras, [activeSlot.id]: newPlayer });
-
-    setActiveSlot(null);
+  setActiveSlot(null);
 };
 
   // --- LÓGICA DE TÁCTICA Y VALIDACIÓN ---
@@ -4676,14 +4687,47 @@ const availableCountriesWithCount = useMemo(() => {
         </button>
 
         {/* BOTÓN VALIDAR */}
-        <button
+<button
   onClick={() => {
-    // Llamamos a la misma función que el auto-guardado
+    // 🛡️ CANDADO DEFINITIVO DE LOS 6 CAMBIOS
+    const isInitialSetup = Date.now() < JORNADAS_DEADLINES[0].date;
+
+    if (!isInitialSetup && snapshotSquad) {
+        // 1. Recopilamos los jugadores del snapshot original
+        const oldPlayers = [
+            ...Object.values(snapshotSquad.selected || {}),
+            ...Object.values(snapshotSquad.bench || {}),
+            ...Object.values(snapshotSquad.extras || {})
+        ].filter(Boolean);
+
+        // 2. Recopilamos los jugadores de la pizarra actual
+        const currentPlayers = [
+            ...Object.values(selected || {}),
+            ...Object.values(bench || {}),
+            ...Object.values(extras || {})
+        ].filter(Boolean);
+
+        // 3. Contamos cuántas caras nuevas hay respecto al equipo original
+        const newPlayersCount = currentPlayers.reduce((count, currentPlayer) => {
+            const wasInOldTeam = oldPlayers.some(oldPlayer => 
+                oldPlayer.nombre === currentPlayer.nombre && oldPlayer.equipo === currentPlayer.equipo
+            );
+            return wasInOldTeam ? count : count + 1;
+        }, 0);
+
+        // 4. Bloqueo si superan el límite de 6 fichajes
+        if (newPlayersCount > 6) {
+            alert(`❌ LÍMITE SUPERADO:\nHas incluido ${newPlayersCount} jugadores nuevos, pero el máximo permitido son 6. Por favor, revierte algunos fichajes antes de validar.`);
+            return; // ⛔ Aborta la ejecución aquí mismo y NO guarda en Supabase
+        }
+    }
+
+    // 🚀 SI PASA EL FILTRO, SE GUARDA NORMALMENTE
     saveSquadToSupabase({ selected, bench, extras, captain }); 
     setIsEditingSquad(false); 
     alert("¡Plantilla validada correctamente!");
   }}
-  className="px-8 py-3 bg-green-500 ..."
+  className="px-8 py-3 bg-green-500 hover:bg-green-400 text-white font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(34,197,94,0.4)] border-2 border-green-300 flex items-center justify-center gap-2 transform active:scale-95"
 >
   ✅ VALIDAR
 </button>
