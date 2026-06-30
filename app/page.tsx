@@ -66,6 +66,34 @@ const EQUIPOS_ACIERTO_QUINIELA = [
   'Australia', 'Egipto', 'Suiza', 'Colombia'
   ];
 
+  const getTeamName = (code: string, allStandings: any) => {
+    if (!code) return code;
+  
+    const officialThirds: Record<string, string> = {
+      '3-ABCDF': 'Paraguay',
+      '3-CDFGH': 'Suecia',
+      '3-CEFHI': 'Ecuador',
+      '3-EHIJK': 'Congo (RDC)',
+      '3-AEHIJ': 'Senegal',
+      '3-BEFIJ': 'Bosnia y Herzegovina',
+      '3-EFGIJ': 'Argelia',
+      '3-DEIJL': 'Ghana'
+    };
+  
+    if (officialThirds[code]) return officialThirds[code];
+  
+    // Si allStandings es null (como en el bloque de eliminatorias), saltamos este cálculo
+    if (allStandings && code.length >= 2 && !code.includes('-')) {
+        const pos = parseInt(code[0]) - 1;
+        const groupCode = code.slice(1);
+        const team = allStandings[groupCode]?.[pos];
+        return team ? team.name : code;
+    }
+    
+    return code;
+  };
+
+  
 // ==========================================
 // 10. COMPONENTE TUTORIAL (ONBOARDING)
 // ==========================================
@@ -2287,7 +2315,7 @@ const formatMatchDate = (isoString: string) => {
   return { day: `${day} ${months[parseInt(month, 10) - 1]}`, time };
 };
 
-const CalendarView = ({ results }: { results: Record<string, any> }) => {
+const CalendarView = ({ results, allStandings }: { results: Record<string, any>, allStandings: any }) => {
   const [activeTab, setActiveTab] = useState<'groups' | 'knockout'>('groups');
   const [activeGroup, setActiveGroup] = useState('A');
   const activeGroupData = GROUPS_2026.find((g) => g.id === activeGroup);
@@ -2299,59 +2327,7 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
     ).map(m => ({ ...m, ...formatMatchDate(m.date) }));
   }, [activeGroupData]);
 
-  const allStandings = useMemo(() => {
-    const all: Record<string, any[]> = {};
-    GROUPS_2026.forEach(group => {
-      let table: any = {};
-      group.teams.forEach(t => (table[t] = { name: t, pts: 0, pj: 0, gf: 0, gc: 0, dif: 0 }));
-      ALL_MATCHES.filter(m => group.teams.includes(m.team1)).forEach(match => {
-        const res = results[match.id];
-        if (!res || res.home_score === null || res.away_score === null) return;
-        table[match.team1].pj++; table[match.team2].pj++;
-        table[match.team1].gf += res.home_score; table[match.team1].gc += res.away_score;
-        table[match.team2].gf += res.away_score; table[match.team2].gc += res.home_score;
-        if (res.home_score > res.away_score) table[match.team1].pts += 3;
-        else if (res.home_score < res.away_score) table[match.team2].pts += 3;
-        else { table[match.team1].pts += 1; table[match.team2].pts += 1; }
-        table[match.team1].dif = table[match.team1].gf - table[match.team1].gc;
-        table[match.team2].dif = table[match.team2].gf - table[match.team2].gc;
-      });
-      all[group.id] = Object.values(table).sort((a: any, b: any) => b.pts - a.pts || b.dif - a.dif || b.gf - a.gf);
-    });
-    return all;
-  }, [results]);
-
-  const getTeamName = (code: string) => {
-    if (!code) return code;
-
-    // 🚨 EL DICCIONARIO DE RESCATE OFICIAL PARA EL CALENDARIO
-    const officialThirds: Record<string, string> = {
-      '3-ABCDF': 'Paraguay',
-      '3-CDFGH': 'Suecia',
-      '3-CEFHI': 'Ecuador',
-      '3-EHIJK': 'Congo (RDC)',
-      '3-AEHIJ': 'Senegal',
-      '3-BEFIJ': 'Bosnia y Herzegovina',
-      '3-EFGIJ': 'Argelia',
-      '3-DEIJL': 'Ghana'
-    };
-
-    // Si es uno de los terceros "feos", lo cambiamos al instante
-    if (officialThirds[code]) {
-      return officialThirds[code];
-    }
-
-    // Si es un primero o segundo (ej: "1A"), calculamos la tabla normal
-    if (code.length >= 2 && !code.includes('-')) {
-        const pos = parseInt(code[0]) - 1;
-        const groupCode = code.slice(1);
-        const team = allStandings[groupCode]?.[pos];
-        return team ? team.name : code;
-    }
-    
-    return code;
-  };
-
+  
   const knockoutRounds = [
     { title: 'Dieciseisavos', matches: ALL_MATCHES.filter(m => m.id >= 73 && m.id <= 88) },
     { title: 'Octavos', matches: ALL_MATCHES.filter(m => m.id >= 89 && m.id <= 96) },
@@ -2436,33 +2412,67 @@ const CalendarView = ({ results }: { results: Record<string, any> }) => {
               </h3>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-4">
-                {round.matches.map((match) => {
-                  const { day, time } = formatMatchDate(match.date);
-                  const t1 = getTeamName(match.team1);
-                  const t2 = getTeamName(match.team2);
-                  return (
-                    <div key={match.id} className="bg-[#0a101f] border border-white/5 p-4 rounded-2xl flex flex-col items-center shadow-xl hover:border-white/10 transition-all">
-                      <div className="flex w-full justify-around items-center">
-                        <div className="w-1/3 flex flex-col items-center gap-1">
-                            <img src={getFlag(t1)} className="w-8 h-5 object-cover rounded-sm shadow-md" />
-                            <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t1}</span>
-                        </div>
-                        <div className="text-base font-black text-[#22c55e] bg-black/60 px-3 py-1 rounded-lg border border-white/5">
-                          {results[match.id] ? `${results[match.id].home_score} - ${results[match.id].away_score}` : 'VS'}
-                        </div>
-                        <div className="w-1/3 flex flex-col items-center gap-1">
-                            <img src={getFlag(t2)} className="w-8 h-5 object-cover rounded-sm shadow-md" />
-                            <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t2}</span>
-                        </div>
-                      </div>
-                      <div className="mt-3 text-[10px] flex gap-2">
-                        <span className="text-[#22c55e] font-black tracking-wide">{day}</span>
-                        <span className="text-white/20 font-black">|</span>
-                        <span className="text-[#eab308] font-black tracking-wide">{time} h</span>
-                      </div>
-                    </div>
-                  );
-                })}
+              {round.matches.map((match) => {
+  const { day, time } = formatMatchDate(match.date);
+  // ¡AQUÍ ESTÁ EL TRUCO! 
+        // Usamos la variable allStandings que ya tienes definida arriba en el mismo componente
+        const t1 = getTeamName(match.team1, null);
+        const t2 = getTeamName(match.team2, null);
+        
+        const res = results[match.id];
+
+  return (
+    <div key={match.id} className="bg-[#0a101f] border border-white/5 p-4 rounded-2xl flex flex-col items-center shadow-xl hover:border-white/10 transition-all">
+      <div className="flex w-full justify-around items-center">
+        <div className="w-1/3 flex flex-col items-center gap-1">
+            <img src={getFlag(t1)} className="w-8 h-5 object-cover rounded-sm shadow-md" />
+            <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t1}</span>
+        </div>
+        
+        {/* Marcador con soporte para penaltis */}
+<div className="flex flex-col items-center">
+  <div className="text-base font-black text-[#22c55e] bg-black/60 px-3 py-1 rounded-lg border border-white/5">
+    {res ? `${res.home_score} - ${res.away_score}` : 'VS'}
+  </div>
+  
+  {/* Línea de Penaltis */}
+  {res?.home_penalties !== undefined && res?.home_penalties !== null && (
+    <span className="text-[9px] font-bold text-white/50 mt-1 uppercase">
+      ({res.home_penalties} - {res.away_penalties} p.)
+    </span>
+  )}
+
+  {/* G / E: El toque final de profesionalidad */}
+  {res !== undefined && (
+    <div className="flex gap-4 mt-1">
+      <span className={`text-[9px] font-black ${
+        (res.home_score > res.away_score || (res.home_penalties > res.away_penalties)) ? 'text-green-500' : 'text-red-500'
+      }`}>
+        {(res.home_score > res.away_score || (res.home_penalties > res.away_penalties)) ? 'G' : 'E'}
+      </span>
+      <span className={`text-[9px] font-black ${
+        (res.away_score > res.home_score || (res.away_penalties > res.home_penalties)) ? 'text-green-500' : 'text-red-500'
+      }`}>
+        {(res.away_score > res.home_score || (res.away_penalties > res.home_penalties)) ? 'G' : 'E'}
+      </span>
+    </div>
+  )}
+</div>
+
+        <div className="w-1/3 flex flex-col items-center gap-1">
+            <img src={getFlag(t2)} className="w-8 h-5 object-cover rounded-sm shadow-md" />
+            <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t2}</span>
+        </div>
+      </div>
+      
+      <div className="mt-3 text-[10px] flex gap-2">
+        <span className="text-[#22c55e] font-black tracking-wide">{day}</span>
+        <span className="text-white/20 font-black">|</span>
+        <span className="text-[#eab308] font-black tracking-wide">{time} h</span>
+      </div>
+    </div>
+  );
+})}
               </div>
             </div>
           ))}
@@ -2655,6 +2665,7 @@ const AuthScreen = ({
   );
 };
 
+
 const JORNADAS_DEADLINES = [
   { id: 'J1', label: 'EL MUNDIAL', date: new Date('2026-06-11T21:00:00+02:00').getTime() },
   { id: 'J2', label: 'ALINEACIÓN J2', date: new Date('2026-06-18T16:00:00+02:00').getTime() },
@@ -2734,7 +2745,6 @@ export default function MundialApp() {
   'Suiza', 'Argelia', 
   'Colombia', 'Ghana'
   ];
-
 
   // 💸 ESTADOS DEL MERCADO DE FICHAJES
   const [snapshotSquad, setSnapshotSquad] = useState<any>(null); // Aquí guardaremos la "Foto"
@@ -2895,6 +2905,28 @@ const canNavigateAway = () => {
 
   // --- TORRE DE CONTROL DE MARCADORES ---
 const [results, setResults] = useState<Record<string, any>>({});
+
+const allStandings = useMemo(() => {
+  const all: Record<string, any[]> = {};
+  GROUPS_2026.forEach(group => {
+    let table: any = {};
+    group.teams.forEach(t => (table[t] = { name: t, pts: 0, pj: 0, gf: 0, gc: 0, dif: 0 }));
+    ALL_MATCHES.filter(m => group.teams.includes(m.team1)).forEach(match => {
+      const res = results[match.id];
+      if (!res || res.home_score === null || res.away_score === null) return;
+      table[match.team1].pj++; table[match.team2].pj++;
+      table[match.team1].gf += res.home_score; table[match.team1].gc += res.away_score;
+      table[match.team2].gf += res.away_score; table[match.team2].gc += res.home_score;
+      if (res.home_score > res.away_score) table[match.team1].pts += 3;
+      else if (res.home_score < res.away_score) table[match.team2].pts += 3;
+      else { table[match.team1].pts += 1; table[match.team2].pts += 1; }
+      table[match.team1].dif = table[match.team1].gf - table[match.team1].gc;
+      table[match.team2].dif = table[match.team2].gf - table[match.team2].gc;
+    });
+    all[group.id] = Object.values(table).sort((a: any, b: any) => b.pts - a.pts || b.dif - a.dif || b.gf - a.gf);
+  });
+  return all;
+}, [results]);
 
 const [lineupsHistory, setLineupsHistory] = useState<Record<string, any>>({});
 const [squadData, setSquadData] = useState<any>({}); // Tu base
@@ -3258,6 +3290,8 @@ useEffect(() => {
     const unused = allTeams.filter((team) => !usedTeams.has(team));
     setUnusedTeams(unused);
   };
+
+  const [adminPhase, setAdminPhase] = useState('D16');
 
   const [allProfiles, setAllProfiles] = useState<any[]>([]);
 
@@ -5076,7 +5110,7 @@ const newPlayersCount = currentPlayers.reduce((count: number, currentPlayer: any
   results={results} // 👈 ¡EL NUEVO CABLE DE MARCADORES! 🏆
 />
   )}
-        {view === 'calendar' && <CalendarView results={results} />}
+        {view === 'calendar' && <CalendarView results={results} allStandings={allStandings} />}
         {view === 'lineups' && (
   (() => {
 
@@ -5807,6 +5841,80 @@ const resolveCaptain = (user: any, md: string) => {
           </div>
         </div>
 
+{/* ==========================================
+    NUEVO BLOQUE: MODO DIOS - ELIMINATORIAS (Encima de Grupos)
+    ========================================== */}
+<div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden text-left mb-6">
+  <h2 className="text-xl font-black italic text-red-500 uppercase tracking-tighter mb-4">Inyectar Eliminatorias</h2>
+  
+  <select value={adminPhase} onChange={(e) => setAdminPhase(e.target.value)} className="w-full bg-black/50 border border-red-500/30 rounded-xl px-4 py-3 text-sm font-bold text-white mb-6">
+    <option value="D16">Dieciseisavos (D16)</option>
+    <option value="OCT">Octavos</option>
+    <option value="CUA">Cuartos</option>
+    <option value="SEM">Semifinales</option>
+    <option value="FIN">Final</option>
+  </select>
+
+  <div className="space-y-3">
+    {ALL_MATCHES.filter(m => {
+       // Filtros de fase que ya tenías
+       if (adminPhase === 'D16') return m.id >= 73 && m.id <= 88;
+       // ... resto de filtros ...
+       return false;
+    }).map((match) => {
+      const mId = match.id.toString();
+      const res = results[mId];
+      // Donde tienes el map de las eliminatorias en el Admin:
+
+      const t1Name = getTeamName(match.team1, allStandings);
+      const t2Name = getTeamName(match.team2, allStandings);
+
+      return (
+        <div key={mId} className="bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col gap-3">
+          <div className="grid grid-cols-[1fr,auto,auto,auto,1fr] gap-4 items-center">
+            {/* Equipo Local */}
+            <div className="flex items-center gap-2">
+              <img src={getFlag(t1Name)} className="w-6 h-4 object-cover rounded-sm" />
+              <span className="text-xs font-bold text-white truncate">{t1Name}</span>
+            </div>
+      
+            {/* Marcador Local */}
+            <input type="number" defaultValue={res?.home_score} className="w-10 bg-black rounded p-2 text-center text-xs border border-white/10" 
+                   onBlur={(e) => updateKnockoutScore(mId, Number(e.target.value), res?.away_score, res?.home_penalties, res?.away_penalties)} />
+            
+            <span className="text-white/20 font-black">:</span>
+            
+            {/* Marcador Visitante */}
+            <input type="number" defaultValue={res?.away_score} className="w-10 bg-black rounded p-2 text-center text-xs border border-white/10" 
+                   onBlur={(e) => updateKnockoutScore(mId, res?.home_score, Number(e.target.value), res?.home_penalties, res?.away_penalties)} />
+      
+            {/* Equipo Visitante */}
+            <div className="flex items-center gap-2 justify-end">
+              <span className="text-xs font-bold text-white truncate">{t2Name}</span>
+              <img src={getFlag(t2Name)} className="w-6 h-4 object-cover rounded-sm" />
+            </div>
+          </div>
+      
+          {/* Solo mostramos si hay empate */}
+          {(res?.home_score !== undefined && res?.away_score !== undefined && res.home_score === res.away_score) && (
+            <div className="flex items-center justify-center gap-4 text-[10px] uppercase font-black text-white/50 border-t border-white/5 pt-2">
+              <span>Penaltis:</span>
+              <button 
+                className={`px-3 py-1 rounded transition-colors ${res.home_penalties === 1 ? 'bg-green-500/20 text-green-400' : 'bg-white/5 hover:bg-white/10'}`}
+                onClick={() => updateKnockoutScore(mId, res.home_score, res.away_score, 1, 0)}
+              >G LOCAL</button>
+              <button 
+                className={`px-3 py-1 rounded transition-colors ${res.away_penalties === 1 ? 'bg-green-500/20 text-green-400' : 'bg-white/5 hover:bg-white/10'}`}
+                onClick={() => updateKnockoutScore(mId, res.home_score, res.away_score, 0, 1)}
+              >G VISITANTE</button>
+            </div>
+          )}
+        </div>
+      );
+    })}
+  </div>
+</div>
+
         {/* INYECTAR MARCADORES (Con función de reseteo) */}
         <div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden text-left">
           <h2 className="text-xl font-black italic text-red-500 uppercase tracking-tighter mb-4">Inyectar Marcadores</h2>
@@ -5881,6 +5989,8 @@ const resolveCaptain = (user: any, md: string) => {
         </div>
         </div>
     )}
+
+
 
 {adminTab === 'auditoria' && (
   <div className="animate-in fade-in duration-300">
