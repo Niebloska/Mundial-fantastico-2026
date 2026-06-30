@@ -2746,6 +2746,28 @@ export default function MundialApp() {
   'Colombia', 'Ghana'
   ];
 
+  const updateKnockoutScore = async (id: string, hs: number, as: number, hp?: number, ap?: number) => {
+    const { error } = await supabase
+      .from('match_results')
+      .upsert({ 
+        match_id: id, 
+        home_score: hs ?? 0, 
+        away_score: as ?? 0,
+        home_penalties: hp || null, 
+        away_penalties: ap || null,
+        updated_at: new Date().toISOString() 
+      }, { onConflict: 'match_id' });
+  
+    if (!error) {
+      const { data } = await supabase.from('match_results').select('*');
+      const newMap: any = {};
+      data?.forEach((r) => (newMap[r.match_id] = r));
+      setResults(newMap);
+    } else {
+      alert('Error al guardar: ' + error.message);
+    }
+  };
+
   // 💸 ESTADOS DEL MERCADO DE FICHAJES
   const [snapshotSquad, setSnapshotSquad] = useState<any>(null); // Aquí guardaremos la "Foto"
   const [transfersMade, setTransfersMade] = useState(0); // Contador de fichajes (Máx 6)
