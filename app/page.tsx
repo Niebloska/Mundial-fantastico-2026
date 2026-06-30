@@ -3445,7 +3445,7 @@ useEffect(() => {
           userTransfers.forEach(t => {
               if (t.transfer_type === 'BUY') {
                   // Convierte 'D16' en índice para comparar con matchdays
-                  entryMatchdayMap[t.player_name] = t.matchday === 'D16' ? 3 : 0; // J1=0, J2=1, J3=2, 16V=3...
+                  entryMatchdayMap[t.player_name] = t.matchday === 'D16' ? 3 : 0; // J1=0, J2=1, J3=2, D16=3...
               }
           });
 
@@ -5437,7 +5437,7 @@ const resolveCaptain = (user: any, md: string) => {
                           <span className="text-white bg-[#3b82f6]/20 px-2 py-0.5 rounded ml-4">TOTAL</span>
                         </div>
                       </th>
-                      {['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'].map(j => (
+                      {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map(j => (
                         <th key={j} className="p-3 text-center text-white/70">{j}</th>
                       ))}
                     </tr>
@@ -5522,7 +5522,7 @@ const resolveCaptain = (user: any, md: string) => {
                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full absolute inset-0 py-4 px-2 opacity-90 overflow-visible">
                     
                     {(() => {
-                      const baseGraphMatchdays = ['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'];
+                      const baseGraphMatchdays = ['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'];
                       
                       let lastActiveIdx = 0;
                       baseGraphMatchdays.forEach((j, idx) => {
@@ -5653,7 +5653,7 @@ const resolveCaptain = (user: any, md: string) => {
                  </svg>
 
                  {/* Etiquetas del Eje X */}
-                 {['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'].map((j, idx) => {
+                 {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map((j, idx) => {
                     const startX = 8; 
                     const stepX = (98 - startX) / 7;
                     const leftPos = startX + (idx * stepX);
@@ -5700,7 +5700,7 @@ const resolveCaptain = (user: any, md: string) => {
       </h3>
       
       <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
-        {['J1', 'J2', 'J3', '16V', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => (
+        {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => (
           <button 
             key={j} 
             // 🚀 AQUÍ LE DAMOS VIDA AL BOTÓN
