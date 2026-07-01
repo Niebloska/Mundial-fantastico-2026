@@ -70,7 +70,7 @@ const EQUIPOS_ACIERTO_QUINIELA = [
     if (!code) return "";
     
     // 1. Diccionario de terceros o nombres fijos
-    const officialThirds = {
+    const officialThirds: Record<string, string> = {
       '3-ABCDF': 'Paraguay', '3-CDFGH': 'Suecia', '3-CEFHI': 'Ecuador',
       '3-EHIJK': 'Congo (RDC)', '3-AEHIJ': 'Senegal', '3-BEFIJ': 'Bosnia y Herzegovina',
       '3-EFGIJ': 'Argelia', '3-DEIJL': 'Ghana'
