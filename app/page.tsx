@@ -2312,7 +2312,8 @@ const formatMatchDate = (isoString: string) => {
 };
 
 const CalendarView = ({ results, allStandings }: { results: Record<string, any>, allStandings: any }) => {
-  const [activeTab, setActiveTab] = useState<'groups' | 'knockout'>('groups');
+  // ✅ 1. Cambiado a 'knockout' para que sea la pantalla por defecto
+  const [activeTab, setActiveTab] = useState<'groups' | 'knockout'>('knockout');
   const [activeGroup, setActiveGroup] = useState('A');
   const activeGroupData = GROUPS_2026.find((g) => g.id === activeGroup);
 
@@ -2323,7 +2324,6 @@ const CalendarView = ({ results, allStandings }: { results: Record<string, any>,
     ).map(m => ({ ...m, ...formatMatchDate(m.date) }));
   }, [activeGroupData]);
 
-  
   const knockoutRounds = [
     { title: 'Dieciseisavos', matches: ALL_MATCHES.filter(m => m.id >= 73 && m.id <= 88) },
     { title: 'Octavos', matches: ALL_MATCHES.filter(m => m.id >= 89 && m.id <= 96) },
@@ -2396,100 +2396,83 @@ const CalendarView = ({ results, allStandings }: { results: Record<string, any>,
             ))}
           </div>
         </>
-      ) : (
-        <div className="flex flex-col gap-10 py-4">
-          {knockoutRounds.map((round, rIdx) => (
-            <div key={rIdx} className="space-y-6">
-              {/* 🚀 ENCABEZADOS CON "GRACIA" */}
-              <h3 className="text-center text-sm font-black uppercase tracking-[0.4em] text-[#22c55e] flex items-center justify-center gap-6">
-                <span className="h-[2px] w-16 bg-gradient-to-r from-transparent to-[#22c55e]/50"></span>
-                {round.title}
-                <span className="h-[2px] w-16 bg-gradient-to-l from-transparent to-[#22c55e]/50"></span>
-              </h3>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-4">
-              {round.matches.map((match) => {
-  const { day, time } = formatMatchDate(match.date);
-  // ✅ CÁMBIALO POR ESTO:
-const t1 = getTeamName(match.team1, allStandings);
-const t2 = getTeamName(match.team2, allStandings);
+      // ... (resto del código de CalendarView)
+) : (
+  <div className="flex flex-col gap-10 py-4">
+    {knockoutRounds.map((round, rIdx) => (
+      <div key={rIdx} className="space-y-6">
+        <h3 className="text-center text-sm font-black uppercase tracking-[0.4em] text-[#22c55e] flex items-center justify-center gap-6">
+          <span className="h-[2px] w-16 bg-gradient-to-r from-transparent to-[#22c55e]/50"></span>
+          {round.title}
+          <span className="h-[2px] w-16 bg-gradient-to-l from-transparent to-[#22c55e]/50"></span>
+        </h3>
         
-        const res = results[match.id];
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-4">
+        
+        {round.matches.map((match) => {
+  const { day, time } = formatMatchDate(match.date);
+  const t1 = getTeamName(match.team1, allStandings);
+  const t2 = getTeamName(match.team2, allStandings);
+  const res = results[match.id];
 
-        return (
-          <div key={match.id} className="bg-[#0a101f] border border-white/5 p-4 rounded-2xl flex flex-col items-center shadow-xl hover:border-white/10 transition-all">
-            <div className="flex w-full justify-around items-center">
-              
-              {/* EQUIPO 1 */}
-              <div className="w-1/3 flex flex-col items-center gap-1">
-                  {/* 🚀 CONDICIÓN AÑADIDA AQUÍ: Solo muestra la imagen si NO hay números */}
-                  {!/\d/.test(t1) && (
-  <img 
-    src={getFlag(t1)} 
-    className="w-8 h-5 object-cover rounded-sm shadow-md" 
-    onError={(e) => (e.currentTarget.style.display = 'none')} 
-  />
-)}
-                  <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t1}</span>
-              </div>
-              
-              {/* Marcador con soporte para penaltis */}
-              <div className="flex flex-col items-center">
-                <div className="text-base font-black text-[#22c55e] bg-black/60 px-3 py-1 rounded-lg border border-white/5">
-                  {res ? `${res.home_score} - ${res.away_score}` : 'VS'}
-                </div>
-                
-                {/* Línea de Penaltis */}
-                {res?.home_penalties !== undefined && res?.home_penalties !== null && (
-                  <span className="text-[9px] font-bold text-white/50 mt-1 uppercase">
-                    ({res.home_penalties} - {res.away_penalties} p.)
-                  </span>
-                )}
-      
-                {/* G / E: El toque final de profesionalidad */}
-                {res !== undefined && (
-                  <div className="flex gap-4 mt-1">
-                    <span className={`text-[9px] font-black ${
-                      (res.home_score > res.away_score || (res.home_penalties > res.away_penalties)) ? 'text-green-500' : 'text-red-500'
-                    }`}>
-                      {(res.home_score > res.away_score || (res.home_penalties > res.away_penalties)) ? 'G' : 'E'}
-                    </span>
-                    <span className={`text-[9px] font-black ${
-                      (res.away_score > res.home_score || (res.away_penalties > res.home_penalties)) ? 'text-green-500' : 'text-red-500'
-                    }`}>
-                      {(res.away_score > res.home_score || (res.away_penalties > res.home_penalties)) ? 'G' : 'E'}
-                    </span>
-                  </div>
-                )}
-              </div>
-      
-              {/* EQUIPO 2 */}
-              <div className="w-1/3 flex flex-col items-center gap-1">
-                  {/* Para el EQUIPO 2 */}
-{!/\d/.test(t2) && (
-  <img 
-    src={getFlag(t2)} 
-    className="w-8 h-5 object-cover rounded-sm shadow-md" 
-    onError={(e) => (e.currentTarget.style.display = 'none')} 
-  />
-)}
-                  <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t2}</span>
-              </div>
-            </div>
+  // 🚀 Lógica para determinar ganador/perdedor
+  const isHomeWinner = res ? (res.home_score > res.away_score || (res.home_penalties !== null && res.home_penalties > res.away_penalties)) : false;
+  const isAwayWinner = res ? (res.away_score > res.home_score || (res.away_penalties !== null && res.away_penalties > res.home_penalties)) : false;
+
+  return (
+    <div key={match.id} className="bg-[#0a101f] border border-white/5 p-4 rounded-2xl flex flex-col items-center shadow-xl hover:border-white/10 transition-all">
+      <div className="flex w-full justify-around items-center">
+        
+        {/* EQUIPO 1 */}
+        <div className="w-1/3 flex flex-col items-center gap-1">
+            {!/\d/.test(t1) && <img src={getFlag(t1)} className="w-8 h-5 object-cover rounded-sm shadow-md" onError={(e) => (e.currentTarget.style.display = 'none')} />}
+            <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t1}</span>
             
-            <div className="mt-3 text-[10px] flex gap-2">
-              <span className="text-[#22c55e] font-black tracking-wide">{day}</span>
-              <span className="text-white/20 font-black">|</span>
-              <span className="text-[#eab308] font-black tracking-wide">{time} h</span>
-            </div>
-          </div>
-        );
-})}
-              </div>
-            </div>
-          ))}
+            {/* V/D para Local */}
+            {res && (
+              <span className={`text-[10px] font-black ${isHomeWinner ? 'text-green-500' : 'text-red-500'}`}>
+                {isHomeWinner ? 'V' : 'D'}
+              </span>
+            )}
         </div>
-      )}
+        
+        {/* MARCADOR */}
+        <div className="flex flex-col items-center">
+          <div className="text-base font-black text-[#22c55e] bg-black/60 px-3 py-1 rounded-lg border border-white/5">
+            {res ? `${res.home_score} - ${res.away_score}` : 'VS'}
+          </div>
+          {res?.home_penalties !== undefined && res?.home_penalties !== null && (
+            <span className="text-[9px] font-bold text-white/50 mt-1 uppercase">({res.home_penalties} - {res.away_penalties} p.)</span>
+          )}
+        </div>
+
+        {/* EQUIPO 2 */}
+        <div className="w-1/3 flex flex-col items-center gap-1">
+            {!/\d/.test(t2) && <img src={getFlag(t2)} className="w-8 h-5 object-cover rounded-sm shadow-md" onError={(e) => (e.currentTarget.style.display = 'none')} />}
+            <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t2}</span>
+            
+            {/* V/D para Visitante */}
+            {res && (
+              <span className={`text-[10px] font-black ${isAwayWinner ? 'text-green-500' : 'text-red-500'}`}>
+                {isAwayWinner ? 'V' : 'D'}
+              </span>
+            )}
+        </div>
+      </div>
+      
+      <div className="mt-3 text-[10px] flex gap-2">
+        <span className="text-[#22c55e] font-black tracking-wide">{day}</span>
+        <span className="text-white/20 font-black">|</span>
+        <span className="text-[#eab308] font-black tracking-wide">{time} h</span>
+      </div>
+    </div>
+  );
+})}
+        </div>
+      </div>
+    ))}
+  </div>
+)}
     </div>
   );
 };
@@ -2778,6 +2761,24 @@ export default function MundialApp() {
     } else {
       alert('Error al guardar: ' + error.message);
     }
+  };
+
+  // Esta función va con el resto de tus funciones handlers (cerca de updateKnockoutScore)
+  const deleteKnockoutScore = async (id: string) => {
+  const { error } = await supabase
+    .from('match_results')
+    .delete()
+    .eq('match_id', id);
+
+  if (!error) {
+    // Recargamos los resultados para que la UI se actualice
+    const { data } = await supabase.from('match_results').select('*');
+    const map: any = {};
+    data?.forEach((r) => (map[r.match_id] = r));
+    setResults(map);
+  } else {
+    alert('Error al borrar: ' + error.message);
+  }
   };
 
   // 💸 ESTADOS DEL MERCADO DE FICHAJES
@@ -5876,7 +5877,7 @@ const resolveCaptain = (user: any, md: string) => {
         </div>
 
 {/* ==========================================
-    NUEVO BLOQUE: MODO DIOS - ELIMINATORIAS (Encima de Grupos)
+    1. MODO DIOS - ELIMINATORIAS
     ========================================== */}
 <div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden text-left mb-6">
   <h2 className="text-xl font-black italic text-red-500 uppercase tracking-tighter mb-4">Inyectar Eliminatorias</h2>
@@ -5891,63 +5892,110 @@ const resolveCaptain = (user: any, md: string) => {
 
   <div className="space-y-3">
     {ALL_MATCHES.filter(m => {
-       // Filtros de fase que ya tenías
        if (adminPhase === 'D16') return m.id >= 73 && m.id <= 88;
-       // ... resto de filtros ...
+       if (adminPhase === 'OCT') return m.id >= 89 && m.id <= 96;
+       if (adminPhase === 'CUA') return m.id >= 97 && m.id <= 100;
+       if (adminPhase === 'SEM') return m.id >= 101 && m.id <= 102;
+       if (adminPhase === 'FIN') return m.id === 104;
        return false;
     }).map((match) => {
       const mId = match.id.toString();
-      const res = results[mId];
-      // Donde tienes el map de las eliminatorias en el Admin:
-
+      const res = results[mId] || { home_score: 0, away_score: 0, home_penalties: null, away_penalties: null };
       const t1Name = getTeamName(match.team1, allStandings);
       const t2Name = getTeamName(match.team2, allStandings);
 
       return (
         <div key={mId} className="bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col gap-3">
-          <div className="grid grid-cols-[1fr,auto,auto,auto,1fr] gap-4 items-center">
-            {/* Equipo Local */}
-            <div className="flex items-center gap-2">
+          <div className="grid grid-cols-[1fr,auto,auto,auto,1fr,auto,auto] gap-2 items-center">
+            <div className="flex items-center gap-2 overflow-hidden">
               <img src={getFlag(t1Name)} className="w-6 h-4 object-cover rounded-sm" />
               <span className="text-xs font-bold text-white truncate">{t1Name}</span>
             </div>
       
-            {/* Marcador Local */}
-            <input type="number" defaultValue={res?.home_score} className="w-10 bg-black rounded p-2 text-center text-xs border border-white/10" 
-                   onBlur={(e) => updateKnockoutScore(mId, Number(e.target.value), res?.away_score, res?.home_penalties, res?.away_penalties)} />
-            
+            <input type="number" defaultValue={res.home_score} className="w-10 bg-black rounded p-2 text-center text-xs border border-white/10" id={`home-${mId}`} />
             <span className="text-white/20 font-black">:</span>
-            
-            {/* Marcador Visitante */}
-            <input type="number" defaultValue={res?.away_score} className="w-10 bg-black rounded p-2 text-center text-xs border border-white/10" 
-                   onBlur={(e) => updateKnockoutScore(mId, res?.home_score, Number(e.target.value), res?.home_penalties, res?.away_penalties)} />
+            <input type="number" defaultValue={res.away_score} className="w-10 bg-black rounded p-2 text-center text-xs border border-white/10" id={`away-${mId}`} />
       
-            {/* Equipo Visitante */}
-            <div className="flex items-center gap-2 justify-end">
+            <div className="flex items-center gap-2 justify-end overflow-hidden">
               <span className="text-xs font-bold text-white truncate">{t2Name}</span>
               <img src={getFlag(t2Name)} className="w-6 h-4 object-cover rounded-sm" />
             </div>
+
+            <button onClick={() => {
+                const h = Number((document.getElementById(`home-${mId}`) as HTMLInputElement).value);
+                const a = Number((document.getElementById(`away-${mId}`) as HTMLInputElement).value);
+                updateKnockoutScore(mId, h, a, res?.home_penalties, res?.away_penalties);
+            }} className="p-2 bg-green-900/30 text-green-400 rounded-lg hover:bg-green-900/50">💾</button>
+            
+            <button onClick={() => deleteKnockoutScore(mId)} className="p-2 bg-red-900/30 text-red-400 rounded-lg hover:bg-red-900/50">🗑️</button>
           </div>
       
-          {/* Solo mostramos si hay empate */}
-          {(res?.home_score !== undefined && res?.away_score !== undefined && res.home_score === res.away_score) && (
+          {/* Penaltis */}
+          {(Number(res.home_score) === Number(res.away_score)) && (
             <div className="flex items-center justify-center gap-4 text-[10px] uppercase font-black text-white/50 border-t border-white/5 pt-2">
               <span>Penaltis:</span>
-              <button 
-                className={`px-3 py-1 rounded transition-colors ${res.home_penalties === 1 ? 'bg-green-500/20 text-green-400' : 'bg-white/5 hover:bg-white/10'}`}
-                onClick={() => updateKnockoutScore(mId, res.home_score, res.away_score, 1, 0)}
-              >G LOCAL</button>
-              <button 
-                className={`px-3 py-1 rounded transition-colors ${res.away_penalties === 1 ? 'bg-green-500/20 text-green-400' : 'bg-white/5 hover:bg-white/10'}`}
-                onClick={() => updateKnockoutScore(mId, res.home_score, res.away_score, 0, 1)}
-              >G VISITANTE</button>
+              <button onClick={() => updateKnockoutScore(mId, res.home_score, res.away_score, 1, 0)} className={`px-3 py-1 rounded ${res.home_penalties === 1 ? 'bg-green-500/20 text-green-400' : 'bg-white/5'}`}>G LOCAL</button>
+              <button onClick={() => updateKnockoutScore(mId, res.home_score, res.away_score, 0, 1)} className={`px-3 py-1 rounded ${res.away_penalties === 1 ? 'bg-green-500/20 text-green-400' : 'bg-white/5'}`}>G VISITANTE</button>
             </div>
           )}
         </div>
       );
     })}
   </div>
-</div>
+</div> {/* FIN BLOQUE ELIMINATORIAS */}
+
+{/* ==========================================
+    2. INYECTAR MARCADORES (Fase de Grupos)
+    ========================================== */}
+<div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden text-left">
+  <h2 className="text-xl font-black italic text-red-500 uppercase tracking-tighter mb-4">Inyectar Marcadores</h2>
+  
+  <select value={adminScoreCountry.length > 1 ? 'A' : adminScoreCountry} onChange={(e) => setAdminScoreCountry(e.target.value)} className="w-full bg-black/50 border border-red-500/30 rounded-xl px-4 py-3 text-sm font-bold text-white mb-6">
+    {GROUPS_2026.map((g) => (<option key={g.id} value={g.id}>GRUPO {g.id}</option>))}
+  </select>
+
+  <div className="space-y-3">
+    {(() => {
+      const activeGroupId = adminScoreCountry.length > 1 ? 'A' : adminScoreCountry;
+      const groupData = GROUPS_2026.find((g) => g.id === activeGroupId);
+      if (!groupData) return null;
+
+      return ALL_MATCHES.filter(m => groupData.teams.includes(m.team1) && groupData.teams.includes(m.team2)).map((match) => (
+        <MatchAdminRow 
+          key={match.id}
+          match={{
+            id: match.id.toString(),
+            home: match.team1, 
+            away: match.team2, 
+            home_score: results[match.id]?.home_score, 
+            away_score: results[match.id]?.away_score
+          }}
+          onSave={async (id: string, hs: number, as: number) => {
+            const { error } = await supabase.from('match_results').upsert(
+              { match_id: id, group_id: activeGroupId, home_score: Number(hs), away_score: Number(as), updated_at: new Date().toISOString() },
+              { onConflict: 'match_id' }
+            );
+            if (!error) {
+              const { data } = await supabase.from('match_results').select('*');
+              const newMap: Record<string, any> = {};
+              data?.forEach((r) => (newMap[r.match_id] = r));
+              setResults({ ...newMap }); 
+            } else alert('Error: ' + error.message);
+          }}
+          onDelete={async (id: string) => {
+            const { error } = await supabase.from('match_results').delete().eq('match_id', id);
+            if (!error) {
+              const { data } = await supabase.from('match_results').select('*');
+              const map: any = {};
+              data?.forEach((r) => (map[r.match_id] = r));
+              setResults(map);
+            } else alert('Error: ' + error.message);
+          }}
+        />
+      ));
+    })()}
+  </div>
+</div> {/* FIN BLOQUE GRUPOS */}
 
         {/* INYECTAR MARCADORES (Con función de reseteo) */}
         <div className="bg-[#1a0b0b] border border-red-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden text-left">
