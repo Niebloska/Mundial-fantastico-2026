@@ -66,7 +66,7 @@ const EQUIPOS_ACIERTO_QUINIELA = [
   'Australia', 'Egipto', 'Suiza', 'Colombia'
   ];
 
-  const getTeamName = (code, allStandings) => {
+  const getTeamName = (code: string, allStandings: any) => {
     if (!code) return "";
     
     // 1. Diccionario de terceros o nombres fijos
