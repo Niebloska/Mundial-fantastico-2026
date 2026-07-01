@@ -66,30 +66,26 @@ const EQUIPOS_ACIERTO_QUINIELA = [
   'Australia', 'Egipto', 'Suiza', 'Colombia'
   ];
 
-  const getTeamName = (code: string, allStandings: any) => {
-    if (!code) return code;
-  
-    const officialThirds: Record<string, string> = {
-      '3-ABCDF': 'Paraguay',
-      '3-CDFGH': 'Suecia',
-      '3-CEFHI': 'Ecuador',
-      '3-EHIJK': 'Congo (RDC)',
-      '3-AEHIJ': 'Senegal',
-      '3-BEFIJ': 'Bosnia y Herzegovina',
-      '3-EFGIJ': 'Argelia',
-      '3-DEIJL': 'Ghana'
+  const getTeamName = (code, allStandings) => {
+    if (!code) return "";
+    
+    // 1. Diccionario de terceros o nombres fijos
+    const officialThirds = {
+      '3-ABCDF': 'Paraguay', '3-CDFGH': 'Suecia', '3-CEFHI': 'Ecuador',
+      '3-EHIJK': 'Congo (RDC)', '3-AEHIJ': 'Senegal', '3-BEFIJ': 'Bosnia y Herzegovina',
+      '3-EFGIJ': 'Argelia', '3-DEIJL': 'Ghana'
     };
-  
     if (officialThirds[code]) return officialThirds[code];
   
-    // Si allStandings es null (como en el bloque de eliminatorias), saltamos este cálculo
-    if (allStandings && code.length >= 2 && !code.includes('-')) {
-        const pos = parseInt(code[0]) - 1;
-        const groupCode = code.slice(1);
-        const team = allStandings[groupCode]?.[pos];
-        return team ? team.name : code;
+    // 2. Intenta resolver 1A, 2B, etc.
+    if (code.length >= 2 && !code.includes('-') && allStandings) {
+      const pos = parseInt(code[0]) - 1;
+      const groupCode = code.slice(1);
+      const team = allStandings[groupCode]?.[pos];
+      if (team) return team.name; // Retorna el nombre (ej: "México")
     }
-    
+  
+    // 3. SI TODO FALLA: Retorna el código original (ej: "2A")
     return code;
   };
 
@@ -2414,64 +2410,80 @@ const CalendarView = ({ results, allStandings }: { results: Record<string, any>,
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-4">
               {round.matches.map((match) => {
   const { day, time } = formatMatchDate(match.date);
-  // ¡AQUÍ ESTÁ EL TRUCO! 
-        // Usamos la variable allStandings que ya tienes definida arriba en el mismo componente
-        const t1 = getTeamName(match.team1, null);
-        const t2 = getTeamName(match.team2, null);
+  // ✅ CÁMBIALO POR ESTO:
+const t1 = getTeamName(match.team1, allStandings);
+const t2 = getTeamName(match.team2, allStandings);
         
         const res = results[match.id];
 
-  return (
-    <div key={match.id} className="bg-[#0a101f] border border-white/5 p-4 rounded-2xl flex flex-col items-center shadow-xl hover:border-white/10 transition-all">
-      <div className="flex w-full justify-around items-center">
-        <div className="w-1/3 flex flex-col items-center gap-1">
-            <img src={getFlag(t1)} className="w-8 h-5 object-cover rounded-sm shadow-md" />
-            <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t1}</span>
-        </div>
-        
-        {/* Marcador con soporte para penaltis */}
-<div className="flex flex-col items-center">
-  <div className="text-base font-black text-[#22c55e] bg-black/60 px-3 py-1 rounded-lg border border-white/5">
-    {res ? `${res.home_score} - ${res.away_score}` : 'VS'}
-  </div>
-  
-  {/* Línea de Penaltis */}
-  {res?.home_penalties !== undefined && res?.home_penalties !== null && (
-    <span className="text-[9px] font-bold text-white/50 mt-1 uppercase">
-      ({res.home_penalties} - {res.away_penalties} p.)
-    </span>
-  )}
-
-  {/* G / E: El toque final de profesionalidad */}
-  {res !== undefined && (
-    <div className="flex gap-4 mt-1">
-      <span className={`text-[9px] font-black ${
-        (res.home_score > res.away_score || (res.home_penalties > res.away_penalties)) ? 'text-green-500' : 'text-red-500'
-      }`}>
-        {(res.home_score > res.away_score || (res.home_penalties > res.away_penalties)) ? 'G' : 'E'}
-      </span>
-      <span className={`text-[9px] font-black ${
-        (res.away_score > res.home_score || (res.away_penalties > res.home_penalties)) ? 'text-green-500' : 'text-red-500'
-      }`}>
-        {(res.away_score > res.home_score || (res.away_penalties > res.home_penalties)) ? 'G' : 'E'}
-      </span>
-    </div>
-  )}
-</div>
-
-        <div className="w-1/3 flex flex-col items-center gap-1">
-            <img src={getFlag(t2)} className="w-8 h-5 object-cover rounded-sm shadow-md" />
-            <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t2}</span>
-        </div>
-      </div>
+        return (
+          <div key={match.id} className="bg-[#0a101f] border border-white/5 p-4 rounded-2xl flex flex-col items-center shadow-xl hover:border-white/10 transition-all">
+            <div className="flex w-full justify-around items-center">
+              
+              {/* EQUIPO 1 */}
+              <div className="w-1/3 flex flex-col items-center gap-1">
+                  {/* 🚀 CONDICIÓN AÑADIDA AQUÍ: Solo muestra la imagen si NO hay números */}
+                  {!/\d/.test(t1) && (
+  <img 
+    src={getFlag(t1)} 
+    className="w-8 h-5 object-cover rounded-sm shadow-md" 
+    onError={(e) => (e.currentTarget.style.display = 'none')} 
+  />
+)}
+                  <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t1}</span>
+              </div>
+              
+              {/* Marcador con soporte para penaltis */}
+              <div className="flex flex-col items-center">
+                <div className="text-base font-black text-[#22c55e] bg-black/60 px-3 py-1 rounded-lg border border-white/5">
+                  {res ? `${res.home_score} - ${res.away_score}` : 'VS'}
+                </div>
+                
+                {/* Línea de Penaltis */}
+                {res?.home_penalties !== undefined && res?.home_penalties !== null && (
+                  <span className="text-[9px] font-bold text-white/50 mt-1 uppercase">
+                    ({res.home_penalties} - {res.away_penalties} p.)
+                  </span>
+                )}
       
-      <div className="mt-3 text-[10px] flex gap-2">
-        <span className="text-[#22c55e] font-black tracking-wide">{day}</span>
-        <span className="text-white/20 font-black">|</span>
-        <span className="text-[#eab308] font-black tracking-wide">{time} h</span>
-      </div>
-    </div>
-  );
+                {/* G / E: El toque final de profesionalidad */}
+                {res !== undefined && (
+                  <div className="flex gap-4 mt-1">
+                    <span className={`text-[9px] font-black ${
+                      (res.home_score > res.away_score || (res.home_penalties > res.away_penalties)) ? 'text-green-500' : 'text-red-500'
+                    }`}>
+                      {(res.home_score > res.away_score || (res.home_penalties > res.away_penalties)) ? 'G' : 'E'}
+                    </span>
+                    <span className={`text-[9px] font-black ${
+                      (res.away_score > res.home_score || (res.away_penalties > res.home_penalties)) ? 'text-green-500' : 'text-red-500'
+                    }`}>
+                      {(res.away_score > res.home_score || (res.away_penalties > res.home_penalties)) ? 'G' : 'E'}
+                    </span>
+                  </div>
+                )}
+              </div>
+      
+              {/* EQUIPO 2 */}
+              <div className="w-1/3 flex flex-col items-center gap-1">
+                  {/* Para el EQUIPO 2 */}
+{!/\d/.test(t2) && (
+  <img 
+    src={getFlag(t2)} 
+    className="w-8 h-5 object-cover rounded-sm shadow-md" 
+    onError={(e) => (e.currentTarget.style.display = 'none')} 
+  />
+)}
+                  <span className="text-[10px] font-black text-white uppercase text-center truncate w-full">{t2}</span>
+              </div>
+            </div>
+            
+            <div className="mt-3 text-[10px] flex gap-2">
+              <span className="text-[#22c55e] font-black tracking-wide">{day}</span>
+              <span className="text-white/20 font-black">|</span>
+              <span className="text-[#eab308] font-black tracking-wide">{time} h</span>
+            </div>
+          </div>
+        );
 })}
               </div>
             </div>
