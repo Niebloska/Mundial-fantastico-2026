@@ -5930,9 +5930,23 @@ const resolveCaptain = (user: any, md: string) => {
               <span className="text-xs font-bold text-white truncate">{t1Name}</span>
             </div>
       
-            <input type="number" defaultValue={res.home_score} className="w-10 bg-black rounded p-2 text-center text-xs border border-white/10" id={`home-${mId}`} />
-            <span className="text-white/20 font-black">:</span>
-            <input type="number" defaultValue={res.away_score} className="w-10 bg-black rounded p-2 text-center text-xs border border-white/10" id={`away-${mId}`} />
+            {/* Input Local (Más grande) */}
+            <input 
+              type="number" 
+              defaultValue={res.home_score} 
+              className="w-14 h-10 bg-black rounded-lg p-2 text-center text-base font-black border border-white/10 focus:border-red-500 outline-none transition-all" 
+              id={`home-${mId}`} 
+            />
+            
+            <span className="text-white/20 font-black text-lg mx-1">:</span>
+            
+            {/* Input Visitante (Más grande) */}
+            <input 
+              type="number" 
+              defaultValue={res.away_score} 
+              className="w-14 h-10 bg-black rounded-lg p-2 text-center text-base font-black border border-white/10 focus:border-red-500 outline-none transition-all" 
+              id={`away-${mId}`} 
+            />
       
             <div className="flex items-center gap-2 justify-end overflow-hidden">
               <span className="text-xs font-bold text-white truncate">{t2Name}</span>
