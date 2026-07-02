@@ -66,9 +66,27 @@ const EQUIPOS_ACIERTO_QUINIELA = [
   'Australia', 'Egipto', 'Suiza', 'Colombia'
   ];
 
-  const getTeamName = (code: string, allStandings: any) => {
+  const getTeamName = (code: string, allStandings: any, results: any, allMatches: any[]): string => {
     if (!code) return "";
     
+    // NUEVO: 0. Lógica para resolver ganadores de eliminatorias (ej: "W73")
+    if (code.startsWith('W')) {
+      const prevMatchId = code.substring(1); // Extrae el número, ej: "73"
+      const res = results[prevMatchId];
+      const prevMatch = allMatches.find((m: any) => m.id.toString() === prevMatchId);
+  
+      if (res && prevMatch) {
+        // Si hay resultado guardado, vemos quién ganó (por goles o penaltis)
+        const homeWins = (res.home_score > res.away_score) || (res.home_penalties > res.away_penalties);
+        const winnerCode = homeWins ? prevMatch.team1 : prevMatch.team2;
+        
+        // Llamada recursiva: si el ganador original era un "1A" u otro "W", lo resuelve aquí
+        return getTeamName(winnerCode, allStandings, results, allMatches);
+      }
+      // Si aún no se ha jugado el partido previo, devuelve el código tal cual (ej: "W73")
+      return code; 
+    }
+  
     // 1. Diccionario de terceros o nombres fijos
     const officialThirds: Record<string, string> = {
       '3-ABCDF': 'Paraguay', '3-CDFGH': 'Suecia', '3-CEFHI': 'Ecuador',
@@ -85,7 +103,7 @@ const EQUIPOS_ACIERTO_QUINIELA = [
       if (team) return team.name; // Retorna el nombre (ej: "México")
     }
   
-    // 3. SI TODO FALLA: Retorna el código original (ej: "2A")
+    // 3. SI TODO FALLA: Retorna el código original
     return code;
   };
 
@@ -2411,8 +2429,8 @@ const CalendarView = ({ results, allStandings }: { results: Record<string, any>,
         
         {round.matches.map((match) => {
   const { day, time } = formatMatchDate(match.date);
-  const t1 = getTeamName(match.team1, allStandings);
-  const t2 = getTeamName(match.team2, allStandings);
+  const t1 = getTeamName(match.team1, allStandings, results, ALL_MATCHES);
+  const t2 = getTeamName(match.team2, allStandings, results, ALL_MATCHES);
   const res = results[match.id];
 
   // 🚀 Lógica para determinar ganador/perdedor
@@ -5901,8 +5919,8 @@ const resolveCaptain = (user: any, md: string) => {
     }).map((match) => {
       const mId = match.id.toString();
       const res = results[mId] || { home_score: 0, away_score: 0, home_penalties: null, away_penalties: null };
-      const t1Name = getTeamName(match.team1, allStandings);
-      const t2Name = getTeamName(match.team2, allStandings);
+      const t1Name = getTeamName(match.team1, allStandings, results, ALL_MATCHES);
+      const t2Name = getTeamName(match.team2, allStandings, results, ALL_MATCHES);
 
       return (
         <div key={mId} className="bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col gap-3">
