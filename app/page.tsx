@@ -3102,7 +3102,7 @@ useEffect(() => {
           const pts = globalScores[scoreKey]?.[lineupsMatchday] ?? '-';
           
           // Calcular puntos (incluye capitán)
-          let finalPts = pts === '-' || pts === 0 ? '-' : Number(pts);
+          let finalPts = (String(pts) === '-' || Number(pts) === 0) ? '-' : Number(pts);
           const pid = p.id || scoreKey;
           if (pid === captain && finalPts !== '-') finalPts *= 2;
       
