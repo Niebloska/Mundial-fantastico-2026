@@ -3126,11 +3126,16 @@ useEffect(() => {
           const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
           const pts = globalScores[scoreKey]?.[lineupsMatchday] ?? '-';
           
-          map[scoreKey] = { points: pts === '-' || pts === 0 ? '-' : pts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
+          map[scoreKey] = { 
+            points: (String(pts) === '-' || Number(pts) === 0) ? '-' : pts, 
+            isSubbedOut: false, 
+            isSubbedIn: false, 
+            id: scoreKey 
+        };
           
-          if (pts !== '-' && pts !== 0) {
-            benchAvailable.push({ id: scoreKey, pos: p.posicion, slotId });
-          }
+        if (String(pts) !== '-' && Number(pts) !== 0) {
+          benchAvailable.push({ id: scoreKey, pos: p.posicion, slotId });
+      }
         });
       
         // C. Lógica de sustituciones (Ahora comparando con las strings de tu Leaderboard)
