@@ -3102,9 +3102,13 @@ useEffect(() => {
           const pts = globalScores[scoreKey]?.[lineupsMatchday] ?? '-';
           
           // Calcular puntos (incluye capitán)
-          let finalPts = (String(pts) === '-' || Number(pts) === 0) ? '-' : Number(pts);
+          let finalPts: string | number = (String(pts) === '-' || Number(pts) === 0) ? '-' : Number(pts);
           const pid = p.id || scoreKey;
-          if (pid === captain && finalPts !== '-') finalPts *= 2;
+
+          if (pid === captain && finalPts !== '-') {
+          // Le decimos a TypeScript: "Confía en mí, aquí finalPts es un número"
+          finalPts = (finalPts as number) * 2;
+          }
       
           map[scoreKey] = { points: finalPts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
           
