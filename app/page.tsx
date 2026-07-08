@@ -5091,7 +5091,7 @@ const newPlayersCount = currentPlayers.reduce((count: number, currentPlayer: any
       const isAlreadyOwned = allSquadPlayers.find((owned) => owned.id === p.id);
 
       // 🛡️ ACTUALIZACIÓN: Lista de selecciones supervivientes en Cuartos
-      const CUARTOS_FINALISTAS = ["España", "Alemania", "Portugal", "Francia", "Inglaterra", "Argentina", "Brasil", "Uruguay"];
+      const CUARTOS_FINALISTAS = ["España", "Marruecos", "Bélgica", "Francia", "Inglaterra", "Argentina", "Suiza", "Noruega"];
       const estaEliminado = !CUARTOS_FINALISTAS.includes(p.equipo);
 
       // Un jugador está bloqueado si ya lo tienes O si está eliminado
