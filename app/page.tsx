@@ -2762,6 +2762,17 @@ export default function MundialApp() {
   'Colombia', 'Ghana'
   ];
 
+  // 🚨 2. LISTA OFICIAL Y DEFINITIVA DE LAS 8 SELECCIONES EN CUARTOS DE FINAL (MUNDIAL 2026)
+const CUARTOS_FINALISTAS = [
+  'Francia', 
+  'Marruecos', 
+  'España', 
+  'Bélgica', 
+  'Noruega', 
+  'Inglaterra', 
+  'Argentina', 
+  'Suiza'
+];
   const updateKnockoutScore = async (id: string, hs: number, as: number, hp?: number, ap?: number) => {
     const { error } = await supabase
       .from('match_results')
@@ -5066,100 +5077,86 @@ const newPlayersCount = currentPlayers.reduce((count: number, currentPlayer: any
                     </div>
                   </div>
 
-                  {/* ZONA DE SCROLL (Aislada del resto del mundo) */}
-                  <div className="flex-1 overflow-y-auto relative pb-20 space-y-2 scrollbar-hide [-webkit-overflow-scrolling:touch]">
-                    {filteredAndSortedPlayers.length > 0 ? (
-                      filteredAndSortedPlayers.map((p: any) => {
-                        const currentPlayer =
-                          activeSlot.type === 'titular'
-                            ? selected[activeSlot.id]
-                            : activeSlot.type === 'bench'
-                            ? bench[activeSlot.id]
-                            : extras[activeSlot.id];
-                        const isCurrentPlayer = currentPlayer?.id === p.id;
-                        const isAlreadyOwned = allSquadPlayers.find(
-                          (owned) => owned.id === p.id
-                        );
+                  {/* ZONA DE SCROLL */}
+<div className="flex-1 overflow-y-auto relative pb-20 space-y-2 scrollbar-hide [-webkit-overflow-scrolling:touch]">
+  {filteredAndSortedPlayers.length > 0 ? (
+    filteredAndSortedPlayers.map((p: any) => {
+      const currentPlayer =
+        activeSlot.type === 'titular'
+          ? selected[activeSlot.id]
+          : activeSlot.type === 'bench'
+          ? bench[activeSlot.id]
+          : extras[activeSlot.id];
+      const isCurrentPlayer = currentPlayer?.id === p.id;
+      const isAlreadyOwned = allSquadPlayers.find((owned) => owned.id === p.id);
 
-                        // 🛡️ FILTRO DE SUPERVIVENCIA: ¿Sigue en el mundial?
-                        const estaEliminado = !JUGANDO_DIECISEISAVOS.includes(p.equipo);
+      // 🛡️ ACTUALIZACIÓN: Lista de selecciones supervivientes en Cuartos
+      const CUARTOS_FINALISTAS = ["España", "Alemania", "Portugal", "Francia", "Inglaterra", "Argentina", "Brasil", "Uruguay"];
+      const estaEliminado = !CUARTOS_FINALISTAS.includes(p.equipo);
 
-                        // Un jugador está bloqueado si ya lo tienes O si está eliminado
-                        const isDisabled = (isAlreadyOwned && !isCurrentPlayer) || estaEliminado;
+      // Un jugador está bloqueado si ya lo tienes O si está eliminado
+      const isDisabled = (isAlreadyOwned && !isCurrentPlayer) || estaEliminado;
 
-                        return (
-                          <div
-                            key={p.id}
-                            className={`flex items-center justify-between p-3 rounded-xl transition-all duration-300 border 
-                              ${estaEliminado 
-                                ? 'bg-red-950/10 border-red-900/20 grayscale opacity-60 cursor-not-allowed'
-                                : isAlreadyOwned && !isCurrentPlayer 
-                                ? 'bg-black/20 border-white/5 grayscale opacity-50 cursor-not-allowed' 
-                                : 'bg-black/40 border-white/10 hover:border-[#22c55e]'}
-                            `}
-                          >
-                            <div className="flex flex-col">
-                              <span className={`font-black text-sm uppercase flex items-center gap-2 ${isDisabled ? 'text-white/40' : 'text-white'}`}>
-                                {p.nombre}
-                                {/* ETIQUETA ROJA DE ELIMINADO */}
-                                {estaEliminado && (
-                                  <span className="bg-red-500/10 border border-red-500/20 text-red-500 text-[8px] px-1.5 py-0.5 rounded tracking-wider not-italic">
-                                    ELIMINADO
-                                  </span>
-                                )}
-                              </span>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span
-                                  className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
-                                    isDisabled
-                                      ? 'bg-white/10 text-white/30'
-                                      : posColors[p.posicion] || 'bg-gray-500 text-white'
-                                  }`}
-                                >
-                                  {p.posicion}
-                                </span>
-                                <span className={`text-[10px] ${isDisabled ? 'text-white/20' : 'text-white/50'}`}>
-                                  {p.equipo}
-                                </span>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-3">
-                              <span className={`font-black text-sm ${isDisabled ? 'text-white/30' : 'text-white'}`}>
-                                {p.precio}M
-                              </span>
-                              <button
-                                onClick={() => {
-                                  const playerToBuy = { ...p, posicion: getPosCode(p.posicion) };
-                                  handleBuyPlayer(playerToBuy);
-                                }}
-                                disabled={isDisabled}
-                                className={`px-4 py-2 rounded-lg font-black text-xs uppercase transition-all ${
-                                  estaEliminado
-                                    ? 'bg-red-950/40 text-red-500/40 border border-red-900/30 cursor-not-allowed shadow-none'
-                                    : isAlreadyOwned && !isCurrentPlayer
-                                    ? 'bg-white/5 text-white/20 cursor-not-allowed shadow-none'
-                                    : 'bg-[#22c55e] text-black hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
-                                }`}
-                              >
-                                {isCurrentPlayer
-                                  ? 'Actual'
-                                  : estaEliminado
-                                  ? 'Fuera'
-                                  : isAlreadyOwned
-                                  ? 'Fichado'
-                                  : 'Fichar'}
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="text-center text-white/40 text-xs font-bold uppercase mt-10 bg-white/5 p-6 rounded-2xl border border-white/5">
-                        No hay jugadores que coincidan con la búsqueda.
-                      </div>
-                    )}
-                  </div>
+      return (
+        <div
+          key={p.id}
+          className={`flex items-center justify-between p-3 rounded-xl transition-all duration-300 border 
+            ${estaEliminado 
+              ? 'bg-red-950/10 border-red-900/20 grayscale opacity-60 cursor-not-allowed'
+              : isAlreadyOwned && !isCurrentPlayer 
+              ? 'bg-black/20 border-white/5 grayscale opacity-50 cursor-not-allowed' 
+              : 'bg-black/40 border-white/10 hover:border-[#22c55e]'}
+          `}
+        >
+          <div className="flex flex-col">
+            <span className={`font-black text-sm uppercase flex items-center gap-2 ${isDisabled ? 'text-white/40' : 'text-white'}`}>
+              {p.nombre}
+              {estaEliminado && (
+                <span className="bg-red-500/10 border border-red-500/20 text-red-500 text-[8px] px-1.5 py-0.5 rounded tracking-wider not-italic">
+                  ELIMINADO
+                </span>
+              )}
+            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${isDisabled ? 'bg-white/10 text-white/30' : posColors[p.posicion] || 'bg-gray-500 text-white'}`}>
+                {p.posicion}
+              </span>
+              <span className={`text-[10px] ${isDisabled ? 'text-white/20' : 'text-white/50'}`}>
+                {p.equipo}
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <span className={`font-black text-sm ${isDisabled ? 'text-white/30' : 'text-white'}`}>
+              {p.precio}M
+            </span>
+            <button
+              onClick={() => {
+                const playerToBuy = { ...p, posicion: getPosCode(p.posicion) };
+                handleBuyPlayer(playerToBuy);
+              }}
+              disabled={isDisabled}
+              className={`px-4 py-2 rounded-lg font-black text-xs uppercase transition-all ${
+                estaEliminado
+                  ? 'bg-red-950/40 text-red-500/40 border border-red-900/30 cursor-not-allowed shadow-none'
+                  : isAlreadyOwned && !isCurrentPlayer
+                  ? 'bg-white/5 text-white/20 cursor-not-allowed shadow-none'
+                  : 'bg-[#22c55e] text-black hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+              }`}
+            >
+              {isCurrentPlayer ? 'Actual' : estaEliminado ? 'Fuera' : isAlreadyOwned ? 'Fichado' : 'Fichar'}
+            </button>
+          </div>
+        </div>
+      );
+    })
+  ) : (
+    <div className="text-center text-white/40 text-xs font-bold uppercase mt-10 bg-white/5 p-6 rounded-2xl border border-white/5">
+      No hay jugadores que coincidan con la búsqueda.
+    </div>
+  )}
+</div>
                 </div>
               </div>
             )}
