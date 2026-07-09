@@ -2688,7 +2688,7 @@ const JORNADAS_DEADLINES = [
   { id: 'J3', label: 'ALINEACIÓN J3', date: new Date('2026-06-24T16:00:00+02:00').getTime() },
   { id: 'D16', label: 'DIECISEISAVOS', date: new Date('2026-06-29T19:00:00+02:00').getTime() },
   { id: 'OCT', label: 'OCTAVOS', date: new Date('2026-07-04T19:00:00+02:00').getTime() },
-  { id: 'CUA', label: 'CUARTOS', date: new Date('2026-07-09T19:00:00+02:00').getTime() },
+  { id: 'CUA', label: 'CUARTOS', date: new Date('2026-07-09T21:00:00+02:00').getTime() },
   { id: 'SEM', label: 'SEMIFINALES', date: new Date('2026-07-14T21:00:00+02:00').getTime() },
   { id: 'FIN', label: 'LA FINAL', date: new Date('2026-07-18T23:00:00+02:00').getTime() }
 ];
