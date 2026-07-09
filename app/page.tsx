@@ -2971,9 +2971,9 @@ const canNavigateAway = () => {
   const [session, setSession] = useState<any>(null);
 
   // --- TORRE DE CONTROL DE MARCADORES ---
-const [results, setResults] = useState<Record<string, any>>({});
+  const [results, setResults] = useState<Record<string, any>>({});
 
-const allStandings = useMemo(() => {
+  const allStandings = useMemo(() => {
   const all: Record<string, any[]> = {};
   GROUPS_2026.forEach(group => {
     let table: any = {};
@@ -3031,7 +3031,7 @@ useEffect(() => {
   }, [isAdmin]);
 
   // 🔄 CARGA INICIAL BLINDADA
-useEffect(() => {
+  useEffect(() => {
   const fetchInitialData = async () => {
     if (!session?.user?.id) return; 
 
@@ -4395,6 +4395,10 @@ const handleBuyPlayer = (player: any) => {
 
     let options: any[] = [];
     
+    // 🛡️ PASO 3 APLICADO: Aseguramos que la lista se forme a partir de los arrays de estado actualizados
+    // y no limitamos los huecos a requerir una posición específica si el hueco titular está vacío.
+    // Esto permite que los nuevos fichajes (que van a extras por defecto) se puedan subir a huecos titulares.
+
     if (!isTitularSlot) {
       Object.entries(selected).forEach(([id, p]: any) => {
         if (p && (!originPlayer || p.posicion === originPlayer.posicion)) {
@@ -4405,7 +4409,9 @@ const handleBuyPlayer = (player: any) => {
 
     if (activeSlot.type !== 'bench') {
       Object.entries(bench).forEach(([id, p]: any) => {
-        if (p && (!isTitularSlot || p.posicion === requiredPos)) {
+        // 🔥 CORRECCIÓN CLAVE: Si el hueco titular está VACÍO (!originPlayer), permitimos CUALQUIER posición.
+        // La validación táctica del botón se encargará de rechazarlo si rompe la formación.
+        if (p && (!isTitularSlot || !originPlayer || p.posicion === requiredPos)) {
           options.push({ slotId: id, type: 'bench', player: p });
         }
       });
@@ -4413,7 +4419,8 @@ const handleBuyPlayer = (player: any) => {
 
     if (activeSlot.type !== 'extras') {
       Object.entries(extras).forEach(([id, p]: any) => {
-        if (p && (!isTitularSlot || p.posicion === requiredPos)) {
+         // 🔥 CORRECCIÓN CLAVE: Misma lógica aquí para los que están en la grada (nuevos fichajes).
+        if (p && (!isTitularSlot || !originPlayer || p.posicion === requiredPos)) {
           options.push({ slotId: id, type: 'extras', player: p });
         }
       });
@@ -5180,45 +5187,60 @@ const newPlayersCount = currentPlayers.reduce((count: number, currentPlayer: any
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto space-y-6">
         
         {/* 1. SELECTOR DE JORNADA */}
-        <nav className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide justify-start sm:justify-center">
-          {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => {
-            const isEditable = countdown.targetId === j;
-            return (
-              <button
-                key={j}
-                onClick={() => {
-  if (isEditingLineup) {
-    alert("Debes guardar tu alineación para continuar");
-    return;
-  }
+<nav className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide justify-start sm:justify-center">
+  {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => {
+    const isEditable = countdown.targetId === j;
+    return (
+      <button
+        key={j}
+        onClick={() => {
+          if (isEditingLineup) {
+            alert("Debes guardar tu alineación para continuar");
+            return;
+          }
 
-  setLineupsMatchday(j); // 1. Cambias la jornada
-  
-  // 2. FORZAS la carga del snapshot histórico en el estado
-  const snapshot = lineupsHistory[j];
-  if (snapshot) {
-     setSelected(JSON.parse(JSON.stringify(snapshot.selected || {})));
-     setBench(JSON.parse(JSON.stringify(snapshot.bench || {})));
-     setExtras(JSON.parse(JSON.stringify(snapshot.extras || {})));
-     setCaptain(snapshot.captain || null);
-  } else {
-                     setSelected(JSON.parse(JSON.stringify(squadData.selected || {})));
-                     setBench(JSON.parse(JSON.stringify(squadData.bench || {})));
-                     setExtras(JSON.parse(JSON.stringify(squadData.extras || {})));
-                     setCaptain(squadData.captain || null);
-                  }
-                }}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2 flex items-center gap-1.5 whitespace-nowrap ${
-                  lineupsMatchday === j 
-                  ? 'bg-[#22c55e] border-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
-                  : 'bg-white/5 border-transparent text-white/40 hover:bg-white/10'
-                }`}
-              >
-                {j} {isEditable && <span className="text-xs animate-bounce">🔓</span>}
-              </button>
-            );
-          })}
-        </nav>
+          setLineupsMatchday(j);
+          
+          const snapshot = lineupsHistory[j];
+          if (snapshot) {
+            setSelected(JSON.parse(JSON.stringify(snapshot.selected || {})));
+            setBench(JSON.parse(JSON.stringify(snapshot.bench || {})));
+            setExtras(JSON.parse(JSON.stringify(snapshot.extras || {})));
+            setCaptain(snapshot.captain || null);
+          } else {
+            // 👇 SOLUCIÓN: Si no hay snapshot histórico, reconstruimos los EXTRAS 
+            // metiendo ahí TODOS los jugadores (allSquadPlayers) que tienes. 
+            // Así, en las nuevas jornadas tendrás disponible todo tu equipo fichado.
+            
+            const newExtras = {};
+            let extraCounter = 1;
+            
+            // Llenamos newExtras con todos los jugadores actuales del usuario
+            if (typeof allSquadPlayers !== 'undefined' && Array.isArray(allSquadPlayers)) {
+               allSquadPlayers.forEach(player => {
+                 newExtras[`NC${extraCounter}`] = player;
+                 extraCounter++;
+               });
+            }
+
+            setSelected({});
+            setBench({});
+            // Asignamos la plantilla actual completa a la grada (extras) para que esté disponible para alinear
+            setExtras(newExtras);
+            setCaptain(null);
+          }
+        }}
+        className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2 flex items-center gap-1.5 whitespace-nowrap ${
+          lineupsMatchday === j 
+          ? 'bg-[#22c55e] border-[#22c55e] text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
+          : 'bg-white/5 border-transparent text-white/40 hover:bg-white/10'
+        }`}
+      >
+        {j} {isEditable && <span className="text-xs animate-bounce">🔓</span>}
+      </button>
+    );
+  })}
+</nav>
 
         {/* 2. EL TERRENO DE JUEGO */}
         <div className="bg-[#1a2b1a] border-4 border-[#22c55e]/30 rounded-[2.5rem] p-4 sm:p-6 shadow-2xl relative overflow-hidden">
