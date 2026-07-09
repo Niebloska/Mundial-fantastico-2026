@@ -5931,20 +5931,23 @@ const resolveCaptain = (user: any, md: string) => {
   <h2 className="text-xl font-black italic text-red-500 uppercase tracking-tighter mb-4">Inyectar Eliminatorias</h2>
   
   <select value={adminPhase} onChange={(e) => setAdminPhase(e.target.value)} className="w-full bg-black/50 border border-red-500/30 rounded-xl px-4 py-3 text-sm font-bold text-white mb-6">
-    <option value="D16">Dieciseisavos (D16)</option>
-    <option value="OCT">Octavos</option>
-    <option value="CUA">Cuartos</option>
-    <option value="SEM">Semifinales</option>
-    <option value="FIN">Final</option>
-  </select>
+  <option value="D16">Dieciseisavos (D16)</option>
+  <option value="OCT">Octavos</option>
+  <option value="CUA">Cuartos</option>
+  <option value="SEM">Semifinales</option>
+  <option value="FIN">Final y 3er Puesto</option> {/* Cambiado nombre para mayor claridad */}
+</select>
 
-  <div className="space-y-3">
-    {ALL_MATCHES.filter(m => {
-       if (adminPhase === 'D16') return m.id >= 73 && m.id <= 88;
-       if (adminPhase === 'OCT') return m.id >= 89 && m.id <= 96;
-       if (adminPhase === 'CUA') return m.id >= 97 && m.id <= 100;
-       if (adminPhase === 'SEM') return m.id >= 101 && m.id <= 102;
-       if (adminPhase === 'FIN') return m.id === 104;
+<div className="space-y-3">
+  {ALL_MATCHES.filter(m => {
+     if (adminPhase === 'D16') return m.id >= 73 && m.id <= 88;
+     if (adminPhase === 'OCT') return m.id >= 89 && m.id <= 96;
+     if (adminPhase === 'CUA') return m.id >= 97 && m.id <= 100;
+     if (adminPhase === 'SEM') return m.id >= 101 && m.id <= 102;
+     
+     // 👈 AQUÍ ESTÁ EL CAMBIO: Incluimos el ID de la Final (104) y el del 3er puesto (ej. 103)
+     // Nota: Sustituye '103' por el ID real que tenga el partido de 3er puesto en tu array ALL_MATCHES
+     if (adminPhase === 'FIN') return m.id === 104 || m.id === 103;
        return false;
     }).map((match) => {
       const mId = match.id.toString();
