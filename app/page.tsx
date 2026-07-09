@@ -5212,7 +5212,7 @@ const newPlayersCount = currentPlayers.reduce((count: number, currentPlayer: any
             // metiendo ahí TODOS los jugadores (allSquadPlayers) que tienes. 
             // Así, en las nuevas jornadas tendrás disponible todo tu equipo fichado.
             
-            const newExtras = {};
+            const newExtras: Record<string, any> = {};
             let extraCounter = 1;
             
             // Llenamos newExtras con todos los jugadores actuales del usuario
