@@ -69,7 +69,7 @@ const EQUIPOS_ACIERTO_QUINIELA = [
   const getTeamName = (code: string, allStandings: any, results: any, allMatches: any[]): string => {
     if (!code) return "";
     
-    // NUEVO: 0. Lógica para resolver ganadores de eliminatorias (ej: "W73")
+    // 0. Lógica para resolver ganadores de eliminatorias (ej: "W73")
     if (code.startsWith('W')) {
       const prevMatchId = code.substring(1); // Extrae el número, ej: "73"
       const res = results[prevMatchId];
@@ -86,6 +86,37 @@ const EQUIPOS_ACIERTO_QUINIELA = [
       // Si aún no se ha jugado el partido previo, devuelve el código tal cual (ej: "W73")
       return code; 
     }
+
+    // 👇 NUEVO: Lógica para resolver perdedores (Subcampeones) de eliminatorias (ej: "RU101")
+    if (code.startsWith('RU')) {
+      const prevMatchId = code.substring(2); // Extrae el número, ej: "101" de "RU101"
+      const res = results[prevMatchId];
+      const prevMatch = allMatches.find((m: any) => m.id.toString() === prevMatchId);
+  
+      if (res && prevMatch && typeof res.home_score !== 'undefined' && res.home_score !== null) {
+        // Si hay resultado, determinamos quién GANÓ para descartarlo
+        const homeScore = Number(res.home_score);
+        const awayScore = Number(res.away_score);
+        
+        let homeWins = false;
+        if (homeScore > awayScore) {
+          homeWins = true;
+        } else if (homeScore === awayScore) {
+          const homePen = Number(res.home_penalties || 0);
+          const awayPen = Number(res.away_penalties || 0);
+          if (homePen > awayPen) homeWins = true;
+        }
+
+        // El PERDEDOR es el equipo contrario al que ganó
+        const loserCode = homeWins ? prevMatch.team2 : prevMatch.team1;
+        
+        // Llamada recursiva para traducir el código original del perdedor a su nombre real
+        return getTeamName(loserCode, allStandings, results, allMatches);
+      }
+      // Si aún no se ha jugado la semifinal, devuelve el código tal cual (ej: "RU101")
+      return code; 
+    }
+    // 👆 FIN DE LO NUEVO
   
     // 1. Diccionario de terceros o nombres fijos
     const officialThirds: Record<string, string> = {
