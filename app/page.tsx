@@ -3125,88 +3125,108 @@ useEffect(() => {
 
   const [isSquadLocked, setIsSquadLocked] = useState(true);
 
-      // 🧠 CEREBRO MEJORADO Y BLINDADO
-      const currentLineupsPoints = useMemo(() => {
-        const map: any = {};
-        const startersMissing: { id: string, pos: string }[] = [];
-        const benchAvailable: { id: string, pos: string, slotId: string }[] = [];
-        
-        // 1. Formación inicial (Incluye a los que no han jugado)
-        const currentCounts = { POR: 0, DEF: 0, MED: 0, DEL: 0 };
-        
-        // Lista de formaciones permitidas (Exactamente la misma de tu Leaderboard)
-        const validFormations = ['1-5-3-2', '1-4-4-2', '1-4-5-1', '1-4-3-3', '1-3-4-3'];
-      
-        // A. Evaluar Titulares
-        Object.entries(selected || {}).forEach(([slotId, p]: any) => {
-          if (!p) return;
-          const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
-          const pts = globalScores[scoreKey]?.[lineupsMatchday] ?? '-';
-          
-          // Calcular puntos (incluye capitán)
-          let finalPts: string | number = (String(pts) === '-' || Number(pts) === 0) ? '-' : Number(pts);
-          const pid = p.id || scoreKey;
+      // 🧠 CEREBRO MEJORADO Y BLINDADO (Con Penalizaciones Activas)
+const currentLineupsPoints = useMemo(() => {
+  const map: any = {};
+  const startersMissing: { id: string, pos: string }[] = [];
+  const benchAvailable: { id: string, pos: string, slotId: string }[] = [];
+  
+  // 1. Formación inicial
+  const currentCounts = { POR: 0, DEF: 0, MED: 0, DEL: 0 };
+  const validFormations = ['1-5-3-2', '1-4-4-2', '1-4-5-1', '1-4-3-3', '1-3-4-3'];
+  
+  let totalStartersAssigned = 0; // Para controlar los huecos literalmente vacíos
 
-          if (pid === captain && finalPts !== '-') {
-          // Le decimos a TypeScript: "Confía en mí, aquí finalPts es un número"
-          finalPts = (finalPts as number) * 2;
-          }
-      
-          map[scoreKey] = { points: finalPts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
-          
-          // Contar formación y detectar ausencias
-          currentCounts[p.posicion as keyof typeof currentCounts]++;
-          if (finalPts === '-') {
-            startersMissing.push({ id: scoreKey, pos: p.posicion });
-          }
-        });
-      
-        // B. Evaluar Banquillo
-        ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].forEach(slotId => {
-          const p = (bench || {})[slotId];
-          if (!p) return;
-          const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
-          const pts = globalScores[scoreKey]?.[lineupsMatchday] ?? '-';
-          
-          map[scoreKey] = { 
-            points: (String(pts) === '-' || Number(pts) === 0) ? '-' : pts, 
-            isSubbedOut: false, 
-            isSubbedIn: false, 
-            id: scoreKey 
-        };
-          
-        if (String(pts) !== '-' && Number(pts) !== 0) {
-          benchAvailable.push({ id: scoreKey, pos: p.posicion, slotId });
-      }
-        });
-      
-        // C. Lógica de sustituciones (Ahora comparando con las strings de tu Leaderboard)
-        for (const sub of benchAvailable) {
-          if (startersMissing.length === 0) break;
-          
-          for (let i = 0; i < startersMissing.length; i++) {
-              const missing = startersMissing[i];
-              
-              // Simular cambio
-              const testCounts = { ...currentCounts };
-              testCounts[missing.pos as keyof typeof testCounts]--;
-              testCounts[sub.pos as keyof typeof testCounts]++;
-              
-              const formationStr = `1-${testCounts.DEF}-${testCounts.MED}-${testCounts.DEL}`;
-              
-              if (validFormations.includes(formationStr)) {
-                 map[missing.id].isSubbedOut = true;
-                 map[sub.id].isSubbedIn = true;
-                 
-                 // Actualizar formación real y quitar de pendientes
-                 Object.assign(currentCounts, testCounts);
-                 startersMissing.splice(i, 1); 
-                 break; 
-              }
-          }
+  // A. Evaluar Titulares
+  Object.entries(selected || {}).forEach(([slotId, p]: any) => {
+    if (!p) {
+      // 🚨 PENALIZACIÓN 1: Hueco dejado en blanco intencionadamente por el usuario
+      map[`empty_${slotId}`] = { points: -1, isSubbedOut: false, isSubbedIn: false, id: `empty_${slotId}` };
+      return;
+    }
+    
+    totalStartersAssigned++;
+    const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
+    const pts = globalScores[scoreKey]?.[lineupsMatchday] ?? '-';
+    
+    // Calcular puntos (incluye capitán)
+    let finalPts: string | number = (String(pts) === '-' || Number(pts) === 0) ? '-' : Number(pts);
+    const pid = p.id || scoreKey;
+
+    if (pid === captain && finalPts !== '-') {
+      finalPts = (finalPts as number) * 2;
+    }
+
+    map[scoreKey] = { points: finalPts, isSubbedOut: false, isSubbedIn: false, id: scoreKey };
+    
+    // Contar formación y detectar ausencias
+    currentCounts[p.posicion as keyof typeof currentCounts]++;
+    if (finalPts === '-') {
+      startersMissing.push({ id: scoreKey, pos: p.posicion });
+    }
+  });
+
+  // B. Evaluar Banquillo
+  ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].forEach(slotId => {
+    const p = (bench || {})[slotId];
+    if (!p) return;
+    const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
+    const pts = globalScores[scoreKey]?.[lineupsMatchday] ?? '-';
+    
+    map[scoreKey] = { 
+      points: (String(pts) === '-' || Number(pts) === 0) ? '-' : pts, 
+      isSubbedOut: false, 
+      isSubbedIn: false, 
+      id: scoreKey 
+    };
+    
+    if (String(pts) !== '-' && Number(pts) !== 0) {
+      benchAvailable.push({ id: scoreKey, pos: p.posicion, slotId });
+    }
+  });
+
+  // C. Lógica de sustituciones 
+  for (const sub of benchAvailable) {
+    if (startersMissing.length === 0) break;
+    
+    for (let i = 0; i < startersMissing.length; i++) {
+        const missing = startersMissing[i];
+        
+        // Simular cambio
+        const testCounts = { ...currentCounts };
+        testCounts[missing.pos as keyof typeof testCounts]--;
+        testCounts[sub.pos as keyof typeof testCounts]++;
+        
+        const formationStr = `1-${testCounts.DEF}-${testCounts.MED}-${testCounts.DEL}`;
+        
+        if (validFormations.includes(formationStr)) {
+           map[missing.id].isSubbedOut = true;
+           map[sub.id].isSubbedIn = true;
+           
+           // Actualizar formación real y quitar de pendientes
+           Object.assign(currentCounts, testCounts);
+           startersMissing.splice(i, 1); 
+           break; 
         }
-        return map;
-      }, [selected, bench, extras, lineupsMatchday, globalScores, captain]);
+    }
+  }
+
+  // 👇 LA REGLA APLICADA 👇
+  // 🚨 PENALIZACIÓN 2: Jugadores que NO jugaron y NO tuvieron reemplazo de banquillo
+  startersMissing.forEach(missing => {
+    // Transformamos el '-' (ausencia) en un -1 real
+    map[missing.id].points = -1; 
+  });
+
+  // 🚨 PENALIZACIÓN 3: Si el objeto 'selected' tiene menos de 11 claves por algún motivo
+  const unassignedSlots = 11 - totalStartersAssigned - Object.values(selected || {}).filter(v => !v).length;
+  for (let i = 0; i < unassignedSlots; i++) {
+    map[`missing_player_slot_${i}`] = { points: -1, isSubbedOut: false, isSubbedIn: false, id: `missing_player_slot_${i}` };
+  }
+  // 👆 FIN DE LA REGLA APLICADA 👆
+
+  return map;
+}, [selected, bench, extras, lineupsMatchday, globalScores, captain]);
 
   // 🧠 CEREBRO DEL MERCADO: Calcula los cambios y el presupuesto en tiempo real
   useEffect(() => {
