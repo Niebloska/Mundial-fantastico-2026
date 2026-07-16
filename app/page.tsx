@@ -3579,9 +3579,8 @@ useEffect(() => {
     const fetchLeaderboard = async () => {
       if (view !== 'scores') return;
       
-      // 🔥 1. AÑADIMOS LA DESCARGA DE LA TABLA TRANSFERS AL INICIO
       const { data: transfersData } = await supabase.from('transfers').select('*');
-
+  
       const { data, error } = await supabase
         .from('profiles')
         .select('id, team_name, username, squad_data, lineups_history, has_paid');
@@ -3597,18 +3596,16 @@ useEffect(() => {
           const s = u.squad_data?.selected || {};
           const b = u.squad_data?.bench || {};
           const e = u.squad_data?.extras || {};
-          const sold = u.squad_data?.sold_players || []; // 👈 1. AÑADIR ESTO: Extraemos los vendidos
+          const sold = u.squad_data?.sold_players || []; 
           
-          // 🔥 2. MAPA RÁPIDO DE LA JORNADA EN LA QUE ENTRÓ CADA JUGADOR PARA ESTE USUARIO
           const userTransfers = transfersData?.filter(t => t.user_id === u.id) || [];
           const entryMatchdayMap: Record<string, number> = {};
           userTransfers.forEach(t => {
               if (t.transfer_type === 'BUY') {
-                  // Convierte 'D16' en índice para comparar con matchdays
-                  entryMatchdayMap[t.player_name] = t.matchday === 'D16' ? 3 : 0; // J1=0, J2=1, J3=2, D16=3...
+                  entryMatchdayMap[t.player_name] = t.matchday === 'D16' ? 3 : 0; 
               }
           });
-
+  
           const getUid = (p: any) => p?.id || p?.nombre;
   
           const activePlayerUids = new Set(
@@ -3633,15 +3630,11 @@ useEffect(() => {
                 isActive: activePlayerUids.has(uid),
                 isCaptain: false,
                 puntosCalculados: emptyScores,
-                // 🔥 3. GUARDAMOS EL ÍNDICE DE ENTRADA EN EL JUGADOR PARA LUEGO USARLO EN LA VISTA
                 startingIndex: entryMatchdayMap[player.nombre] || 0
               });
             }
           };
           
-  
-          // 👈 2. AÑADIR LOS VENDIDOS AL BUCLE DE REGISTRO
-          // Registramos jugadores actuales, LOS VENDIDOS, y luego los históricos
           [...Object.values(s), ...Object.values(b), ...Object.values(e), ...sold].forEach(addPlayer);
           
           Object.values(history).forEach((snap: any) => {
@@ -3652,15 +3645,23 @@ useEffect(() => {
           let totalPoints = 0;
   
           matchdays.forEach((j, mdIdx) => { 
-            // 🔥 CORRECCIÓN: Solo leemos el historial real. Si no existe, snapshot será null.
             const snapshot = history[j] || null; 
             
-            // ✅ Solo ejecutamos el cálculo si existe un snapshot válido para esa jornada
+            // 🔥 ESCUDO PROTECTOR: ¿Ha empezado ya esta jornada? 
+            // Si nadie tiene puntos reales, asumimos que no ha empezado y no penalizamos.
+            const isMatchdayActive = globalScores ? Object.values(globalScores).some((scores: any) => scores[j] !== undefined && scores[j] !== '-') : false;
+            
             if (snapshot && snapshot.selected) {
-              const mdSelected = Object.values(snapshot.selected).filter(Boolean);
-              const mdBenchObj = snapshot.bench || {};
+              const allSelectedSlots = Object.values(snapshot.selected);
+              const mdSelected = allSelectedSlots.filter(Boolean);
               
-              // Suplentes ordenados estrictamente de S1 a S6
+              // 🚨 PENALIZACIÓN 1: Huecos literalmente vacíos
+              const emptySlotsCount = 11 - mdSelected.length;
+              if (emptySlotsCount > 0 && isMatchdayActive) {
+                totalPoints -= emptySlotsCount; 
+              }
+  
+              const mdBenchObj = snapshot.bench || {};
               const mdBench = Object.keys(mdBenchObj)
                                     .sort()
                                     .map(k => mdBenchObj[k])
@@ -3678,7 +3679,7 @@ useEffect(() => {
               let activeStarters = [...mdSelected];
               let subbedOut: any[] = [];
           
-              // A) Titulares que no jugaron o hicieron 0
+              // A) Titulares que no jugaron
               const missingStarters = activeStarters.filter(p => {
                 const pts = getRawPoints(p);
                 return pts === '-' || pts === 0;
@@ -3717,45 +3718,54 @@ useEffect(() => {
                   }
                 }
               });
-          
+  
+              // Titulares que se quedaron sin sustituto
+              const unreplacedStarters = missingStarters.filter(starter => !subbedOut.includes(starter));
+  
               // D) Asignar puntos
-const allMdPlayers = [...mdSelected, ...mdBench];
-allMdPlayers.forEach(player => {
-  const uid = getUid(player);
-  if (!uid) return;
+              const allMdPlayers = [...mdSelected, ...mdBench];
+              allMdPlayers.forEach(player => {
+                const uid = getUid(player);
+                if (!uid) return;
+                
+                const pRecord = allPlayersMap.get(uid);
+                if (!pRecord) return;
   
-  const pRecord = allPlayersMap.get(uid);
-  if (!pRecord) return;
-
-  const scoreKey = getScoreKey(player);
-  const rawVal = getRawPoints(player);
+                const scoreKey = getScoreKey(player);
+                const rawVal = getRawPoints(player);
+                
+                let finalPoints: string | number = '-';
+                const isActiveStarter = activeStarters.some(st => getUid(st) === uid);
+                const isUnreplacedStarter = unreplacedStarters.some(st => getUid(st) === uid);
+                const isEligibleThisMatchday = mdIdx >= pRecord.startingIndex;
   
-  // CORRECCIÓN: Definimos que puede ser string o number
-  let finalPoints: string | number = '-';
-  const isActiveStarter = activeStarters.some(st => getUid(st) === uid);
-
-  const isEligibleThisMatchday = mdIdx >= pRecord.startingIndex;
-
-  if (isActiveStarter && isEligibleThisMatchday) {
-     if (rawVal !== '-') {
-         const isCap = matchdayCaptainUid 
-           ? matchdayCaptainUid.trim().toLowerCase() === scoreKey.toLowerCase() 
-           : false;
-          
-          // Calculamos los puntos como número primero
-          const calculatedPoints = isCap ? (Number(rawVal) * 2) : Number(rawVal);
-          
-          finalPoints = calculatedPoints; // Asignamos el número
-          totalPoints += calculatedPoints; // Sumamos el número directamente
-          
-         if (isCap) pRecord.isCaptain = true;
-     }
-  } else if (!isEligibleThisMatchday) {
-      finalPoints = '-'; 
-  }
-  
-  pRecord.puntosCalculados[j] = finalPoints;
-});
+                if (!isEligibleThisMatchday) {
+                    finalPoints = '-'; 
+                } else if (isActiveStarter) {
+                    // ✅ CORRECCIÓN CLAVE AQUÍ ABAJO
+                    if (isUnreplacedStarter && isMatchdayActive) {
+                        // 🚨 PENALIZACIÓN 2: Es titular, no fue sustituido, y la jornada ya empezó
+                        finalPoints = -1;
+                        totalPoints -= 1;
+                    } else if (rawVal !== '-' && rawVal !== 0) {
+                        // Jugador que jugó y puntuó
+                        const isCap = matchdayCaptainUid 
+                          ? matchdayCaptainUid.trim().toLowerCase() === scoreKey.toLowerCase() 
+                          : false;
+                        const calculatedPoints = isCap ? (Number(rawVal) * 2) : Number(rawVal);
+                        finalPoints = calculatedPoints; 
+                        totalPoints += calculatedPoints; 
+                        if (isCap) pRecord.isCaptain = true;
+                    } else {
+                        finalPoints = rawVal; 
+                    }
+                } else {
+                    // Jugador de banquillo o sustituido
+                    finalPoints = rawVal;
+                }
+                
+                pRecord.puntosCalculados[j] = finalPoints;
+              });
             }
           });
           
@@ -5650,66 +5660,128 @@ const resolveCaptain = (user: any, md: string) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                  {u.players.length > 0 ? (
-  u.players.map((p: any, idx: number) => {
-    const matchdays = ['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'];
-    const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
-    const flagUrl = getFlag(p.equipo);
-    const isSold = p.isActive === false;
-  
-    const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
-    const isCapNow = resolveCaptain(u, u.snapshotMatchday || 'J1') === scoreKey;
-  
-    const startIndex = p.startingIndex || 0;
+  {u.players.length > 0 ? (
+    <>
+      {u.players.map((p: any, idx: number) => {
+        const matchdays = ['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'];
+        const posColors: any = { POR: 'bg-[#eab308] text-black', DEF: 'bg-[#3b82f6] text-white', MED: 'bg-[#22c55e] text-white', DEL: 'bg-[#ef4444] text-white' };
+        const flagUrl = getFlag(p.equipo);
+        const isSold = p.isActive === false;
 
-    const ptTot = matchdays.reduce((sum: number, j: string, mIdx: number) => {
-        if (mIdx < startIndex) return sum; 
-        const val = p.puntos?.[j];
-        return sum + (val !== '-' && val !== undefined ? Number(val) : 0);
-    }, 0);
-  
-    return (
-      // Ajuste: Subimos la opacidad a 60 (más legible) y forzamos grayscale
-      <tr key={p.id || `${scoreKey}-${idx}`} className={`transition-colors ${isSold ? 'bg-black/60 opacity-60 grayscale' : 'hover:bg-white/5 bg-[#0f172a]'}`}>
-        <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/60' : 'bg-[#0f172a]'}`}>
-          <div className="flex items-center justify-between min-w-[200px]">
-            <div className="flex items-center gap-4">
-              {/* Ajuste: Si es sold, bajamos el contraste del badge de posición */}
-              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${isSold ? 'bg-white/5 text-white/20' : (posColors[p.posicion] || 'bg-gray-500 text-white')}`}>
-                {p.posicion}
-              </span>
-              <span className="w-6 flex justify-center items-center">
-                {flagUrl ? <img src={flagUrl} alt={p.equipo} className={`w-4 h-3 object-cover rounded-[2px] ${isSold ? 'opacity-50' : ''}`} /> : '🏳️'}
-              </span>
-              {/* Ajuste: Añadido italic, strikethrough y un gris sólido para mejorar contraste */}
-              <span className={`font-bold truncate max-w-[100px] ${isSold ? 'line-through italic text-gray-500' : 'text-white/90'}`}>
-                {p.nombre} {isCapNow && !isSold && <span className="text-[#eab308] ml-1">C</span>}
-              </span>
-            </div>
-            {/* Ajuste: El total de puntos también se aclara pero se mantiene visible */}
-            <span className={`font-black text-sm ml-4 ${isSold ? 'text-gray-500' : 'text-white'}`}>{ptTot}</span>
-          </div>
-        </td>
+        const scoreKey = `${p.nombre.trim()}_${p.equipo.trim()}`;
+        const isCapNow = resolveCaptain(u, u.snapshotMatchday || 'J1') === scoreKey;
+
+        const startIndex = p.startingIndex || 0;
+
+        const ptTot = matchdays.reduce((sum: number, j: string, mIdx: number) => {
+            if (mIdx < startIndex) return sum; 
+            const val = p.puntos?.[j];
+            return sum + (val !== '-' && val !== undefined ? Number(val) : 0);
+        }, 0);
+
+        return (
+          <tr key={p.id || `${scoreKey}-${idx}`} className={`transition-colors ${isSold ? 'bg-black/60 opacity-60 grayscale' : 'hover:bg-white/5 bg-[#0f172a]'}`}>
+            <td className={`p-3 sticky left-0 z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 ${isSold ? 'bg-black/60' : 'bg-[#0f172a]'}`}>
+              <div className="flex items-center justify-between min-w-[200px]">
+                <div className="flex items-center gap-4">
+                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center ${isSold ? 'bg-white/5 text-white/20' : (posColors[p.posicion] || 'bg-gray-500 text-white')}`}>
+                    {p.posicion}
+                  </span>
+                  <span className="w-6 flex justify-center items-center">
+                    {flagUrl ? <img src={flagUrl} alt={p.equipo} className={`w-4 h-3 object-cover rounded-[2px] ${isSold ? 'opacity-50' : ''}`} /> : '🏳️'}
+                  </span>
+                  <span className={`font-bold truncate max-w-[100px] ${isSold ? 'line-through italic text-gray-500' : 'text-white/90'}`}>
+                    {p.nombre} {isCapNow && !isSold && <span className="text-[#eab308] ml-1">C</span>}
+                  </span>
+                </div>
+                <span className={`font-black text-sm ml-4 ${isSold ? 'text-gray-500' : 'text-white'}`}>{ptTot}</span>
+              </div>
+            </td>
+            
+            {matchdays.map((j: string, mIdx: number) => {
+  const rawPts = p.puntos?.[j] !== undefined ? p.puntos[j] : '-';
+  const isBeforeTransfer = mIdx < startIndex;
+  const showPts = (isBeforeTransfer && rawPts !== '-') ? '0' : rawPts;
+
+  return (
+      <td key={j} className={`p-3 text-center font-bold ${
+        isBeforeTransfer ? 'text-white/10 line-through' : 
+        showPts === -1 ? 'text-red-500 font-black' : // 👈 AQUÍ ESTÁ LA MAGIA: Si es -1, se pinta de rojo
+        isSold ? 'text-gray-600' : 
+        'text-white/90'
+      }`}>
+        {showPts}
+      </td>
+  );
+})}
+          </tr>
+        );
+      })}
+
+      {/* 🚨 NUEVA FILA DE PENALIZACIONES POR HUECOS 🚨 */}
+      {(() => {
+        const parseSafely = (data: any) => {
+          if (!data) return null;
+          if (typeof data === 'object') return data;
+          try { return JSON.parse(data); } catch(e) { return null; }
+        };
+        const historyObj = parseSafely(u.lineups_history) || {};
         
-        {matchdays.map((j: string, mIdx: number) => {
-          const rawPts = p.puntos?.[j] !== undefined ? p.puntos[j] : '-';
-          const isBeforeTransfer = mIdx < startIndex;
-          const showPts = (isBeforeTransfer && rawPts !== '-') ? '0' : rawPts;
+        const matchdays = ['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'];
+        let totalPenalties = 0;
+        const penaltiesByMD: Record<string, number> = {};
 
-          // Ajuste: Las casillas de puntos siguen la lógica de isSold
+        matchdays.forEach(j => {
+           let penaltyCount = 0;
+           // Intentamos leer la alineación histórica para esta jornada
+           const lineup = historyObj[j] || {};
+           const selected = lineup.selected || {};
+
+           // Si la jornada ha comenzado (evaluamos si hay puntos globales o fecha)
+           // y hay alineación guardada, contamos las claves
+           const startersCount = Object.values(selected).filter(v => !!v).length;
+           
+           // Si tiene alineación guardada pero con menos de 11 jugadores, penalizamos
+           if (Object.keys(selected).length > 0 && startersCount < 11) {
+              penaltyCount = (11 - startersCount) * -1;
+              totalPenalties += penaltyCount;
+           }
+           penaltiesByMD[j] = penaltyCount;
+        });
+
+        // Solo mostramos la fila si hay alguna penalización
+        if (totalPenalties < 0) {
           return (
-              <td key={j} className={`p-3 text-center font-bold ${isBeforeTransfer ? 'text-white/10 line-through' : isSold ? 'text-gray-600' : 'text-white/90'}`}>
-                {showPts}
+            <tr className="bg-red-950/20">
+              <td className="p-3 sticky left-0 z-10 bg-red-950/30 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5">
+                <div className="flex items-center justify-between min-w-[200px]">
+                  <div className="flex items-center gap-4">
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded w-8 text-center bg-red-500/20 text-red-500">
+                      PEN
+                    </span>
+                    <span className="w-6 flex justify-center items-center text-red-500 text-xs">⚠️</span>
+                    <span className="font-bold text-red-500/90 italic text-xs">
+                      Huecos vacíos
+                    </span>
+                  </div>
+                  <span className="font-black text-sm ml-4 text-red-500">{totalPenalties}</span>
+                </div>
               </td>
+              {matchdays.map(j => (
+                <td key={j} className="p-3 text-center font-bold text-red-500/80">
+                  {penaltiesByMD[j] < 0 ? penaltiesByMD[j] : '-'}
+                </td>
+              ))}
+            </tr>
           );
-        })}
-      </tr>
-    );
-})
-) : (
-  <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">No hay jugadores.</td></tr>
-)}
-                  </tbody>
+        }
+        return null;
+      })()}
+    </>
+  ) : (
+    <tr><td colSpan={9} className="p-6 text-center text-white/40 font-bold uppercase text-[10px]">No hay jugadores.</td></tr>
+  )}
+</tbody>
                 </table>
                 </div>
               </div>
@@ -5927,7 +5999,25 @@ const resolveCaptain = (user: any, md: string) => {
         {leaderboard
           .map(u => {
              // 🚀 EL CÁLCULO MÁGICO: Sumamos solo los puntos de sus jugadores en esta jornada
-             const mdPoints = u.players.reduce((sum: number, p: any) => sum + (Number(p.puntos?.[selectedScoresMatchday]) || 0), 0);
+             // 🚀 EL CÁLCULO MÁGICO + PENALIZACIONES
+const mdPointsBase = u.players.reduce((sum: number, p: any) => sum + (Number(p.puntos?.[selectedScoresMatchday]) || 0), 0);
+
+const parseSafely = (data: any) => {
+  if (!data) return null;
+  if (typeof data === 'object') return data;
+  try { return JSON.parse(data); } catch(e) { return null; }
+};
+const historyObj = parseSafely(u.lineups_history) || {};
+const lineup = historyObj[selectedScoresMatchday] || {};
+const selected = lineup.selected || {};
+const startersCount = Object.values(selected).filter(v => !!v).length;
+
+let penalty = 0;
+if (Object.keys(selected).length > 0 && startersCount < 11) {
+  penalty = (11 - startersCount) * -1;
+}
+
+const mdPoints = mdPointsBase + penalty;
              return { ...u, matchdayPoints: mdPoints };
           })
           .sort((a, b) => b.matchdayPoints - a.matchdayPoints)
