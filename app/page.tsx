@@ -5884,7 +5884,7 @@ const userLines = sortedBoard.map((u, i) => {
     // 2. Lógica de prioridad estricta:
     //    Si eres tú -> Verde
     //    Si no, miramos si eres TOP 3 según la clasificación actual
-    let strokeColor;
+    let strokeColor: string;
     if (u.isMe) {
         strokeColor = '#22c55e';
     } else if (i === 0) {
