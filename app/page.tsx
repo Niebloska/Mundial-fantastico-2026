@@ -5816,14 +5816,30 @@ const resolveCaptain = (user: any, md: string) => {
                       const activeMatchdays = baseGraphMatchdays.slice(0, lastActiveIdx + 1);
 
                       const pointsHistory = leaderboard.map(u => {
-                          let acc = 0;
-                          const history = activeMatchdays.map(j => {
-                              const jPts = u.players.reduce((sum: number, p: any) => sum + (Number(p.puntos?.[j]) || 0), 0);
-                              acc += jPts;
-                              return acc;
-                          });
-                          return { id: u.id, history };
-                      });
+                        let acc = 0;
+                        const history = activeMatchdays.map(j => {
+                            // 1. Sumamos los puntos de los jugadores (que ya vienen del fetchLeaderboard corregido)
+                            const jPtsBase = u.players.reduce((sum: number, p: any) => {
+                                const ptsVal = p.puntos?.[j];
+                                return sum + (ptsVal !== '-' && ptsVal !== undefined ? Number(ptsVal) : 0);
+                            }, 0);
+                            
+                            // 2. Sumamos la penalización global del usuario para esa jornada
+                            // Buscamos si el usuario tiene penalizaciones en esa jornada específica
+                            // (El fetchLeaderboard ya calcula 'totalPoints' restando, 
+                            // pero para la gráfica necesitamos el acumulado real por jornada)
+                            
+                            // Esta pequeña función extrae el -1 si existe en los jugadores del usuario para esa jornada
+                            const penalty = u.players.reduce((sum: number, p: any) => {
+                                 return sum + (p.puntos?.[j] === -1 ? -1 : 0);
+                            }, 0);
+                    
+                            const jPts = jPtsBase + penalty;
+                            acc += jPts;
+                            return acc;
+                        });
+                        return { id: u.id, history };
+                    });
 
                       const ranksHistory: Record<string, number[]> = {};
                       leaderboard.forEach(u => ranksHistory[u.id] = []);
@@ -5862,20 +5878,28 @@ const resolveCaptain = (user: any, md: string) => {
                       // 🎨 DIBUJAR LÍNEAS DE USUARIOS
                       const sortedBoard = [...leaderboard].sort((a, b) => b.total - a.total);
 
-                      const userLines = sortedBoard.map((u, i) => {
-                        const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
-                        const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
-                        
-                        const strokeColor = u.isMe ? '#22c55e' : 
-                                            i === 0 ? '#eab308' : 
-                                            i === 1 ? '#d1d5db' : 
-                                            i === 2 ? '#d97706' : 
-                                            GRAPH_COLORS[colorIndex];
-                                            
-                        const shadowColor = `${strokeColor}99`; 
-                        
-                        // 🚀 MEJORA: Líneas ligeramente más finas para que no se apelotonen
-                        const strokeWidth = u.isMe ? "0.9" : "0.5"; 
+const userLines = sortedBoard.map((u, i) => {
+    const GRAPH_COLORS = ['#3b82f6', '#ef4444', '#a855f7', '#ec4899', '#06b6d4', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef', '#0ea5e9'];
+    
+    // 2. Lógica de prioridad estricta:
+    //    Si eres tú -> Verde
+    //    Si no, miramos si eres TOP 3 según la clasificación actual
+    let strokeColor;
+    if (u.isMe) {
+        strokeColor = '#22c55e';
+    } else if (i === 0) {
+        strokeColor = '#eab308'; // ORO
+    } else if (i === 1) {
+        strokeColor = '#d1d5db'; // PLATA
+    } else if (i === 2) {
+        strokeColor = '#d97706'; // BRONCE
+    } else {
+        const colorIndex = u.id ? (String(u.id).charCodeAt(0) + String(u.id).charCodeAt(String(u.id).length - 1)) % GRAPH_COLORS.length : i % GRAPH_COLORS.length;
+        strokeColor = GRAPH_COLORS[colorIndex];
+    }
+    
+    const shadowColor = `${strokeColor}99`; 
+    const strokeWidth = u.isMe ? "1.2" : "0.5"; // Tu línea un poco más gruesa para destacar 
                         
                         const userRanks = ranksHistory[u.id] || [];
 
@@ -5973,75 +5997,60 @@ const resolveCaptain = (user: any, md: string) => {
             </div>
 
     {/* 3. CLASIFICACIÓN POR JORNADA (Dinámica y Conectado) */}
-    <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-6">
-      <h3 className="text-lg font-black italic text-[#22c55e] uppercase mb-4 flex items-center gap-2">
-         <span>🏆</span> Clasificación por Jornada
-      </h3>
-      
-      <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
-        {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => (
-          <button 
-            key={j} 
-            // 🚀 AQUÍ LE DAMOS VIDA AL BOTÓN
-            onClick={() => setSelectedScoresMatchday(j)}
-            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
-              selectedScoresMatchday === j 
-                ? 'bg-[#22c55e] text-black shadow-[0_0_10px_rgba(34,197,94,0.4)]' 
-                : 'bg-black/40 text-white/50 border border-white/5 hover:bg-white/10'
+<div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 sm:p-6 mt-6">
+  <h3 className="text-lg font-black italic text-[#22c55e] uppercase mb-4 flex items-center gap-2">
+     <span>🏆</span> Clasificación por Jornada
+  </h3>
+  
+  <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
+    {['J1', 'J2', 'J3', 'D16', 'OCT', 'CUA', 'SEM', 'FIN'].map((j) => (
+      <button 
+        key={j} 
+        onClick={() => setSelectedScoresMatchday(j)}
+        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
+          selectedScoresMatchday === j 
+            ? 'bg-[#22c55e] text-black shadow-[0_0_10px_rgba(34,197,94,0.4)]' 
+            : 'bg-black/40 text-white/50 border border-white/5 hover:bg-white/10'
+        }`}>
+        {j}
+      </button>
+    ))}
+  </div>
+
+  <div className="space-y-2">
+    {leaderboard
+      .map(u => {
+         // 🚀 CÁLCULO DIRECTO: Usamos lo que ya viene en p.puntos
+         // Si fetchLeaderboard hizo su trabajo, los -1 ya están aquí sumados
+         const mdPoints = u.players.reduce((sum: number, p: any) => {
+             const pts = p.puntos?.[selectedScoresMatchday];
+             // Si es un número (incluido el -1), lo sumamos. Si es '-', ignoramos.
+             return sum + (pts !== '-' && pts !== undefined ? Number(pts) : 0);
+         }, 0);
+         
+         return { ...u, matchdayPoints: mdPoints };
+      })
+      .sort((a, b) => b.matchdayPoints - a.matchdayPoints)
+      .map((r, idx) => (
+        <div key={r.id} className="flex justify-between items-center bg-[#111827] border border-white/5 p-3 sm:p-4 rounded-xl hover:border-white/10 transition-colors">
+          <div className="flex items-center gap-4">
+            <span className={`font-black text-xl w-6 text-center ${
+              idx === 0 ? 'text-[#eab308] drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]' : 'text-white/40'
             }`}>
-            {j}
-          </button>
-        ))}
-      </div>
-
-      {/* 👥 LISTADO REAL: Muestra a los usuarios ordenados por ESA jornada específica */}
-      <div className="space-y-2">
-        {leaderboard
-          .map(u => {
-             // 🚀 EL CÁLCULO MÁGICO: Sumamos solo los puntos de sus jugadores en esta jornada
-             // 🚀 EL CÁLCULO MÁGICO + PENALIZACIONES
-const mdPointsBase = u.players.reduce((sum: number, p: any) => sum + (Number(p.puntos?.[selectedScoresMatchday]) || 0), 0);
-
-const parseSafely = (data: any) => {
-  if (!data) return null;
-  if (typeof data === 'object') return data;
-  try { return JSON.parse(data); } catch(e) { return null; }
-};
-const historyObj = parseSafely(u.lineups_history) || {};
-const lineup = historyObj[selectedScoresMatchday] || {};
-const selected = lineup.selected || {};
-const startersCount = Object.values(selected).filter(v => !!v).length;
-
-let penalty = 0;
-if (Object.keys(selected).length > 0 && startersCount < 11) {
-  penalty = (11 - startersCount) * -1;
-}
-
-const mdPoints = mdPointsBase + penalty;
-             return { ...u, matchdayPoints: mdPoints };
-          })
-          .sort((a, b) => b.matchdayPoints - a.matchdayPoints)
-          .map((r, idx) => (
-            <div key={r.id} className="flex justify-between items-center bg-[#111827] border border-white/5 p-3 sm:p-4 rounded-xl hover:border-white/10 transition-colors">
-              <div className="flex items-center gap-4">
-                <span className={`font-black text-xl w-6 text-center ${
-                  idx === 0 ? 'text-[#eab308] drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]' : 'text-white/40'
-                }`}>
-                  {idx + 1}
-                </span>
-                <div className="flex flex-col">
-                  <span className={`font-black text-sm uppercase italic tracking-wide ${r.isMe ? 'text-[#22c55e]' : 'text-white'}`}>
-                    {r.name}
-                  </span>
-                  <span className="text-[9px] text-white/40 font-bold uppercase">{r.username}</span>
-                </div>
-              </div>
-              {/* Mostramos los puntos de la jornada, no el total */}
-              <span className="font-black text-[#22c55e] text-base">{r.matchdayPoints} PTS</span>
+              {idx + 1}
+            </span>
+            <div className="flex flex-col">
+              <span className={`font-black text-sm uppercase italic tracking-wide ${r.isMe ? 'text-[#22c55e]' : 'text-white'}`}>
+                {r.name}
+              </span>
+              <span className="text-[9px] text-white/40 font-bold uppercase">{r.username}</span>
             </div>
-          ))}
-      </div>
-    </div>
+          </div>
+          <span className="font-black text-[#22c55e] text-base">{r.matchdayPoints} PTS</span>
+        </div>
+      ))}
+  </div>
+</div>
 
   </div>
 )}
