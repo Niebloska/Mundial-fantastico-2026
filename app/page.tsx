@@ -3682,7 +3682,7 @@ useEffect(() => {
               // A) Titulares que no jugaron
               const missingStarters = activeStarters.filter(p => {
                 const pts = getRawPoints(p);
-                return pts === '-' || pts === 0;
+                return pts === '-';
               });
           
               // B) Suplentes que sí puntuaron
@@ -3740,29 +3740,28 @@ useEffect(() => {
                 const isEligibleThisMatchday = mdIdx >= pRecord.startingIndex;
   
                 if (!isEligibleThisMatchday) {
-                    finalPoints = '-'; 
-                } else if (isActiveStarter) {
-                    // ✅ CORRECCIÓN CLAVE AQUÍ ABAJO
-                    if (isUnreplacedStarter && isMatchdayActive) {
-                        // 🚨 PENALIZACIÓN 2: Es titular, no fue sustituido, y la jornada ya empezó
-                        finalPoints = -1;
-                        totalPoints -= 1;
-                    } else if (rawVal !== '-' && rawVal !== 0) {
-                        // Jugador que jugó y puntuó
-                        const isCap = matchdayCaptainUid 
-                          ? matchdayCaptainUid.trim().toLowerCase() === scoreKey.toLowerCase() 
-                          : false;
-                        const calculatedPoints = isCap ? (Number(rawVal) * 2) : Number(rawVal);
-                        finalPoints = calculatedPoints; 
-                        totalPoints += calculatedPoints; 
-                        if (isCap) pRecord.isCaptain = true;
-                    } else {
-                        finalPoints = rawVal; 
-                    }
-                } else {
-                    // Jugador de banquillo o sustituido
-                    finalPoints = rawVal;
-                }
+                  finalPoints = '-'; 
+              } else if (isActiveStarter) {
+                  if (isUnreplacedStarter && isMatchdayActive) {
+                      // 🚨 PENALIZACIÓN 2: Es titular, no fue sustituido, y la jornada ya empezó
+                      finalPoints = -1;
+                      totalPoints -= 1;
+                  } else if (rawVal !== '-') {
+                      // ✅ CORREGIDO: Ahora el 0 entra aquí perfectamente y suma 0 (o x2 si es capitán)
+                      const isCap = matchdayCaptainUid 
+                        ? matchdayCaptainUid.trim().toLowerCase() === scoreKey.toLowerCase() 
+                        : false;
+                      const calculatedPoints = isCap ? (Number(rawVal) * 2) : Number(rawVal);
+                      finalPoints = calculatedPoints; 
+                      totalPoints += calculatedPoints; 
+                      if (isCap) pRecord.isCaptain = true;
+                  } else {
+                      finalPoints = rawVal; 
+                  }
+              } else {
+                  // Jugador de banquillo o sustituido
+                  finalPoints = rawVal;
+              }
                 
                 pRecord.puntosCalculados[j] = finalPoints;
               });
